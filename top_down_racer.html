@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top-Down Racing Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes drift {
+            0% { transform: translateX(0) rotate(0deg); }
+            50% { transform: translateX(-5px) rotate(-2deg); }
+            100% { transform: translateX(0) rotate(0deg); }
+        }
+        
+        @keyframes skid {
+            0% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
+        
+        .drift-animation {
+            animation: drift 0.5s infinite;
+        }
+        
+        .skid-mark {
+            position: absolute;
+            width: 20px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            animation: skid 1s forwards;
+        }
+        
+        .car {
+            transition: transform 0.1s;
+            position: absolute;
+            z-index: 10;
+        }
+        
+        .track {
+            position: relative;
+            background-color: #333;
+            overflow: hidden;
+        }
+        
+        .checkpoint {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: rgba(0, 255, 0, 0.3);
+            border-radius: 50%;
+            z-index: 5;
+        }
+        
+        .ai-car {
+            position: absolute;
+            z-index: 9;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background-color: white;
+            border-radius: 50%;
+            animation: particle 1s forwards;
+        }
+        
+        @keyframes particle {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+        
+        .rain {
+            position: absolute;
+            width: 2px;
+            height: 15px;
+            background-color: rgba(255, 255, 255, 0.5);
+            animation: rain 0.5s linear infinite;
+        }
+        
+        @keyframes rain {
+            0% { transform: translateY(-20px); }
+            100% { transform: translateY(100vh); }
+        }
+        
+        .customize-option {
+            transition: all 0.3s;
+        }
+        
+        .customize-option:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .selected-option {
+            border: 3px solid gold;
+            box-shadow: 0 0 15px gold;
+        }
+        
+        .track-option {
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .track-option:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+        
+        .track-preview {
+            position: relative;
+            width: 100%;
+            height: 120px;
+            background-color: #444;
+        }
+        
+        .lap-time {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+        }
+        
+        .best-lap {
+            color: gold;
+            font-weight: bold;
+        }
+        
+        .boost-bar {
+            height: 10px;
+            background: linear-gradient(to right, #00ff00, #ff0000);
+            border-radius: 5px;
+            transition: width 0.1s;
+        }
+        
+        .nitro-active {
+            box-shadow: 0 0 15px cyan;
+        }
+        
+        .track-border {
+            position: absolute;
+            background-color: #fff;
+            z-index: 1;
+        }
+        
+        .track-road {
+            position: absolute;
+            background-color: #555;
+            z-index: 2;
+        }
+        
+        .grass {
+            position: absolute;
+            background-color: #2a5c2a;
+            z-index: 0;
+        }
+        
+        .sand {
+            position: absolute;
+            background-color: #e0c070;
+            z-index: 0;
+        }
+        
+        .checkpoint-flag {
+            position: absolute;
+            width: 20px;
+            height: 30px;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: 3;
+        }
+        
+        .start-line {
+            position: absolute;
+            background-color: rgba(255, 255, 0, 0.7);
+            z-index: 3;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-mono overflow-hidden">
+    <div id="game-container" class="relative w-full h-screen">
+        <!-- Main Menu -->
+        <div id="main-menu" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 z-50">
+            <h1 class="text-6xl font-bold mb-8 text-yellow-400 tracking-wider">TOP-DOWN RACER</h1>
+            <div class="space-y-4 w-64">
+                <button id="start-game" class="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-xl transition-all">START RACE</button>
+                <button id="customize-car" class="w-full py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-bold text-xl transition-all">CUSTOMIZE CAR</button>
+                <button id="track-select" class="w-full py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-xl transition-all">SELECT TRACK</button>
+                <button id="how-to-play" class="w-full py-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-xl transition-all">HOW TO PLAY</button>
+            </div>
+            <div class="mt-8 text-gray-400">
+                <p>Use arrow keys to drive</p>
+                <p>Space to brake/drift</p>
+            </div>
+        </div>
+        
+        <!-- Customize Car Menu -->
+        <div id="customize-menu" class="absolute inset-0 hidden flex-col items-center justify-center bg-black bg-opacity-90 z-50 p-4">
+            <h2 class="text-4xl font-bold mb-6 text-yellow-400">CUSTOMIZE YOUR CAR</h2>
+            
+            <div class="flex mb-8">
+                <div id="car-preview" class="w-32 h-32 flex items-center justify-center mr-8">
+                    <!-- Car preview will be rendered here -->
+                </div>
+                
+                <div class="ml-8">
+                    <h3 class="text-xl font-bold mb-2">STATS</h3>
+                    <div class="space-y-1">
+                        <div class="flex items-center">
+                            <span class="w-24">Speed:</span>
+                            <div class="w-32 h-4 bg-gray-700 rounded-full overflow-hidden">
+                                <div id="speed-stat" class="h-full bg-blue-500 rounded-full" style="width: 70%"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-24">Handling:</span>
+                            <div class="w-32 h-4 bg-gray-700 rounded-full overflow-hidden">
+                                <div id="handling-stat" class="h-full bg-green-500 rounded-full" style="width: 50%"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-24">Accel:</span>
+                            <div class="w-32 h-4 bg-gray-700 rounded-full overflow-hidden">
+                                <div id="accel-stat" class="h-full bg-red-500 rounded-full" style="width: 60%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-4 mb-8 w-full max-w-3xl">
+                <div>
+                    <h3 class="text-xl font-bold mb-2 text-center">COLOR</h3>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div data-color="red" class="customize-option w-12 h-12 bg-red-500 rounded-full cursor-pointer"></div>
+                        <div data-color="blue" class="customize-option w-12 h-12 bg-blue-500 rounded-full cursor-pointer"></div>
+                        <div data-color="green" class="customize-option w-12 h-12 bg-green-500 rounded-full cursor-pointer"></div>
+                        <div data-color="yellow" class="customize-option w-12 h-12 bg-yellow-500 rounded-full cursor-pointer"></div>
+                        <div data-color="purple" class="customize-option w-12 h-12 bg-purple-500 rounded-full cursor-pointer"></div>
+                        <div data-color="pink" class="customize-option w-12 h-12 bg-pink-500 rounded-full cursor-pointer"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-xl font-bold mb-2 text-center">BODY</h3>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div data-body="sports" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-car text-xl"></i>
+                        </div>
+                        <div data-body="truck" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-truck-pickup text-xl"></i>
+                        </div>
+                        <div data-body="classic" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-car-side text-xl"></i>
+                        </div>
+                        <div data-body="race" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-flag-checkered text-xl"></i>
+                        </div>
+                        <div data-body="offroad" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-truck-monster text-xl"></i>
+                        </div>
+                        <div data-body="futuristic" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-space-shuttle text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-xl font-bold mb-2 text-center">UPGRADES</h3>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div data-upgrade="engine" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-bolt text-xl"></i>
+                        </div>
+                        <div data-upgrade="tires" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-circle-notch text-xl"></i>
+                        </div>
+                        <div data-upgrade="nitro" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-fire text-xl"></i>
+                        </div>
+                        <div data-upgrade="aero" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-wind text-xl"></i>
+                        </div>
+                        <div data-upgrade="weight" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-weight-hanging text-xl"></i>
+                        </div>
+                        <div data-upgrade="brakes" class="customize-option w-12 h-12 bg-gray-600 rounded flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-stop-circle text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex space-x-4">
+                <button id="save-customization" class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold">SAVE</button>
+                <button id="back-from-customize" class="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold">BACK</button>
+            </div>
+        </div>
+        
+        <!-- Track Selection Menu -->
+        <div id="track-select-menu" class="absolute inset-0 hidden flex-col items-center justify-center bg-black bg-opacity-90 z-50 p-4 overflow-y-auto">
+            <h2 class="text-4xl font-bold mb-6 text-yellow-400">SELECT TRACK</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 w-full max-w-6xl">
+                <div data-track="oval" class="track-option bg-gray-800 rounded-lg p-4 cursor-pointer">
+                    <h3 class="text-xl font-bold mb-2">SPEED OVAL</h3>
+                    <div class="track-preview mb-2" id="oval-preview">
+                        <!-- Track preview will be rendered here -->
+                    </div>
+                    <p class="text-sm text-gray-400">Difficulty: Easy</p>
+                    <p class="text-sm text-gray-400">Laps: 5</p>
+                    <p class="text-sm text-gray-400">Best Time: <span class="best-lap">--:--.--</span></p>
+                </div>
+                
+                <div data-track="city" class="track-option bg-gray-800 rounded-lg p-4 cursor-pointer">
+                    <h3 class="text-xl font-bold mb-2">CITY CIRCUIT</h3>
+                    <div class="track-preview mb-2" id="city-preview">
+                        <!-- Track preview will be rendered here -->
+                    </div>
+                    <p class="text-sm text-gray-400">Difficulty: Medium</p>
+                    <p class="text-sm text-gray-400">Laps: 3</p>
+                    <p class="text-sm text-gray-400">Best Time: <span class="best-lap">--:--.--</span></p>
+                </div>
+                
+                <div data-track="mountain" class="track-option bg-gray-800 rounded-lg p-4 cursor-pointer">
+                    <h3 class="text-xl font-bold mb-2">MOUNTAIN PASS</h3>
+                    <div class="track-preview mb-2" id="mountain-preview">
+                        <!-- Track preview will be rendered here -->
+                    </div>
+                    <p class="text-sm text-gray-400">Difficulty: Hard</p>
+                    <p class="text-sm text-gray-400">Laps: 2</p>
+                    <p class="text-sm text-gray-400">Best Time: <span class="best-lap">--:--.--</span></p>
+                </div>
+                
+                <div data-track="desert" class="track-option bg-gray-800 rounded-lg p-4 cursor-pointer">
+                    <h3 class="text-xl font-bold mb-2">DESERT RALLY</h3>
+                    <div class="track-preview mb-2" id="desert-preview">
+                        <!-- Track preview will be rendered here -->
+                    </div>
+                    <p class="text-sm text-gray-400">Difficulty: Medium</p>
+                    <p class="text-sm text-gray-400">Laps: 3</p>
+                    <p class="text-sm text-gray-400">Best Time: <span class="best-lap">--:--.--</span></p>
+                </div>
+                
+                <div data-track="forest" class="track-option bg-gray-800 rounded-lg p-4 cursor-pointer">
+                    <h3 class="text-xl font-bold mb-2">FOREST TRAIL</h3>
+                    <div class="track-preview mb-2" id="forest-preview">
+                        <!-- Track preview will be rendered here -->
+                    </div>
+                    <p class="text-sm text-gray-400">Difficulty: Easy</p>
+                    <p class="text-sm text-gray-400">Laps: 4</p>
+                    <p class="text-sm text-gray-400">Best Time: <span class="best-lap">--:--.--</span></p>
+                </div>
+                
+                <div data-track="arena" class="track-option bg-gray-800 rounded-lg p-4 cursor-pointer">
+                    <h3 class="text-xl font-bold mb-2">BATTLE ARENA</h3>
+                    <div class="track-preview mb-2" id="arena-preview">
+                        <!-- Track preview will be rendered here -->
+                    </div>
+                    <p class="text-sm text-gray-400">Difficulty: Extreme</p>
+                    <p class="text-sm text-gray-400">Laps: 1</p>
+                    <p class="text-sm text-gray-400">Best Time: <span class="best-lap">--:--.--</span></p>
+                </div>
+            </div>
+            
+            <div class="flex space-x-4">
+                <button id="select-track" class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold">SELECT</button>
+                <button id="back-from-track" class="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold">BACK</button>
+            </div>
+        </div>
+        
+        <!-- How to Play Menu -->
+        <div id="how-to-play-menu" class="absolute inset-0 hidden flex-col items-center justify-center bg-black bg-opacity-90 z-50 p-4 overflow-y-auto">
+            <h2 class="text-4xl font-bold mb-6 text-yellow-400">HOW TO PLAY</h2>
+            
+            <div class="bg-gray-800 rounded-lg p-6 max-w-2xl mb-8">
+                <h3 class="text-2xl font-bold mb-4">CONTROLS</h3>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-gray-700 p-3 rounded">
+                        <p class="font-bold">Steering:</p>
+                        <p>← → Arrow Keys</p>
+                    </div>
+                    <div class="bg-gray-700 p-3 rounded">
+                        <p class="font-bold">Acceleration:</p>
+                        <p>↑ Arrow Key</p>
+                    </div>
+                    <div class="bg-gray-700 p-3 rounded">
+                        <p class="font-bold">Brake/Reverse:</p>
+                        <p>↓ Arrow Key</p>
+                    </div>
+                    <div class="bg-gray-700 p-3 rounded">
+                        <p class="font-bold">Drift/Nitro:</p>
+                        <p>Space Bar</p>
+                    </div>
+                </div>
+                
+                <h3 class="text-2xl font-bold mb-4">GAME MECHANICS</h3>
+                <div class="space-y-3">
+                    <p>• Complete laps as fast as possible to win the race</p>
+                    <p>• Collect boost pads to fill your nitro meter</p>
+                    <p>• Use nitro for a temporary speed boost</p>
+                    <p>• Drift around corners to maintain speed</p>
+                    <p>• Avoid obstacles and stay on track</p>
+                    <p>• Different car types have different stats</p>
+                    <p>• Different tracks have different surfaces that affect handling</p>
+                </div>
+            </div>
+            
+            <button id="back-from-howto" class="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold">BACK</button>
+        </div>
+        
+        <!-- Game UI -->
+        <div id="game-ui" class="absolute inset-0 hidden z-40 pointer-events-none">
+            <div class="absolute top-4 left-4 bg-black bg-opacity-70 p-3 rounded">
+                <div class="flex items-center mb-2">
+                    <span class="mr-2">LAP:</span>
+                    <span id="current-lap" class="font-bold">1/3</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="mr-2">POSITION:</span>
+                    <span id="current-position" class="font-bold">1st</span>
+                </div>
+            </div>
+            
+            <div class="absolute top-4 right-4 bg-black bg-opacity-70 p-3 rounded text-right">
+                <div class="lap-time mb-1" id="current-time">00:00.00</div>
+                <div class="lap-time text-sm text-gray-400" id="last-lap">Last: --:--.--</div>
+                <div class="lap-time text-sm best-lap" id="best-lap">Best: --:--.--</div>
+            </div>
+            
+            <div class="absolute bottom-4 left-4 bg-black bg-opacity-70 p-3 rounded">
+                <div class="mb-2">
+                    <p class="text-sm">NITRO</p>
+                    <div class="w-32 h-4 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="nitro-bar" class="h-full bg-cyan-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="w-32 h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div id="speed-bar" class="h-full bg-red-500 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="absolute bottom-4 right-4 bg-black bg-opacity-70 p-3 rounded text-right">
+                <div id="track-name" class="font-bold">TRACK NAME</div>
+                <div id="weather" class="text-sm text-gray-400">Sunny</div>
+            </div>
+        </div>
+        
+        <!-- Pause Menu -->
+        <div id="pause-menu" class="absolute inset-0 hidden flex-col items-center justify-center bg-black bg-opacity-70 z-50">
+            <h2 class="text-4xl font-bold mb-6 text-yellow-400">PAUSED</h2>
+            <div class="space-y-4 w-64">
+                <button id="resume-game" class="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-xl transition-all">RESUME</button>
+                <button id="restart-race" class="w-full py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-bold text-xl transition-all">RESTART</button>
+                <button id="quit-to-menu" class="w-full py-3 bg-red-600 hover:bg-red-700 rounded-lg font-bold text-xl transition-all">QUIT TO MENU</button>
+            </div>
+        </div>
+        
+        <!-- Race Finish Menu -->
+        <div id="finish-menu" class="absolute inset-0 hidden flex-col items-center justify-center bg-black bg-opacity-80 z-50">
+            <h2 id="race-result" class="text-5xl font-bold mb-2 text-yellow-400">RACE COMPLETE!</h2>
+            <h3 id="race-position" class="text-3xl font-bold mb-6">1st PLACE</h3>
+            
+            <div class="bg-gray-800 rounded-lg p-6 mb-8 w-64">
+                <div class="flex justify-between mb-2">
+                    <span>Time:</span>
+                    <span id="final-time" class="font-bold">00:00.00</span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span>Best Lap:</span>
+                    <span id="final-best-lap" class="font-bold best-lap">--:--.--</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Reward:</span>
+                    <span id="race-reward" class="font-bold text-yellow-400">$1000</span>
+                </div>
+            </div>
+            
+            <div class="flex space-x-4">
+                <button id="race-again" class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold">RACE AGAIN</button>
+                <button id="finish-to-menu" class="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold">MENU</button>
+            </div>
+        </div>
+        
+        <!-- Game Canvas -->
+        <canvas id="game-canvas" class="track w-full h-full"></canvas>
+    </div>
+
+    <script>
+        // Game state
+        const gameState = {
+            currentScreen: 'main-menu',
+            carCustomization: {
+                color: 'red',
+                body: 'sports',
+                upgrades: {
+                    engine: 0,
+                    tires: 0,
+                    nitro: 0,
+                    aero: 0,
+                    weight: 0,
+                    brakes: 0
+                }
+            },
+            trackRecords: {},
+            selectedTrack: null,
+            gameRunning: false,
+            paused: false,
+            raceFinished: false,
+            playerCar: null,
+            aiCars: [],
+            track: {
+                name: '',
+                elements: [],
+                checkpoints: [],
+                startPositions: [],
+                roadFriction: 0.95,
+                offRoadFriction: 0.85,
+                width: 0,
+                height: 0,
+                weather: 'sunny'
+            },
+            currentLap: 0,
+            totalLaps: 3,
+            currentPosition: 1,
+            startTime: 0,
+            currentTime: 0,
+            lastLapTime: 0,
+            bestLapTime: Infinity,
+            nitro: 100,
+            usingNitro: false,
+            keys: {
+                up: false,
+                down: false,
+                left: false,
+                right: false,
+                space: false
+            }
+        };
+
+        // DOM elements
+        const elements = {
+            mainMenu: document.getElementById('main-menu'),
+            customizeMenu: document.getElementById('customize-menu'),
+            trackSelectMenu: document.getElementById('track-select-menu'),
+            howToPlayMenu: document.getElementById('how-to-play-menu'),
+            gameUI: document.getElementById('game-ui'),
+            pauseMenu: document.getElementById('pause-menu'),
+            finishMenu: document.getElementById('finish-menu'),
+            carPreview: document.getElementById('car-preview'),
+            speedStat: document.getElementById('speed-stat'),
+            handlingStat: document.getElementById('handling-stat'),
+            accelStat: document.getElementById('accel-stat'),
+            currentLap: document.getElementById('current-lap'),
+            currentPosition: document.getElementById('current-position'),
+            currentTime: document.getElementById('current-time'),
+            lastLap: document.getElementById('last-lap'),
+            bestLap: document.getElementById('best-lap'),
+            nitroBar: document.getElementById('nitro-bar'),
+            speedBar: document.getElementById('speed-bar'),
+            trackName: document.getElementById('track-name'),
+            weather: document.getElementById('weather'),
+            raceResult: document.getElementById('race-result'),
+            racePosition: document.getElementById('race-position'),
+            finalTime: document.getElementById('final-time'),
+            finalBestLap: document.getElementById('final-best-lap'),
+            raceReward: document.getElementById('race-reward'),
+            canvas: document.getElementById('game-canvas'),
+            ctx: document.getElementById('game-canvas').getContext('2d')
+        };
+
+        // Track definitions
+        const tracks = {
+            oval: {
+                name: 'Speed Oval',
+                weather: 'sunny',
+                width: 1000,
+                height: 600,
+                roadFriction: 0.96,
+                offRoadFriction: 0.88,
+                totalLaps: 5,
+                elements: [
+                    { type: 'grass', x: 0, y: 0, width: 1000, height: 600 },
+                    { type: 'road', x: 200, y: 100, width: 600, height: 400, radius: 200 },
+                    { type: 'border', x: 200, y: 100, width: 600, height: 400, radius: 200, lineWidth: 10 },
+                    { type: 'start-line', x: 790, y: 295, width: 20, height: 10, angle: Math.PI/2 }
+                ],
+                checkpoints: [
+                    { x: 790, y: 300, radius: 30 }, // Right
+                    { x: 500, y: 80, radius: 30 },  // Top
+                    { x: 210, y: 300, radius: 30 }, // Left
+                    { x: 500, y: 520, radius: 30 }  // Bottom
+                ],
+                startPositions: [
+                    { x: 750, y: 300, angle: -Math.PI/2 },
+                    { x: 750, y: 330, angle: -Math.PI/2 },
+                    { x: 750, y: 270, angle: -Math.PI/2 },
+                    { x: 750, y: 360, angle: -Math.PI/2 }
+                ]
+            },
+            city: {
+                name: 'City Circuit',
+                weather: 'rainy',
+                width: 800,
+                height: 800,
+                roadFriction: 0.94,
+                offRoadFriction: 0.80,
+                totalLaps: 3,
+                elements: [
+                    { type: 'grass', x: 0, y: 0, width: 800, height: 800 },
+                    { type: 'road', x: 100, y: 100, width: 200, height: 600 }, // Vertical left
+                    { type: 'road', x: 300, y: 100, width: 200, height: 200 }, // Top middle
+                    { type: 'road', x: 300, y: 500, width: 200, height: 200 }, // Bottom middle
+                    { type: 'road', x: 500, y: 100, width: 200, height: 600 }, // Vertical right
+                    { type: 'road', x: 100, y: 300, width: 400, height: 200 }, // Horizontal center
+                    { type: 'border', x: 100, y: 100, width: 200, height: 600, lineWidth: 5 },
+                    { type: 'border', x: 300, y: 100, width: 200, height: 200, lineWidth: 5 },
+                    { type: 'border', x: 300, y: 500, width: 200, height: 200, lineWidth: 5 },
+                    { type: 'border', x: 500, y: 100, width: 200, height: 600, lineWidth: 5 },
+                    { type: 'border', x: 100, y: 300, width: 400, height: 200, lineWidth: 5 },
+                    { type: 'start-line', x: 650, y: 390, width: 20, height: 10, angle: Math.PI/2 }
+                ],
+                checkpoints: [
+                    { x: 650, y: 400, radius: 30 }, // Start/finish
+                    { x: 650, y: 150, radius: 30 }, // Top right
+                    { x: 400, y: 150, radius: 30 }, // Top middle
+                    { x: 150, y: 150, radius: 30 }, // Top left
+                    { x: 150, y: 400, radius: 30 }, // Middle left
+                    { x: 150, y: 650, radius: 30 }, // Bottom left
+                    { x: 400, y: 650, radius: 30 }, // Bottom middle
+                    { x: 650, y: 650, radius: 30 }  // Bottom right
+                ],
+                startPositions: [
+                    { x: 620, y: 400, angle: -Math.PI/2 },
+                    { x: 620, y: 430, angle: -Math.PI/2 },
+                    { x: 620, y: 370, angle: -Math.PI/2 },
+                    { x: 620, y: 460, angle: -Math.PI/2 }
+                ]
+            },
+            mountain: {
+                name: 'Mountain Pass',
+                weather: 'foggy',
+                width: 900,
+                height: 500,
+                roadFriction: 0.92,
+                offRoadFriction: 0.75,
+                totalLaps: 2,
+                elements: [
+                    { type: 'grass', x: 0, y: 0, width: 900, height: 500 },
+                    { type: 'road', points: [
+                        {x: 800, y: 400}, {x: 700, y: 380}, {x: 600, y: 350}, {x: 500, y: 300}, 
+                        {x: 400, y: 250}, {x: 300, y: 200}, {x: 200, y: 180}, {x: 100, y: 200},
+                        {x: 50, y: 250}, {x: 50, y: 300}, {x: 100, y: 350}, {x: 200, y: 380},
+                        {x: 300, y: 370}, {x: 400, y: 350}, {x: 500, y: 330}, {x: 600, y: 320},
+                        {x: 700, y: 330}, {x: 800, y: 350}
+                    ], width: 40 },
+                    { type: 'border', points: [
+                        {x: 800, y: 400}, {x: 700, y: 380}, {x: 600, y: 350}, {x: 500, y: 300}, 
+                        {x: 400, y: 250}, {x: 300, y: 200}, {x: 200, y: 180}, {x: 100, y: 200},
+                        {x: 50, y: 250}, {x: 50, y: 300}, {x: 100, y: 350}, {x: 200, y: 380},
+                        {x: 300, y: 370}, {x: 400, y: 350}, {x: 500, y: 330}, {x: 600, y: 320},
+                        {x: 700, y: 330}, {x: 800, y: 350}
+                    ], width: 45, lineWidth: 5 },
+                    { type: 'start-line', x: 790, y: 390, width: 20, height: 10, angle: Math.PI/4 }
+                ],
+                checkpoints: [
+                    { x: 800, y: 400, radius: 30 },
+                    { x: 500, y: 300, radius: 30 },
+                    { x: 50, y: 250, radius: 30 },
+                    { x: 200, y: 380, radius: 30 },
+                    { x: 600, y: 320, radius: 30 }
+                ],
+                startPositions: [
+                    { x: 770, y: 410, angle: Math.PI/4 },
+                    { x: 780, y: 420, angle: Math.PI/4 },
+                    { x: 760, y: 400, angle: Math.PI/4 },
+                    { x: 790, y: 430, angle: Math.PI/4 }
+                ]
+            },
+            desert: {
+                name: 'Desert Rally',
+                weather: 'sunny',
+                width: 1000,
+                height: 600,
+                roadFriction: 0.90,
+                offRoadFriction: 0.70,
+                totalLaps: 3,
+                elements: [
+                    { type: 'sand', x: 0, y: 0, width: 1000, height: 600 },
+                    { type: 'road', x: 100, y: 100, width: 800, height: 400, radius: 50 },
+                    { type: 'border', x: 100, y: 100, width: 800, height: 400, radius: 50, lineWidth: 8 },
+                    { type: 'start-line', x: 880, y: 295, width: 20, height: 10, angle: Math.PI/2 }
+                ],
+                checkpoints: [
+                    { x: 880, y: 300, radius: 30 },
+                    { x: 700, y: 150, radius: 30 },
+                    { x: 400, y: 100, radius: 30 },
+                    { x: 150, y: 200, radius: 30 },
+                    { x: 100, y: 400, radius: 30 },
+                    { x: 200, y: 550, radius: 30 },
+                    { x: 450, y: 550, radius: 30 },
+                    { x: 700, y: 500, radius: 30 }
+                ],
+                startPositions: [
+                    { x: 850, y: 300, angle: -Math.PI/2 },
+                    { x: 850, y: 330, angle: -Math.PI/2 },
+                    { x: 850, y: 270, angle: -Math.PI/2 },
+                    { x: 850, y: 360, angle: -Math.PI/2 }
+                ]
+            },
+            forest: {
+                name: 'Forest Trail',
+                weather: 'rainy',
+                width: 800,
+                height: 600,
+                roadFriction: 0.93,
+                offRoadFriction: 0.65,
+                totalLaps: 4,
+                elements: [
+                    { type: 'grass', x: 0, y: 0, width: 800, height: 600 },
+                    { type: 'road', points: [
+                        {x: 700, y: 500}, {x: 650, y: 450}, {x: 600, y: 400}, {x: 550, y: 350},
+                        {x: 500, y: 300}, {x: 450, y: 250}, {x: 400, y: 200}, {x: 350, y: 150},
+                        {x: 300, y: 100}, {x: 250, y: 150}, {x: 200, y: 200}, {x: 150, y: 250},
+                        {x: 100, y: 300}, {x: 150, y: 350}, {x: 200, y: 400}, {x: 250, y: 450},
+                        {x: 300, y: 500}, {x: 350, y: 450}, {x: 400, y: 400}, {x: 450, y: 350},
+                        {x: 500, y: 300}, {x: 550, y: 250}, {x: 600, y: 200}, {x: 650, y: 150},
+                        {x: 700, y: 100}, {x: 750, y: 150}, {x: 700, y: 200}, {x: 650, y: 250},
+                        {x: 600, y: 300}, {x: 550, y: 350}, {x: 500, y: 400}, {x: 450, y: 450},
+                        {x: 400, y: 500}, {x: 350, y: 550}, {x: 300, y: 500}
+                    ], width: 30 },
+                    { type: 'border', points: [
+                        {x: 700, y: 500}, {x: 650, y: 450}, {x: 600, y: 400}, {x: 550, y: 350},
+                        {x: 500, y: 300}, {x: 450, y: 250}, {x: 400, y: 200}, {x: 350, y: 150},
+                        {x: 300, y: 100}, {x: 250, y: 150}, {x: 200, y: 200}, {x: 150, y: 250},
+                        {x: 100, y: 300}, {x: 150, y: 350}, {x: 200, y: 400}, {x: 250, y: 450},
+                        {x: 300, y: 500}, {x: 350, y: 450}, {x: 400, y: 400}, {x: 450, y: 350},
+                        {x: 500, y: 300}, {x: 550, y: 250}, {x: 600, y: 200}, {x: 650, y: 150},
+                        {x: 700, y: 100}, {x: 750, y: 150}, {x: 700, y: 200}, {x: 650, y: 250},
+                        {x: 600, y: 300}, {x: 550, y: 350}, {x: 500, y: 400}, {x: 450, y: 450},
+                        {x: 400, y: 500}, {x: 350, y: 550}, {x: 300, y: 500}
+                    ], width: 40, lineWidth: 5 },
+                    { type: 'start-line', x: 690, y: 490, width: 20, height: 10, angle: Math.PI/4 }
+                ],
+                checkpoints: [
+                    { x: 700, y: 500, radius: 30 },
+                    { x: 500, y: 300, radius: 30 },
+                    { x: 100, y: 300, radius: 30 },
+                    { x: 300, y: 500, radius: 30 }
+                ],
+                startPositions: [
+                    { x: 680, y: 510, angle: Math.PI/4 },
+                    { x: 670, y: 520, angle: Math.PI/4 },
+                    { x: 690, y: 500, angle: Math.PI/4 },
+                    { x: 660, y: 530, angle: Math.PI/4 }
+                ]
+            },
+            arena: {
+                name: 'Battle Arena',
+                weather: 'foggy',
+                width: 600,
+                height: 600,
+                roadFriction: 0.95,
+                offRoadFriction: 0.60,
+                totalLaps: 1,
+                elements: [
+                    { type: 'grass', x: 0, y: 0, width: 600, height: 600 },
+                    { type: 'road', x: 100, y: 100, width: 400, height: 400 },
+                    { type: 'road', x: 200, y: 0, width: 200, height: 100 },
+                    { type: 'road', x: 200, y: 500, width: 200, height: 100 },
+                    { type: 'road', x: 0, y: 200, width: 100, height: 200 },
+                    { type: 'road', x: 500, y: 200, width: 100, height: 200 },
+                    { type: 'border', x: 100, y: 100, width: 400, height: 400, lineWidth: 5 },
+                    { type: 'border', x: 200, y: 0, width: 200, height: 100, lineWidth: 5 },
+                    { type: 'border', x: 200, y: 500, width: 200, height: 100, lineWidth: 5 },
+                    { type: 'border', x: 0, y: 200, width: 100, height: 200, lineWidth: 5 },
+                    { type: 'border', x: 500, y: 200, width: 100, height: 200, lineWidth: 5 },
+                    { type: 'start-line', x: 290, y: 480, width: 20, height: 10, angle: 0 }
+                ],
+                checkpoints: [
+                    { x: 300, y: 500, radius: 30 },
+                    { x: 500, y: 300, radius: 30 },
+                    { x: 300, y: 100, radius: 30 },
+                    { x: 100, y: 300, radius: 30 }
+                ],
+                startPositions: [
+                    { x: 280, y: 490, angle: 0 },
+                    { x: 280, y: 520, angle: 0 },
+                    { x: 320, y: 490, angle: 0 },
+                    { x: 320, y: 520, angle: 0 }
+                ]
+            }
+        };
+
+        // Initialize canvas
+        function initCanvas() {
+            elements.canvas.width = window.innerWidth;
+            elements.canvas.height = window.innerHeight;
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            // Main menu buttons
+            document.getElementById('start-game').addEventListener('click', () => {
+                if (!gameState.selectedTrack) {
+                    gameState.selectedTrack = 'oval';
+                }
+                startGame();
+            });
+            
+            document.getElementById('customize-car').addEventListener('click', () => {
+                showScreen('customize-menu');
+                updateCarPreview();
+                updateCarStats();
+            });
+            
+            document.getElementById('track-select').addEventListener('click', () => {
+                showScreen('track-select-menu');
+                renderTrackPreviews();
+            });
+            
+            document.getElementById('how-to-play').addEventListener('click', () => {
+                showScreen('how-to-play-menu');
+            });
+            
+            // Customize menu buttons
+            document.getElementById('save-customization').addEventListener('click', () => {
+                showScreen('main-menu');
+            });
+            
+            document.getElementById('back-from-customize').addEventListener('click', () => {
+                showScreen('main-menu');
+            });
+            
+            // Color selection
+            document.querySelectorAll('[data-color]').forEach(option => {
+                option.addEventListener('click', () => {
+                    gameState.carCustomization.color = option.dataset.color;
+                    updateCarPreview();
+                });
+            });
+            
+            // Body selection
+            document.querySelectorAll('[data-body]').forEach(option => {
+                option.addEventListener('click', () => {
+                    gameState.carCustomization.body = option.dataset.body;
+                    updateCarPreview();
+                    updateCarStats();
+                });
+            });
+            
+            // Upgrade selection
+            document.querySelectorAll('[data-upgrade]').forEach(option => {
+                option.addEventListener('click', () => {
+                    const upgrade = option.dataset.upgrade;
+                    if (gameState.carCustomization.upgrades[upgrade] < 3) {
+                        gameState.carCustomization.upgrades[upgrade]++;
+                        updateCarStats();
+                    }
+                });
+            });
+            
+            // Track selection
+            document.querySelectorAll('.track-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.track-option').forEach(opt => {
+                        opt.classList.remove('ring-2', 'ring-yellow-400');
+                    });
+                    option.classList.add('ring-2', 'ring-yellow-400');
+                    gameState.selectedTrack = option.dataset.track;
+                });
+            });
+            
+            document.getElementById('select-track').addEventListener('click', () => {
+                showScreen('main-menu');
+            });
+            
+            document.getElementById('back-from-track').addEventListener('click', () => {
+                showScreen('main-menu');
+            });
+            
+            // How to play back button
+            document.getElementById('back-from-howto').addEventListener('click', () => {
+                showScreen('main-menu');
+            });
+            
+            // Pause menu buttons
+            document.getElementById('resume-game').addEventListener('click', () => {
+                resumeGame();
+            });
+            
+            document.getElementById('restart-race').addEventListener('click', () => {
+                startGame();
+            });
+            
+            document.getElementById('quit-to-menu').addEventListener('click', () => {
+                showScreen('main-menu');
+                gameState.gameRunning = false;
+            });
+            
+            // Finish menu buttons
+            document.getElementById('race-again').addEventListener('click', () => {
+                startGame();
+            });
+            
+            document.getElementById('finish-to-menu').addEventListener('click', () => {
+                showScreen('main-menu');
+                gameState.gameRunning = false;
+            });
+            
+            // Keyboard controls
+            window.addEventListener('keydown', (e) => {
+                if (!gameState.gameRunning || gameState.paused || gameState.raceFinished) return;
+                
+                switch(e.key) {
+                    case 'ArrowUp': gameState.keys.up = true; break;
+                    case 'ArrowDown': gameState.keys.down = true; break;
+                    case 'ArrowLeft': gameState.keys.left = true; break;
+                    case 'ArrowRight': gameState.keys.right = true; break;
+                    case ' ': gameState.keys.space = true; break;
+                    case 'Escape': pauseGame(); break;
+                }
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                switch(e.key) {
+                    case 'ArrowUp': gameState.keys.up = false; break;
+                    case 'ArrowDown': gameState.keys.down = false; break;
+                    case 'ArrowLeft': gameState.keys.left = false; break;
+                    case 'ArrowRight': gameState.keys.right = false; break;
+                    case ' ': gameState.keys.space = false; break;
+                }
+            });
+            
+            // Window resize
+            window.addEventListener('resize', () => {
+                initCanvas();
+                if (gameState.gameRunning) {
+                    renderTrack();
+                }
+            });
+        }
+
+        // Screen management
+        function showScreen(screenId) {
+            elements.mainMenu.classList.add('hidden');
+            elements.customizeMenu.classList.add('hidden');
+            elements.trackSelectMenu.classList.add('hidden');
+            elements.howToPlayMenu.classList.add('hidden');
+            elements.gameUI.classList.add('hidden');
+            elements.pauseMenu.classList.add('hidden');
+            elements.finishMenu.classList.add('hidden');
+            
+            document.getElementById(screenId).classList.remove('hidden');
+            gameState.currentScreen = screenId;
+        }
+
+        // Car customization
+        function updateCarPreview() {
+            elements.carPreview.innerHTML = '';
+            const car = document.createElement('div');
+            car.className = `text-5xl text-${gameState.carCustomization.color}-500`;
+            
+            switch(gameState.carCustomization.body) {
+                case 'sports': car.innerHTML = '<i class="fas fa-car"></i>'; break;
+                case 'truck': car.innerHTML = '<i class="fas fa-truck-pickup"></i>'; break;
+                case 'classic': car.innerHTML = '<i class="fas fa-car-side"></i>'; break;
+                case 'race': car.innerHTML = '<i class="fas fa-flag-checkered"></i>'; break;
+                case 'offroad': car.innerHTML = '<i class="fas fa-truck-monster"></i>'; break;
+                case 'futuristic': car.innerHTML = '<i class="fas fa-space-shuttle"></i>'; break;
+            }
+            
+            elements.carPreview.appendChild(car);
+        }
+
+        function updateCarStats() {
+            // Base stats based on car body
+            let speed = 50;
+            let handling = 50;
+            let acceleration = 50;
+            
+            switch(gameState.carCustomization.body) {
+                case 'sports':
+                    speed = 70;
+                    handling = 60;
+                    acceleration = 70;
+                    break;
+                case 'truck':
+                    speed = 40;
+                    handling = 40;
+                    acceleration = 30;
+                    break;
+                case 'classic':
+                    speed = 60;
+                    handling = 70;
+                    acceleration = 50;
+                    break;
+                case 'race':
+                    speed = 80;
+                    handling = 50;
+                    acceleration = 80;
+                    break;
+                case 'offroad':
+                    speed = 50;
+                    handling = 80;
+                    acceleration = 40;
+                    break;
+                case 'futuristic':
+                    speed = 90;
+                    handling = 40;
+                    acceleration = 90;
+                    break;
+            }
+            
+            // Apply upgrades
+            speed += gameState.carCustomization.upgrades.engine * 10;
+            handling += gameState.carCustomization.upgrades.tires * 10;
+            acceleration += gameState.carCustomization.upgrades.nitro * 5;
+            
+            // Cap at 100
+            speed = Math.min(100, speed);
+            handling = Math.min(100, handling);
+            acceleration = Math.min(100, acceleration);
+            
+            // Update UI
+            elements.speedStat.style.width = `${speed}%`;
+            elements.handlingStat.style.width = `${handling}%`;
+            elements.accelStat.style.width = `${acceleration}%`;
+        }
+
+        // Track functions
+        function renderTrackPreviews() {
+            Object.keys(tracks).forEach(trackId => {
+                const preview = document.getElementById(`${trackId}-preview`);
+                if (preview) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = preview.clientWidth;
+                    canvas.height = preview.clientHeight;
+                    preview.innerHTML = '';
+                    preview.appendChild(canvas);
+                    
+                    const ctx = canvas.getContext('2d');
+                    const track = tracks[trackId];
+                    
+                    // Draw background
+                    ctx.fillStyle = track.weather === 'sunny' ? '#2a5c2a' : 
+                                    track.weather === 'rainy' ? '#1a3a1a' : '#333333';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Scale factor
+                    const scaleX = canvas.width / track.width;
+                    const scaleY = canvas.height / track.height;
+                    const scale = Math.min(scaleX, scaleY);
+                    
+                    // Draw track elements
+                    track.elements.forEach(element => {
+                        ctx.save();
+                        ctx.translate(canvas.width/2 - (track.width * scale)/2, canvas.height/2 - (track.height * scale)/2);
+                        
+                        if (element.type === 'grass') {
+                            ctx.fillStyle = '#2a5c2a';
+                            ctx.fillRect(element.x * scale, element.y * scale, element.width * scale, element.height * scale);
+                        } else if (element.type === 'sand') {
+                            ctx.fillStyle = '#e0c070';
+                            ctx.fillRect(element.x * scale, element.y * scale, element.width * scale, element.height * scale);
+                        } else if (element.type === 'road') {
+                            ctx.fillStyle = '#555';
+                            if (element.radius) {
+                                ctx.beginPath();
+                                ctx.ellipse(
+                                    (element.x + element.width/2) * scale, 
+                                    (element.y + element.height/2) * scale, 
+                                    element.width/2 * scale, 
+                                    element.height/2 * scale, 
+                                    0, 0, Math.PI * 2
+                                );
+                                ctx.fill();
+                            } else if (element.points) {
+                                ctx.beginPath();
+                                ctx.moveTo(element.points[0].x * scale, element.points[0].y * scale);
+                                for (let i = 1; i < element.points.length; i++) {
+                                    ctx.lineTo(element.points[i].x * scale, element.points[i].y * scale);
+                                }
+                                ctx.lineWidth = element.width * scale;
+                                ctx.lineCap = 'round';
+                                ctx.lineJoin = 'round';
+                                ctx.strokeStyle = '#555';
+                                ctx.stroke();
+                            } else {
+                                ctx.fillRect(element.x * scale, element.y * scale, element.width * scale, element.height * scale);
+                            }
+                        } else if (element.type === 'border') {
+                            ctx.strokeStyle = '#fff';
+                            ctx.lineWidth = element.lineWidth * scale;
+                            if (element.radius) {
+                                ctx.beginPath();
+                                ctx.ellipse(
+                                    (element.x + element.width/2) * scale, 
+                                    (element.y + element.height/2) * scale, 
+                                    element.width/2 * scale, 
+                                    element.height/2 * scale, 
+                                    0, 0, Math.PI * 2
+                                );
+                                ctx.stroke();
+                            } else if (element.points) {
+                                ctx.beginPath();
+                                ctx.moveTo(element.points[0].x * scale, element.points[0].y * scale);
+                                for (let i = 1; i < element.points.length; i++) {
+                                    ctx.lineTo(element.points[i].x * scale, element.points[i].y * scale);
+                                }
+                                ctx.lineWidth = element.lineWidth * scale;
+                                ctx.lineCap = 'round';
+                                ctx.lineJoin = 'round';
+                                ctx.strokeStyle = '#fff';
+                                ctx.stroke();
+                            } else {
+                                ctx.strokeRect(element.x * scale, element.y * scale, element.width * scale, element.height * scale);
+                            }
+                        } else if (element.type === 'start-line') {
+                            ctx.fillStyle = 'rgba(255, 255, 0, 0.7)';
+                            ctx.save();
+                            ctx.translate(element.x * scale, element.y * scale);
+                            ctx.rotate(element.angle);
+                            ctx.fillRect(-element.width/2 * scale, -element.height/2 * scale, element.width * scale, element.height * scale);
+                            ctx.restore();
+                        }
+                        
+                        ctx.restore();
+                    });
+                }
+            });
+        }
+
+        function initTrack() {
+            const selectedTrack = tracks[gameState.selectedTrack];
+            if (!selectedTrack) return;
+            
+            // Update game state with track data
+            gameState.track = {
+                name: selectedTrack.name,
+                elements: selectedTrack.elements,
+                checkpoints: selectedTrack.checkpoints,
+                startPositions: selectedTrack.startPositions,
+                roadFriction: selectedTrack.roadFriction,
+                offRoadFriction: selectedTrack.offRoadFriction,
+                width: selectedTrack.width,
+                height: selectedTrack.height,
+                weather: selectedTrack.weather
+            };
+            
+            gameState.totalLaps = selectedTrack.totalLaps;
+            
+            // Update UI
+            elements.trackName.textContent = gameState.track.name;
+            elements.weather.textContent = gameState.track.weather.charAt(0).toUpperCase() + gameState.track.weather.slice(1);
+            
+            // Render track
+            renderTrack();
+        }
+
+        function renderTrack() {
+            const ctx = elements.ctx;
+            const width = elements.canvas.width;
+            const height = elements.canvas.height;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Calculate scale and offset to fit track in view
+            const scaleX = width / gameState.track.width;
+            const scaleY = height / gameState.track.height;
+            const scale = Math.min(scaleX, scaleY) * 0.9; // 90% to add some padding
+            const offsetX = (width - gameState.track.width * scale) / 2;
+            const offsetY = (height - gameState.track.height * scale) / 2;
+            
+            // Draw track elements
+            gameState.track.elements.forEach(element => {
+                ctx.save();
+                ctx.translate(offsetX, offsetY);
+                
+                if (element.type === 'grass') {
+                    ctx.fillStyle = gameState.track.weather === 'sunny' ? '#2a5c2a' : 
+                                   gameState.track.weather === 'rainy' ? '#1a3a1a' : '#333333';
+                    ctx.fillRect(element.x * scale, element.y * scale, element.width * scale, element.height * scale);
+                } else if (element.type === 'sand') {
+                    ctx.fillStyle = '#e0c070';
+                    ctx.fillRect(element.x * scale, element.y * scale, element.width * scale, element.height * scale);
+                } else if (element.type === 'road') {
+                    ctx.fillStyle = '#555';
+                    if (element.radius) {
+                        ctx.beginPath();
+                        ctx.ellipse(
+                            (element.x + element.width/2) * scale, 
+                            (element.y + element.height/2) * scale, 
+                            element.width/2 * scale, 
+                            element.height/2 * scale, 
+                            0, 0, Math.PI * 2
+                        );
+                        ctx.fill();
+                    } else if (element.points) {
+                        ctx.beginPath();
+                        ctx.moveTo(element.points[0].x * scale, element.points[0].y * scale);
+                        for (let i = 1; i < element.points.length; i++) {
+                            ctx.lineTo(element.points[i].x * scale, element.points[i].y * scale);
+                        }
+                        ctx.lineWidth = element.width * scale;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        ctx.strokeStyle = '#555';
+                        ctx.stroke();
+                    } else {
+                        ctx.fillRect(element.x * scale, element.y * scale, element.width * scale, element.height * scale);
+                    }
+                } else if (element.type === 'border') {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = element.lineWidth * scale;
+                    if (element.radius) {
+                        ctx.beginPath();
+                        ctx.ellipse(
+                            (element.x + element.width/2) * scale, 
+                            (element.y + element.height/2) * scale, 
+                            element.width/2 * scale, 
+                            element.height/2 * scale, 
+                            0, 0, Math.PI * 2
+                        );
+                        ctx.stroke();
+                    } else if (element.points) {
+                        ctx.beginPath();
+                        ctx.moveTo(element.points[0].x * scale, element.points[0].y * scale);
+                        for (let i = 1; i < element.points.length; i++) {
+                            ctx.lineTo(element.points[i].x * scale, element.points[i].y * scale);
+                        }
+                        ctx.lineWidth = element.lineWidth * scale;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        ctx.strokeStyle = '#fff';
+                        ctx.stroke();
+                    } else {
+                        ctx.strokeRect(element.x * scale, element.y * scale, element.width * scale, element.height * scale);
+                    }
+                } else if (element.type === 'start-line') {
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.7)';
+                    ctx.save();
+                    ctx.translate(element.x * scale, element.y * scale);
+                    ctx.rotate(element.angle);
+                    ctx.fillRect(-element.width/2 * scale, -element.height/2 * scale, element.width * scale, element.height * scale);
+                    ctx.restore();
+                }
+                
+                ctx.restore();
+            });
+            
+            // For debugging, you can uncomment this to show checkpoints:
+            /*
+            gameState.track.checkpoints.forEach(checkpoint => {
+                ctx.save();
+                ctx.translate(offsetX, offsetY);
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                ctx.beginPath();
+                ctx.arc(checkpoint.x * scale, checkpoint.y * scale, checkpoint.radius * scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+            */
+        }
+
+        // Collision detection
+        function isPointOnTrack(x, y) {
+            const scaleX = elements.canvas.width / gameState.track.width;
+            const scaleY = elements.canvas.height / gameState.track.height;
+            const scale = Math.min(scaleX, scaleY) * 0.9;
+            const offsetX = (elements.canvas.width - gameState.track.width * scale) / 2;
+            const offsetY = (elements.canvas.height - gameState.track.height * scale) / 2;
+            
+            // Convert screen coordinates to track coordinates
+            const trackX = (x - offsetX) / scale;
+            const trackY = (y - offsetY) / scale;
+            
+            // Check if point is within any road element
+            for (const element of gameState.track.elements) {
+                if (element.type === 'road') {
+                    if (element.radius) {
+                        // Elliptical road
+                        const centerX = element.x + element.width / 2;
+                        const centerY = element.y + element.height / 2;
+                        const dx = trackX - centerX;
+                        const dy = trackY - centerY;
+                        const normalized = Math.pow(dx / (element.width / 2), 2) + Math.pow(dy / (element.height / 2), 2);
+                        if (normalized <= 1) return true;
+                    } else if (element.points) {
+                        // Curved road - simple approximation
+                        for (let i = 0; i < element.points.length - 1; i++) {
+                            const p1 = element.points[i];
+                            const p2 = element.points[i + 1];
+                            const distance = pointToLineDistance(trackX, trackY, p1.x, p1.y, p2.x, p2.y);
+                            if (distance <= element.width / 2) return true;
+                        }
+                    } else {
+                        // Rectangular road
+                        if (trackX >= element.x && trackX <= element.x + element.width &&
+                            trackY >= element.y && trackY <= element.y + element.height) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function pointToLineDistance(x, y, x1, y1, x2, y2) {
+            const A = x - x1;
+            const B = y - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+
+            const dot = A * C + B * D;
+            const len_sq = C * C + D * D;
+            let param = -1;
+            if (len_sq !== 0) param = dot / len_sq;
+
+            let xx, yy;
+
+            if (param < 0) {
+                xx = x1;
+                yy = y1;
+            } else if (param > 1) {
+                xx = x2;
+                yy = y2;
+            } else {
+                xx = x1 + param * C;
+                yy = y1 + param * D;
+            }
+
+            const dx = x - xx;
+            const dy = y - yy;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Game functions
+        function startGame() {
+            gameState.gameRunning = true;
+            gameState.paused = false;
+            gameState.raceFinished = false;
+            gameState.currentLap = 0;
+            gameState.currentPosition = 1;
+            gameState.startTime = Date.now();
+            gameState.currentTime = 0;
+            gameState.lastLapTime = 0;
+            gameState.bestLapTime = gameState.trackRecords[gameState.selectedTrack]?.bestLap || Infinity;
+            gameState.nitro = 100;
+            gameState.usingNitro = false;
+            
+            // Reset keys
+            gameState.keys = {
+                up: false,
+                down: false,
+                left: false,
+                right: false,
+                space: false
+            };
+            
+            // Initialize track
+            initTrack();
+            
+            // Initialize cars
+            initCars();
+            
+            // Show game UI
+            elements.gameUI.classList.remove('hidden');
+            updateUI();
+            
+            // Hide menus
+            elements.mainMenu.classList.add('hidden');
+            elements.pauseMenu.classList.add('hidden');
+            elements.finishMenu.classList.add('hidden');
+            
+            // Start game loop
+            gameLoop();
+        }
+
+        function pauseGame() {
+            if (!gameState.gameRunning || gameState.raceFinished) return;
+            
+            gameState.paused = true;
+            elements.pauseMenu.classList.remove('hidden');
+        }
+
+        function resumeGame() {
+            gameState.paused = false;
+            elements.pauseMenu.classList.add('hidden');
+            gameState.startTime = Date.now() - gameState.currentTime;
+            gameLoop();
+        }
+
+        function finishRace() {
+            gameState.raceFinished = true;
+            gameState.gameRunning = false;
+            
+            // Update track records
+            if (!gameState.trackRecords[gameState.selectedTrack]) {
+                gameState.trackRecords[gameState.selectedTrack] = {
+                    bestLap: gameState.bestLapTime
+                };
+            } else if (gameState.bestLapTime < gameState.trackRecords[gameState.selectedTrack].bestLap) {
+                gameState.trackRecords[gameState.selectedTrack].bestLap = gameState.bestLapTime;
+            }
+            
+            // Update finish menu
+            elements.raceResult.textContent = 'RACE COMPLETE!';
+            elements.racePosition.textContent = `${gameState.currentPosition}${getOrdinalSuffix(gameState.currentPosition)} PLACE`;
+            elements.finalTime.textContent = formatTime(gameState.currentTime);
+            elements.finalBestLap.textContent = gameState.bestLapTime !== Infinity ? formatTime(gameState.bestLapTime) : '--:--.--';
+            
+            // Calculate reward based on position and best lap
+            const baseReward = 1000;
+            const positionBonus = (4 - gameState.currentPosition) * 500;
+            const lapBonus = gameState.bestLapTime !== Infinity ? Math.max(0, 2000 - Math.floor(gameState.bestLapTime / 100)) : 0;
+            const totalReward = baseReward + positionBonus + lapBonus;
+            
+            elements.raceReward.textContent = `$${totalReward}`;
+            
+            // Show finish menu
+            elements.finishMenu.classList.remove('hidden');
+        }
+
+        function getOrdinalSuffix(num) {
+            if (num > 3 && num < 21) return 'th';
+            switch (num % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        }
+
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const milliseconds
+</html>

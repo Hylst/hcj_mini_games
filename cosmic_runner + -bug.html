@@ -1,0 +1,1872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Runner Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700&display=swap');
+        
+        :root {
+            --sky-color: #0f172a;
+            --ground-color: #1e293b;
+            --player-color: #f8fafc;
+            --obstacle-color: #94a3b8;
+            --coin-color: #facc15;
+            --powerup-color: #a855f7;
+            --text-color: #ffffff;
+            --health-color: #ef4444;
+            --shield-color: #3b82f6;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Orbitron', 'Press Start 2P', cursive;
+            background-color: var(--sky-color);
+            color: var(--text-color);
+            touch-action: manipulation;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .parallax-layer {
+            position: absolute;
+            width: 300%;
+            height: 100%;
+            background-repeat: repeat-x;
+            will-change: transform;
+        }
+        
+        #stars-far {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="1" fill="white" opacity="0.5"/></svg>');
+            background-size: 20px 20px;
+            animation: parallaxScrollFar 120s linear infinite;
+        }
+        
+        #stars-mid {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="1.5" fill="white" opacity="0.7"/></svg>');
+            background-size: 30px 30px;
+            animation: parallaxScrollMid 80s linear infinite;
+        }
+        
+        #stars-near {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2" fill="white"/></svg>');
+            background-size: 40px 40px;
+            animation: parallaxScrollNear 40s linear infinite;
+        }
+        
+        @keyframes parallaxScrollFar {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-66.666%); }
+        }
+        
+        @keyframes parallaxScrollMid {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-66.666%); }
+        }
+        
+        @keyframes parallaxScrollNear {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-66.666%); }
+        }
+        
+        #player {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: var(--player-color);
+            border-radius: 50%;
+            z-index: 10;
+            transition: transform 0.1s ease-out;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
+        }
+        
+        .player-shield {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 3px dashed var(--shield-color);
+            z-index: 9;
+            pointer-events: none;
+            animation: shieldPulse 2s infinite;
+        }
+        
+        @keyframes shieldPulse {
+            0% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(1.1); }
+            100% { opacity: 0.7; transform: scale(1); }
+        }
+        
+        .obstacle {
+            position: absolute;
+            background-color: var(--obstacle-color);
+            z-index: 5;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .coin {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: var(--coin-color);
+            border-radius: 50%;
+            z-index: 5;
+            animation: coinPulse 1s infinite alternate;
+            box-shadow: 0 0 10px var(--coin-color);
+        }
+        
+        .powerup {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background-color: var(--powerup-color);
+            border-radius: 50%;
+            z-index: 5;
+            animation: powerupFloat 2s infinite ease-in-out;
+            box-shadow: 0 0 15px var(--powerup-color);
+        }
+        
+        @keyframes coinPulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.2); }
+        }
+        
+        @keyframes powerupFloat {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+        
+        .jump-animation {
+            animation: jump 0.5s cubic-bezier(0.5, 1, 0.89, 1);
+        }
+        
+        @keyframes jump {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-100px); }
+            100% { transform: translateY(0); }
+        }
+        
+        .slide-animation {
+            animation: slide 0.5s ease-out;
+        }
+        
+        @keyframes slide {
+            0% { transform: translateX(0) scaleY(1); }
+            50% { transform: translateX(50px) scaleY(0.6); }
+            100% { transform: translateX(0) scaleY(1); }
+        }
+        
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100px;
+            background-color: var(--ground-color);
+            z-index: 2;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        #start-screen, #game-over-screen, #pause-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(15, 23, 42, 0.9);
+            z-index: 200;
+        }
+        
+        #game-over-screen, #pause-screen {
+            display: none;
+        }
+        
+        .btn {
+            pointer-events: auto;
+            margin-top: 20px;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn:hover {
+            background: linear-gradient(135deg, #2563eb, #4f46e5);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-alt {
+            background: linear-gradient(135deg, #f59e0b, #f97316);
+        }
+        
+        .btn-alt:hover {
+            background: linear-gradient(135deg, #d97706, #ea580c);
+        }
+        
+        .score-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .coin-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            color: var(--coin-color);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        #sound-toggle {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 300;
+            pointer-events: auto;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        #sound-toggle:hover {
+            background: rgba(0, 0, 0, 0.7);
+            transform: scale(1.1);
+        }
+        
+        #terrain-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 16px;
+            padding: 8px 12px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        #difficulty-meter {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            width: 150px;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        #difficulty-progress {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4ade80, #f59e0b, #ef4444);
+            transition: width 0.3s ease;
+        }
+        
+        #health-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 20px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        #health-progress {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ef4444, #f97316);
+            transition: width 0.3s ease;
+        }
+        
+        #pause-btn {
+            position: absolute;
+            top: 20px;
+            right: 200px;
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: button;
+            z-index: 300;
+            pointer-events: auto;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        #pause-btn:hover {
+            background: rgba(0, 0, 0, 0.7);
+            transform: scale(1.1);
+        }
+        
+        .combo-meter {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #facc15;
+            text-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 150;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .combo-active {
+            opacity: 1;
+            transform: translate(-50%, -60%);
+        }
+        
+        .explosion {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(255,100,100,0.8) 0%, rgba(255,50,50,0) 70%);
+            border-radius: 50%;
+            z-index: 20;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0);
+            animation: explosion 0.5s forwards;
+        }
+        
+        @keyframes explosion {
+            0% { opacity: 1; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1.5); }
+            100% { opacity: 0; transform: scale(2); }
+        }
+        
+        .tutorial-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 400;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .tutorial-content {
+            max-width: 600px;
+            background: rgba(30, 41, 59, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .tutorial-controls {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+        }
+        
+        .tutorial-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 15px;
+        }
+        
+        .tutorial-control i {
+            font-size: 40px;
+            margin-bottom: 10px;
+            color: #3b82f6;
+        }
+        
+        .tutorial-control p {
+            margin: 0;
+            font-size: 14px;
+        }
+        
+        .powerup-indicator {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .powerup-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 16px;
+            opacity: 0.7;
+        }
+        
+        .powerup-active {
+            opacity: 1;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .mission-container {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 300px;
+            font-size: 14px;
+        }
+        
+        .mission-progress {
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        .mission-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .mission-reward {
+            color: #facc15;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .achievement-popup {
+            position: fixed;
+            top: 20px;
+            right: -300px;
+            background: rgba(30, 41, 59, 0.9);
+            border-left: 5px solid #facc15;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            z-index: 500;
+            transition: right 0.5s ease;
+            max-width: 250px;
+        }
+        
+        .achievement-popup.show {
+            right: 20px;
+        }
+        
+        .achievement-title {
+            color: #facc15;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .achievement-desc {
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Parallax background layers -->
+        <div id="stars-far" class="parallax-layer"></div>
+        <div id="stars-mid" class="parallax-layer"></div>
+        <div id="stars-near" class="parallax-layer"></div>
+        
+        <!-- Game elements -->
+        <div id="ground"></div>
+        <div id="player"></div>
+        <div id="player-shield" class="player-shield" style="display: none;"></div>
+        
+        <!-- UI Overlay -->
+        <div id="ui-overlay">
+            <div class="coin-display">
+                <i class="fas fa-coins"></i> <span id="coin-count">0</span>
+            </div>
+            <div class="score-display">
+                <i class="fas fa-running"></i> <span id="score">0</span>m
+            </div>
+            <div id="health-bar">
+                <div id="health-progress"></div>
+            </div>
+            <div id="difficulty-meter">
+                <div id="difficulty-progress"></div>
+            </div>
+            <div id="terrain-indicator">
+                TERRAIN: <span id="terrain-type">PLAINS</span>
+            </div>
+            <div class="powerup-indicator">
+                <div id="shield-indicator" class="powerup-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div id="doublecoin-indicator" class="powerup-icon">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div id="invincible-indicator" class="powerup-icon">
+                    <i class="fas fa-bolt"></i>
+                </div>
+            </div>
+            <div class="mission-container">
+                <div id="mission-text">Collect 10 coins</div>
+                <div class="mission-progress">
+                    <div id="mission-bar" class="mission-bar"></div>
+                </div>
+                <div class="mission-reward">REWARD: 100 coins</div>
+            </div>
+            <button id="pause-btn">
+                <i class="fas fa-pause"></i>
+            </button>
+            <button id="sound-toggle">
+                <i class="fas fa-volume-up"></i>
+            </button>
+            <div id="combo-meter" class="combo-meter"></div>
+        </div>
+        
+        <!-- Screens -->
+        <div id="start-screen">
+            <h1 class="text-5xl mb-8 text-blue-400 font-bold tracking-wider">COSMIC RUNNER PRO</h1>
+            <p class="mb-4 text-center px-4 max-w-lg">Dodge obstacles, collect coins, complete missions and unlock achievements in this endless runner!</p>
+            <div class="mb-8 flex gap-8">
+                <div class="text-center">
+                    <div class="text-3xl mb-2"><i class="fas fa-arrow-up"></i> or <i class="fas fa-long-arrow-alt-up"></i></div>
+                    <p>JUMP</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl mb-2"><i class="fas fa-arrow-down"></i> or <i class="fas fa-long-arrow-alt-down"></i></div>
+                    <p>SLIDE</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl mb-2"><i class="fas fa-space-shuttle"></i></div>
+                    <p>DOUBLE JUMP</p>
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <button id="start-btn" class="btn">START RUN</button>
+                <button id="tutorial-btn" class="btn btn-alt">TUTORIAL</button>
+            </div>
+        </div>
+        
+        <div id="game-over-screen">
+            <h1 class="text-5xl mb-4 text-red-400 font-bold">GAME OVER</h1>
+            <p class="mb-2 text-xl">DISTANCE: <span id="final-score">0</span>m</p>
+            <p class="mb-2 text-xl">COINS: <span id="final-coins">0</span></p>
+            <p class="mb-2 text-xl">MISSIONS: <span id="final-missions">0</span> completed</p>
+            <p class="mb-8 text-2xl text-yellow-300">HIGH SCORE: <span id="high-score">0</span>m</p>
+            <div class="flex gap-4">
+                <button id="restart-btn" class="btn">RUN AGAIN</button>
+                <button id="menu-btn" class="btn btn-alt">MAIN MENU</button>
+            </div>
+        </div>
+        
+        <div id="pause-screen">
+            <h1 class="text-5xl mb-8 text-blue-400 font-bold">PAUSED</h1>
+            <div class="flex gap-4">
+                <button id="resume-btn" class="btn">RESUME</button>
+                <button id="quit-btn" class="btn btn-alt">QUIT</button>
+            </div>
+        </div>
+        
+        <div id="tutorial-overlay" class="tutorial-overlay" style="display: none;">
+            <div class="tutorial-content">
+                <h2 class="text-3xl mb-6 text-blue-400">HOW TO PLAY</h2>
+                <p class="mb-6">Navigate through obstacles and collect as many coins as possible. Complete missions to earn bonus rewards!</p>
+                
+                <div class="tutorial-controls">
+                    <div class="tutorial-control">
+                        <i class="fas fa-arrow-up"></i>
+                        <p>JUMP</p>
+                        <p>Press UP or SPACE</p>
+                    </div>
+                    <div class="tutorial-control">
+                        <i class="fas fa-arrow-down"></i>
+                        <p>SLIDE</p>
+                        <p>Press DOWN or SHIFT</p>
+                    </div>
+                    <div class="tutorial-control">
+                        <i class="fas fa-space-shuttle"></i>
+                        <p>DOUBLE JUMP</p>
+                        <p>Press JUMP while in air</p>
+                    </div>
+                </div>
+                
+                <h3 class="text-xl mt-8 mb-4 text-yellow-300">POWER-UPS</h3>
+                <div class="flex justify-around mb-6">
+                    <div class="text-center">
+                        <div class="w-10 h-10 bg-purple-500 rounded-full mx-auto mb-2 flex items-center justify-center">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <p>Shield</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-10 h-10 bg-purple-500 rounded-full mx-auto mb-2 flex items-center justify-center">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <p>Double Coins</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-10 h-10 bg-purple-500 rounded-full mx-auto mb-2 flex items-center justify-center">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <p>Invincibility</p>
+                    </div>
+                </div>
+                
+                <button id="close-tutorial" class="btn mt-4">GOT IT!</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="achievement-popup" class="achievement-popup">
+        <div class="achievement-title">ACHIEVEMENT UNLOCKED!</div>
+        <div id="achievement-name" class="achievement-desc">First Steps</div>
+    </div>
+
+    <audio id="jump-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+    <audio id="slide-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+    <audio id="coin-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+    <audio id="powerup-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+    <audio id="crash-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+    <audio id="bg-music" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..." loop></audio>
+    <audio id="mission-complete-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+    <audio id="achievement-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+
+    <script>
+        // Enhanced game state
+        const gameState = {
+            running: false,
+            paused: false,
+            score: 0,
+            coins: 0,
+            highScore: localStorage.getItem('highScore') || 0,
+            missionsCompleted: localStorage.getItem('missionsCompleted') || 0,
+            speed: 5,
+            baseSpeed: 5,
+            maxSpeed: 20,
+            difficulty: 0,
+            terrain: 'plains',
+            soundEnabled: true,
+            lastObstacleTime: 0,
+            obstacleInterval: 2000,
+            lastCoinTime: 0,
+            coinInterval: 3000,
+            lastPowerupTime: 0,
+            powerupInterval: 15000,
+            lastTerrainChange: 0,
+            terrainDuration: 15000,
+            combo: 0,
+            lastComboTime: 0,
+            comboDuration: 3000,
+            health: 100,
+            maxHealth: 100,
+            player: {
+                x: 100,
+                y: 0,
+                width: 50,
+                height: 50,
+                isJumping: false,
+                isSliding: false,
+                canDoubleJump: false,
+                gravity: 1.5,
+                velocity: 0,
+                jumpForce: 22,
+                slideHeight: 30,
+                hasShield: false,
+                shieldTime: 0,
+                shieldDuration: 10000,
+                doubleCoins: false,
+                doubleCoinsTime: 0,
+                doubleCoinsDuration: 10000,
+                isInvincible: false,
+                invincibleTime: 0,
+                invincibleDuration: 5000
+            },
+            currentMission: {
+                type: 'coins',
+                target: 10,
+                progress: 0,
+                reward: 100
+            },
+            achievements: {
+                firstRun: localStorage.getItem('achievementFirstRun') === 'true',
+                firstMission: localStorage.getItem('achievementFirstMission') === 'true',
+                highScore: localStorage.getItem('achievementHighScore') === 'true',
+                coinCollector: localStorage.getItem('achievementCoinCollector') === 'true',
+                marathonRunner: localStorage.getItem('achievementMarathonRunner') === 'true'
+            },
+            groundHeight: 100,
+            obstacles: [],
+            gameCoins: [], // Renamed from coins to avoid conflict with coins counter
+            powerups: [],
+            keys: {},
+            lastFrameTime: 0
+        };
+
+        // DOM elements
+        const elements = {
+            gameContainer: document.getElementById('game-container'),
+            player: document.getElementById('player'),
+            playerShield: document.getElementById('player-shield'),
+            ground: document.getElementById('ground'),
+            startScreen: document.getElementById('start-screen'),
+            gameOverScreen: document.getElementById('game-over-screen'),
+            pauseScreen: document.getElementById('pause-screen'),
+            tutorialOverlay: document.getElementById('tutorial-overlay'),
+            startBtn: document.getElementById('start-btn'),
+            tutorialBtn: document.getElementById('tutorial-btn'),
+            closeTutorial: document.getElementById('close-tutorial'),
+            restartBtn: document.getElementById('restart-btn'),
+            menuBtn: document.getElementById('menu-btn'),
+            resumeBtn: document.getElementById('resume-btn'),
+            quitBtn: document.getElementById('quit-btn'),
+            scoreDisplay: document.getElementById('score'),
+            coinDisplay: document.getElementById('coin-count'),
+            finalScore: document.getElementById('final-score'),
+            finalCoins: document.getElementById('final-coins'),
+            finalMissions: document.getElementById('final-missions'),
+            highScore: document.getElementById('high-score'),
+            soundToggle: document.getElementById('sound-toggle'),
+            pauseBtn: document.getElementById('pause-btn'),
+            terrainType: document.getElementById('terrain-type'),
+            difficultyProgress: document.getElementById('difficulty-progress'),
+            healthProgress: document.getElementById('health-progress'),
+            comboMeter: document.getElementById('combo-meter'),
+            shieldIndicator: document.getElementById('shield-indicator'),
+            doublecoinIndicator: document.getElementById('doublecoin-indicator'),
+            invincibleIndicator: document.getElementById('invincible-indicator'),
+            missionText: document.getElementById('mission-text'),
+            missionBar: document.getElementById('mission-bar'),
+            achievementPopup: document.getElementById('achievement-popup'),
+            achievementName: document.getElementById('achievement-name'),
+            jumpSound: document.getElementById('jump-sound'),
+            slideSound: document.getElementById('slide-sound'),
+            coinSound: document.getElementById('coin-sound'),
+            powerupSound: document.getElementById('powerup-sound'),
+            crashSound: document.getElementById('crash-sound'),
+            bgMusic: document.getElementById('bg-music'),
+            missionCompleteSound: document.getElementById('mission-complete-sound'),
+            achievementSound: document.getElementById('achievement-sound')
+        };
+
+        // Initialize game
+        function init() {
+            // Set player initial position
+            gameState.player.y = window.innerHeight - gameState.groundHeight - gameState.player.height;
+            updatePlayerPosition();
+            
+            // Set ground height
+            elements.ground.style.height = `${gameState.groundHeight}px`;
+            
+            // Generate first mission
+            generateMission();
+            
+            // Event listeners
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+            elements.gameContainer.addEventListener('touchstart', handleTouch);
+            elements.startBtn.addEventListener('click', startGame);
+            elements.tutorialBtn.addEventListener('click', showTutorial);
+            elements.closeTutorial.addEventListener('click', hideTutorial);
+            elements.restartBtn.addEventListener('click', restartGame);
+            elements.menuBtn.addEventListener('click', returnToMenu);
+            elements.resumeBtn.addEventListener('click', resumeGame);
+            elements.quitBtn.addEventListener('click', returnToMenu);
+            elements.soundToggle.addEventListener('click', toggleSound);
+            elements.pauseBtn.addEventListener('click', togglePause);
+            
+            // Set high score display
+            elements.highScore.textContent = gameState.highScore;
+            elements.finalMissions.textContent = gameState.missionsCompleted;
+            
+            // Check for first run achievement
+            if (!gameState.achievements.firstRun) {
+                unlockAchievement('firstRun', 'First Steps', 'Complete your first run');
+            }
+            
+            // Start game loop
+            gameState.lastFrameTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Game loop
+        function gameLoop(timestamp) {
+            // Calculate delta time for smooth animation
+            const deltaTime = timestamp - gameState.lastFrameTime;
+            gameState.lastFrameTime = timestamp;
+            
+            if (gameState.running && !gameState.paused) {
+                update(timestamp, deltaTime);
+                render();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Update game state
+        function update(timestamp, deltaTime) {
+            // Update player
+            updatePlayer(deltaTime);
+            
+            // Update score and difficulty
+            gameState.score += Math.floor(gameState.speed * deltaTime / 100);
+            elements.scoreDisplay.textContent = Math.floor(gameState.score);
+            
+            // Increase difficulty over time
+            gameState.difficulty = Math.min(gameState.score / 10000, 1);
+            gameState.speed = gameState.baseSpeed + (gameState.maxSpeed - gameState.baseSpeed) * gameState.difficulty;
+            gameState.obstacleInterval = 2000 - (1500 * gameState.difficulty);
+            gameState.coinInterval = 3000 - (2000 * gameState.difficulty);
+            
+            // Update difficulty meter
+            elements.difficultyProgress.style.width = `${gameState.difficulty * 100}%`;
+            
+            // Update health bar
+            elements.healthProgress.style.width = `${gameState.health}%`;
+            
+            // Update combo meter
+            if (timestamp - gameState.lastComboTime > gameState.comboDuration && gameState.combo > 0) {
+                gameState.combo = 0;
+                elements.comboMeter.textContent = '';
+                elements.comboMeter.classList.remove('combo-active');
+            }
+            
+            // Change terrain periodically
+            if (timestamp - gameState.lastTerrainChange > gameState.terrainDuration) {
+                changeTerrain();
+                gameState.lastTerrainChange = timestamp;
+            }
+            
+            // Generate obstacles
+            if (timestamp - gameState.lastObstacleTime > gameState.obstacleInterval) {
+                generateObstacle();
+                gameState.lastObstacleTime = timestamp;
+            }
+            
+            // Generate coins
+            if (timestamp - gameState.lastCoinTime > gameState.coinInterval) {
+                generateCoin();
+                gameState.lastCoinTime = timestamp;
+            }
+            
+            // Generate powerups
+            if (timestamp - gameState.lastPowerupTime > gameState.powerupInterval && Math.random() < 0.3) {
+                generatePowerup();
+                gameState.lastPowerupTime = timestamp;
+            }
+            
+            // Update obstacles
+            updateObstacles(deltaTime);
+            
+            // Update coins
+            updateCoins(deltaTime);
+            
+            // Update powerups
+            updatePowerups(deltaTime);
+            
+            // Update player powerups
+            updatePowerupTimers(deltaTime);
+            
+            // Check collisions
+            checkCollisions();
+            
+            // Check mission progress
+            checkMissionProgress();
+            
+            // Check achievements
+            checkAchievements();
+        }
+
+        // Render game
+        function render() {
+            // Clear previous obstacles, coins and powerups
+            document.querySelectorAll('.obstacle, .coin, .powerup, .explosion').forEach(el => el.remove());
+            
+            // Render obstacles
+            gameState.obstacles.forEach(obstacle => {
+                const obstacleEl = document.createElement('div');
+                obstacleEl.className = 'obstacle';
+                obstacleEl.style.left = `${obstacle.x}px`;
+                obstacleEl.style.top = `${obstacle.y}px`;
+                obstacleEl.style.width = `${obstacle.width}px`;
+                obstacleEl.style.height = `${obstacle.height}px`;
+                
+                // Add different styles based on obstacle type
+                if (obstacle.type === 'flying') {
+                    obstacleEl.style.backgroundColor = '#7dd3fc';
+                } else if (obstacle.type === 'high') {
+                    obstacleEl.style.backgroundColor = '#64748b';
+                } else {
+                    obstacleEl.style.backgroundColor = '#94a3b8';
+                }
+                
+                elements.gameContainer.appendChild(obstacleEl);
+            });
+            
+            // Render coins
+            gameState.gameCoins.forEach(coin => {
+                if (!coin.collected) {
+                    const coinEl = document.createElement('div');
+                    coinEl.className = 'coin';
+                    coinEl.style.left = `${coin.x}px`;
+                    coinEl.style.top = `${coin.y}px`;
+                    elements.gameContainer.appendChild(coinEl);
+                }
+            });
+            
+            // Render powerups
+            gameState.powerups.forEach(powerup => {
+                if (!powerup.collected) {
+                    const powerupEl = document.createElement('div');
+                    powerupEl.className = 'powerup';
+                    powerupEl.style.left = `${powerup.x}px`;
+                    powerupEl.style.top = `${powerup.y}px`;
+                    
+                    // Add icon based on powerup type
+                    const icon = document.createElement('i');
+                    if (powerup.type === 'shield') {
+                        icon.className = 'fas fa-shield-alt';
+                    } else if (powerup.type === 'doubleCoins') {
+                        icon.className = 'fas fa-coins';
+                    } else if (powerup.type === 'invincible') {
+                        icon.className = 'fas fa-bolt';
+                    }
+                    powerupEl.appendChild(icon);
+                    
+                    elements.gameContainer.appendChild(powerupEl);
+                }
+            });
+        }
+
+        // Update player position and state
+        function updatePlayer(deltaTime) {
+            // Apply gravity
+            if (gameState.player.isJumping) {
+                gameState.player.velocity -= gameState.player.gravity * (deltaTime / 16);
+                gameState.player.y -= gameState.player.velocity * (deltaTime / 16);
+                
+                // Check if player landed
+                if (gameState.player.y >= window.innerHeight - gameState.groundHeight - gameState.player.height) {
+                    gameState.player.y = window.innerHeight - gameState.groundHeight - gameState.player.height;
+                    gameState.player.isJumping = false;
+                    gameState.player.canDoubleJump = false;
+                    gameState.player.velocity = 0;
+                }
+            }
+            
+            // Update player position
+            updatePlayerPosition();
+            
+            // Update player size if sliding
+            if (gameState.player.isSliding) {
+                elements.player.style.height = `${gameState.player.slideHeight}px`;
+                elements.player.style.borderRadius = '5px';
+            } else {
+                elements.player.style.height = `${gameState.player.height}px`;
+                elements.player.style.borderRadius = '50%';
+            }
+            
+            // Update shield visibility
+            if (gameState.player.hasShield) {
+                elements.playerShield.style.display = 'block';
+                elements.playerShield.style.left = `${gameState.player.x - 10}px`;
+                elements.playerShield.style.top = `${gameState.player.y - 10}px`;
+            } else {
+                elements.playerShield.style.display = 'none';
+            }
+            
+            // Update powerup indicators
+            updatePowerupIndicators();
+        }
+
+        function updatePlayerPosition() {
+            elements.player.style.left = `${gameState.player.x}px`;
+            elements.player.style.top = `${gameState.player.y}px`;
+        }
+
+        // Generate a new obstacle
+        function generateObstacle() {
+            const types = ['high', 'low', 'flying'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            const obstacle = {
+                x: window.innerWidth,
+                width: 30 + Math.random() * 40,
+                height: 0,
+                y: 0,
+                type: type
+            };
+            
+            switch (type) {
+                case 'high':
+                    obstacle.height = 80 + Math.random() * 50;
+                    obstacle.y = window.innerHeight - gameState.groundHeight - obstacle.height;
+                    break;
+                case 'low':
+                    obstacle.height = 30 + Math.random() * 30;
+                    obstacle.y = window.innerHeight - gameState.groundHeight - obstacle.height;
+                    break;
+                case 'flying':
+                    obstacle.height = 40 + Math.random() * 30;
+                    obstacle.y = window.innerHeight - gameState.groundHeight - 150 - Math.random() * 100;
+                    break;
+            }
+            
+            // Add some variation to obstacle patterns
+            if (Math.random() < 0.3) {
+                // Generate a pair of obstacles
+                const pair = {
+                    ...obstacle,
+                    x: obstacle.x + obstacle.width + 50
+                };
+                gameState.obstacles.push(obstacle, pair);
+            } else {
+                gameState.obstacles.push(obstacle);
+            }
+        }
+
+        // Generate a new coin
+        function generateCoin() {
+            const coin = {
+                x: window.innerWidth,
+                y: window.innerHeight - gameState.groundHeight - 100 - Math.random() * 200,
+                width: 20,
+                height: 20,
+                collected: false
+            };
+            
+            // Generate coin clusters sometimes
+            if (Math.random() < 0.2) {
+                const clusterSize = 3 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < clusterSize; i++) {
+                    const clusterCoin = {
+                        ...coin,
+                        x: coin.x + (i * 40),
+                        y: coin.y - (i % 2 === 0 ? 0 : 30)
+                    };
+                    gameState.gameCoins.push(clusterCoin);
+                }
+            } else {
+                gameState.gameCoins.push(coin);
+            }
+        }
+
+        // Generate a new powerup
+        function generatePowerup() {
+            const types = ['shield', 'doubleCoins', 'invincible'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            const powerup = {
+                x: window.innerWidth,
+                y: window.innerHeight - gameState.groundHeight - 120 - Math.random() * 150,
+                width: 25,
+                height: 25,
+                type: type,
+                collected: false
+            };
+            
+            gameState.powerups.push(powerup);
+        }
+
+        // Generate a new mission
+        function generateMission() {
+            const missionTypes = ['coins', 'distance', 'obstacles'];
+            const type = missionTypes[Math.floor(Math.random() * missionTypes.length)];
+            
+            let target, reward;
+            
+            switch (type) {
+                case 'coins':
+                    target = 10 + Math.floor(Math.random() * 10);
+                    reward = target * 10;
+                    elements.missionText.textContent = `Collect ${target} coins`;
+                    break;
+                case 'distance':
+                    target = 500 + Math.floor(Math.random() * 500);
+                    reward = target / 5;
+                    elements.missionText.textContent = `Run ${target}m`;
+                    break;
+                case 'obstacles':
+                    target = 5 + Math.floor(Math.random() * 5);
+                    reward = target * 20;
+                    elements.missionText.textContent = `Dodge ${target} obstacles`;
+                    break;
+            }
+            
+            gameState.currentMission = {
+                type: type,
+                target: target,
+                progress: 0,
+                reward: reward
+            };
+            
+            elements.missionBar.style.width = '0%';
+        }
+
+        // Update obstacles position
+        function updateObstacles(deltaTime) {
+            for (let i = gameState.obstacles.length - 1; i >= 0; i--) {
+                const obstacle = gameState.obstacles[i];
+                obstacle.x -= gameState.speed * (deltaTime / 16);
+                
+                // Remove if off screen
+                if (obstacle.x + obstacle.width < 0) {
+                    gameState.obstacles.splice(i, 1);
+                    
+                    // Update mission progress if obstacle mission
+                    if (gameState.currentMission.type === 'obstacles') {
+                        gameState.currentMission.progress++;
+                        updateMissionProgress();
+                    }
+                }
+            }
+        }
+
+        // Update coins position
+        function updateCoins(deltaTime) {
+            for (let i = gameState.gameCoins.length - 1; i >= 0; i--) {
+                const coin = gameState.gameCoins[i];
+                coin.x -= gameState.speed * (deltaTime / 16);
+                
+                // Remove if off screen
+                if (coin.x + coin.width < 0) {
+                    gameState.gameCoins.splice(i, 1);
+                }
+            }
+        }
+
+        // Update powerups position
+        function updatePowerups(deltaTime) {
+            for (let i = gameState.powerups.length - 1; i >= 0; i--) {
+                const powerup = gameState.powerups[i];
+                powerup.x -= gameState.speed * (deltaTime / 16);
+                
+                // Remove if off screen
+                if (powerup.x + powerup.width < 0) {
+                    gameState.powerups.splice(i, 1);
+                }
+            }
+        }
+
+        // Update player powerup timers
+        function updatePowerupTimers(deltaTime) {
+            // Update shield timer
+            if (gameState.player.hasShield) {
+                gameState.player.shieldTime += deltaTime;
+                if (gameState.player.shieldTime > gameState.player.shieldDuration) {
+                    gameState.player.hasShield = false;
+                    gameState.player.shieldTime = 0;
+                }
+            }
+            
+            // Update double coins timer
+            if (gameState.player.doubleCoins) {
+                gameState.player.doubleCoinsTime += deltaTime;
+                if (gameState.player.doubleCoinsTime > gameState.player.doubleCoinsDuration) {
+                    gameState.player.doubleCoins = false;
+                    gameState.player.doubleCoinsTime = 0;
+                }
+            }
+            
+            // Update invincible timer
+            if (gameState.player.isInvincible) {
+                gameState.player.invincibleTime += deltaTime;
+                if (gameState.player.invincibleTime > gameState.player.invincibleDuration) {
+                    gameState.player.isInvincible = false;
+                    gameState.player.invincibleTime = 0;
+                }
+            }
+        }
+
+        // Update powerup indicators
+        function updatePowerupIndicators() {
+            // Shield indicator
+            if (gameState.player.hasShield) {
+                elements.shieldIndicator.classList.add('powerup-active');
+                const timeLeft = Math.ceil((gameState.player.shieldDuration - gameState.player.shieldTime) / 1000);
+                elements.shieldIndicator.title = `Shield: ${timeLeft}s`;
+            } else {
+                elements.shieldIndicator.classList.remove('powerup-active');
+                elements.shieldIndicator.removeAttribute('title');
+            }
+            
+            // Double coins indicator
+            if (gameState.player.doubleCoins) {
+                elements.doublecoinIndicator.classList.add('powerup-active');
+                const timeLeft = Math.ceil((gameState.player.doubleCoinsDuration - gameState.player.doubleCoinsTime) / 1000);
+                elements.doublecoinIndicator.title = `Double Coins: ${timeLeft}s`;
+            } else {
+                elements.doublecoinIndicator.classList.remove('powerup-active');
+                elements.doublecoinIndicator.removeAttribute('title');
+            }
+            
+            // Invincible indicator
+            if (gameState.player.isInvincible) {
+                elements.invincibleIndicator.classList.add('powerup-active');
+                const timeLeft = Math.ceil((gameState.player.invincibleDuration - gameState.player.invincibleTime) / 1000);
+                elements.invincibleIndicator.title = `Invincible: ${timeLeft}s`;
+            } else {
+                elements.invincibleIndicator.classList.remove('powerup-active');
+                elements.invincibleIndicator.removeAttribute('title');
+            }
+        }
+
+        // Update mission progress
+        function updateMissionProgress() {
+            const progress = (gameState.currentMission.progress / gameState.currentMission.target) * 100;
+            elements.missionBar.style.width = `${Math.min(progress, 100)}%`;
+        }
+
+        // Check mission progress
+        function checkMissionProgress() {
+            if (gameState.currentMission.progress >= gameState.currentMission.target) {
+                // Mission complete!
+                const reward = gameState.currentMission.reward;
+                gameState.coins += reward;
+                elements.coinDisplay.textContent = gameState.coins;
+                
+                // Play mission complete sound
+                if (gameState.soundEnabled) {
+                    elements.missionCompleteSound.currentTime = 0;
+                    elements.missionCompleteSound.play();
+                }
+                
+                // Show reward message
+                showCombo(`MISSION COMPLETE! +${reward}`, '#8b5cf6');
+                
+                // Update missions completed
+                gameState.missionsCompleted++;
+                localStorage.setItem('missionsCompleted', gameState.missionsCompleted);
+                elements.finalMissions.textContent = gameState.missionsCompleted;
+                
+                // Check for first mission achievement
+                if (!gameState.achievements.firstMission) {
+                    unlockAchievement('firstMission', 'Mission Accomplished', 'Complete your first mission');
+                }
+                
+                // Generate new mission
+                generateMission();
+            }
+        }
+
+        // Check achievements
+        function checkAchievements() {
+            // Check for high score achievement
+            if (gameState.score > 5000 && !gameState.achievements.highScore) {
+                unlockAchievement('highScore', 'High Scorer', 'Reach 5000m in a single run');
+            }
+            
+            // Check for coin collector achievement
+            if (gameState.coins > 100 && !gameState.achievements.coinCollector) {
+                unlockAchievement('coinCollector', 'Coin Collector', 'Collect 100 coins in a single run');
+            }
+            
+            // Check for marathon runner achievement
+            if (gameState.score > 10000 && !gameState.achievements.marathonRunner) {
+                unlockAchievement('marathonRunner', 'Marathon Runner', 'Reach 10000m in a single run');
+            }
+        }
+
+        // Unlock achievement
+        function unlockAchievement(key, name, description) {
+            gameState.achievements[key] = true;
+            localStorage.setItem(`achievement${key.charAt(0).toUpperCase() + key.slice(1)}`, 'true');
+            
+            // Show achievement popup
+            elements.achievementName.textContent = `${name}: ${description}`;
+            elements.achievementPopup.classList.add('show');
+            
+            // Play achievement sound
+            if (gameState.soundEnabled) {
+                elements.achievementSound.currentTime = 0;
+                elements.achievementSound.play();
+            }
+            
+            // Hide after delay
+            setTimeout(() => {
+                elements.achievementPopup.classList.remove('show');
+            }, 5000);
+        }
+
+        // Show combo message
+        function showCombo(message, color = '#facc15') {
+            elements.comboMeter.textContent = message;
+            elements.comboMeter.style.color = color;
+            elements.comboMeter.style.textShadow = `0 0 10px ${color}`;
+            elements.comboMeter.classList.add('combo-active');
+            gameState.lastComboTime = performance.now();
+        }
+
+        // Check collisions
+        function checkCollisions() {
+            // Player bounds
+            const playerLeft = gameState.player.x;
+            const playerRight = gameState.player.x + gameState.player.width;
+            const playerTop = gameState.player.y;
+            const playerBottom = gameState.player.y + (gameState.player.isSliding ? gameState.player.slideHeight : gameState.player.height);
+            
+            // Check obstacle collisions
+            for (const obstacle of gameState.obstacles) {
+                const obstacleLeft = obstacle.x;
+                const obstacleRight = obstacle.x + obstacle.width;
+                const obstacleTop = obstacle.y;
+                const obstacleBottom = obstacle.y + obstacle.height;
+                
+                if (
+                    playerRight > obstacleLeft &&
+                    playerLeft < obstacleRight &&
+                    playerBottom > obstacleTop &&
+                    playerTop < obstacleBottom
+                ) {
+                    if (gameState.player.hasShield) {
+                        // Shield protects from one hit
+                        gameState.player.hasShield = false;
+                        gameState.player.shieldTime = 0;
+                        
+                        // Create explosion effect
+                        const explosion = document.createElement('div');
+                        explosion.className = 'explosion';
+                        explosion.style.left = `${obstacle.x + obstacle.width/2 - 50}px`;
+                        explosion.style.top = `${obstacle.y + obstacle.height/2 - 50}px`;
+                        elements.gameContainer.appendChild(explosion);
+                        
+                        // Remove the obstacle
+                        gameState.obstacles = gameState.obstacles.filter(o => o !== obstacle);
+                        
+                        // Play crash sound
+                        if (gameState.soundEnabled) {
+                            elements.crashSound.currentTime = 0;
+                            elements.crashSound.play();
+                        }
+                    } else if (gameState.player.isInvincible) {
+                        // No damage when invincible
+                        continue;
+                    } else {
+                        // Take damage
+                        gameState.health -= 20;
+                        
+                        // Create explosion effect
+                        const explosion = document.createElement('div');
+                        explosion.className = 'explosion';
+                        explosion.style.left = `${playerLeft + gameState.player.width/2 - 50}px`;
+                        explosion.style.top = `${playerTop + gameState.player.height/2 - 50}px`;
+                        elements.gameContainer.appendChild(explosion);
+                        
+                        // Play crash sound
+                        if (gameState.soundEnabled) {
+                            elements.crashSound.currentTime = 0;
+                            elements.crashSound.play();
+                        }
+                        
+                        // Check if game over
+                        if (gameState.health <= 0) {
+                            gameOver();
+                            return;
+                        }
+                    }
+                }
+            }
+            
+            // Check coin collisions
+            for (let i = gameState.gameCoins.length - 1; i >= 0; i--) {
+                const coin = gameState.gameCoins[i];
+                
+                if (!coin.collected) {
+                    const coinLeft = coin.x;
+                    const coinRight = coin.x + coin.width;
+                    const coinTop = coin.y;
+                    const coinBottom = coin.y + coin.height;
+                    
+                    if (
+                        playerRight > coinLeft &&
+                        playerLeft < coinRight &&
+                        playerBottom > coinTop &&
+                        playerTop < coinBottom
+                    ) {
+                        coin.collected = true;
+                        
+                        // Calculate coin value (double if powerup active)
+                        const coinValue = gameState.player.doubleCoins ? 2 : 1;
+                        gameState.coins += coinValue;
+                        elements.coinDisplay.textContent = gameState.coins;
+                        
+                        // Increase combo
+                        gameState.combo++;
+                        gameState.lastComboTime = performance.now();
+                        
+                        // Show combo message for multiple coins
+                        if (gameState.combo > 1) {
+                            showCombo(`COMBO x${gameState.combo}!`);
+                        }
+                        
+                        // Update mission progress if coin mission
+                        if (gameState.currentMission.type === 'coins') {
+                            gameState.currentMission.progress++;
+                            updateMissionProgress();
+                        }
+                        
+                        // Play coin sound
+                        if (gameState.soundEnabled) {
+                            elements.coinSound.currentTime = 0;
+                            elements.coinSound.play();
+                        }
+                    }
+                }
+            }
+            
+            // Check powerup collisions
+            for (let i = gameState.powerups.length - 1; i >= 0; i--) {
+                const powerup = gameState.powerups[i];
+                
+                if (!powerup.collected) {
+                    const powerupLeft = powerup.x;
+                    const powerupRight = powerup.x + powerup.width;
+                    const powerupTop = powerup.y;
+                    const powerupBottom = powerup.y + powerup.height;
+                    
+                    if (
+                        playerRight > powerupLeft &&
+                        playerLeft < powerupRight &&
+                        playerBottom > powerupTop &&
+                        playerTop < powerupBottom
+                    ) {
+                        powerup.collected = true;
+                        
+                        // Apply powerup effect
+                        switch (powerup.type) {
+                            case 'shield':
+                                gameState.player.hasShield = true;
+                                gameState.player.shieldTime = 0;
+                                showCombo('SHIELD ACTIVATED!', '#3b82f6');
+                                break;
+                            case 'doubleCoins':
+                                gameState.player.doubleCoins = true;
+                                gameState.player.doubleCoinsTime = 0;
+                                showCombo('DOUBLE COINS!', '#facc15');
+                                break;
+                            case 'invincible':
+                                gameState.player.isInvincible = true;
+                                gameState.player.invincibleTime = 0;
+                                showCombo('INVINCIBLE!', '#ef4444');
+                                break;
+                        }
+                        
+                        // Play powerup sound
+                        if (gameState.soundEnabled) {
+                            elements.powerupSound.currentTime = 0;
+                            elements.powerupSound.play();
+                        }
+                        
+                        // Remove the powerup from the array
+                        gameState.powerups.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        // Change terrain type
+        function changeTerrain() {
+            const terrains = [
+                { name: 'PLAINS', color: '#4ade80' },
+                { name: 'DESERT', color: '#f59e0b' },
+                { name: 'CAVE', color: '#64748b' },
+                { name: 'ICE', color: '#bae6fd' },
+                { name: 'LAVA', color: '#ef4444' }
+            ];
+            
+            const newTerrain = terrains[Math.floor(Math.random() * terrains.length)];
+            gameState.terrain = newTerrain.name.toLowerCase();
+            elements.terrainType.textContent = newTerrain.name;
+            elements.terrainType.style.color = newTerrain.color;
+            
+            // Adjust ground color based on terrain
+            const groundColors = {
+                'plains': '#1e293b',
+                'desert': '#92400e',
+                'cave': '#1e293b',
+                'ice': '#0ea5e9',
+                'lava': '#7f1d1d'
+            };
+            
+            elements.ground.style.backgroundColor = groundColors[gameState.terrain];
+            
+            // Adjust game speed based on terrain
+            const terrainSpeedModifiers = {
+                'plains': 1.0,
+                'desert': 0.9,
+                'cave': 1.1,
+                'ice': 1.3,
+                'lava': 1.2
+            };
+            
+            gameState.baseSpeed = 5 * terrainSpeedModifiers[gameState.terrain];
+            gameState.maxSpeed = 20 * terrainSpeedModifiers[gameState.terrain];
+        }
+
+        // Start game
+        function startGame() {
+            gameState.running = true;
+            gameState.paused = false;
+            gameState.score = 0;
+            gameState.coins = 0;
+            gameState.health = 100;
+            gameState.speed = gameState.baseSpeed;
+            gameState.difficulty = 0;
+            gameState.obstacles = [];
+            gameState.gameCoins = [];
+            gameState.powerups = [];
+            gameState.lastObstacleTime = performance.now();
+            gameState.lastCoinTime = performance.now();
+            gameState.lastPowerupTime = performance.now();
+            gameState.lastTerrainChange = performance.now();
+            
+            // Reset player state
+            gameState.player.isJumping = false;
+            gameState.player.isSliding = false;
+            gameState.player.canDoubleJump = false;
+            gameState.player.hasShield = false;
+            gameState.player.doubleCoins = false;
+            gameState.player.isInvincible = false;
+            gameState.player.y = window.innerHeight - gameState.groundHeight - gameState.player.height;
+            updatePlayerPosition();
+            
+            // Generate first mission
+            generateMission();
+            
+            // Update UI
+            elements.scoreDisplay.textContent = '0';
+            elements.coinDisplay.textContent = '0';
+            elements.healthProgress.style.width = '100%';
+            elements.startScreen.style.display = 'none';
+            
+            // Play background music
+            if (gameState.soundEnabled) {
+                elements.bgMusic.currentTime = 0;
+                elements.bgMusic.play();
+            }
+        }
+
+        // Game over
+        function gameOver() {
+            gameState.running = false;
+            
+            // Update high score
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem('highScore', gameState.highScore);
+            }
+            
+            // Show game over screen
+            elements.finalScore.textContent = Math.floor(gameState.score);
+            elements.finalCoins.textContent = gameState.coins;
+            elements.highScore.textContent = gameState.highScore;
+            elements.gameOverScreen.style.display = 'flex';
+            
+            // Play crash sound
+            if (gameState.soundEnabled) {
+                elements.crashSound.currentTime = 0;
+                elements.crashSound.play();
+                elements.bgMusic.pause();
+            }
+        }
+
+        // Restart game
+        function restartGame() {
+            elements.gameOverScreen.style.display = 'none';
+            startGame();
+        }
+
+        // Return to menu
+        function returnToMenu() {
+            elements.gameOverScreen.style.display = 'none';
+            elements.pauseScreen.style.display = 'none';
+            elements.startScreen.style.display = 'flex';
+            
+            // Stop background music
+            if (gameState.soundEnabled) {
+                elements.bgMusic.pause();
+            }
+        }
+
+        // Toggle pause
+        function togglePause() {
+            if (!gameState.running) return;
+            
+            gameState.paused = !gameState.paused;
+            
+            if (gameState.paused) {
+                elements.pauseScreen.style.display = 'flex';
+                
+                // Pause background music
+                if (gameState.soundEnabled) {
+                    elements.bgMusic.pause();
+                }
+            } else {
+                elements.pauseScreen.style.display = 'none';
+                
+                // Resume background music
+                if (gameState.soundEnabled) {
+                    elements.bgMusic.play();
+                }
+            }
+        }
+
+        // Resume game
+        function resumeGame() {
+            gameState.paused = false;
+            elements.pauseScreen.style.display = 'none';
+            
+            // Resume background music
+            if (gameState.soundEnabled) {
+                elements.bgMusic.play();
+            }
+        }
+
+        // Show tutorial
+        function showTutorial() {
+            elements.tutorialOverlay.style.display = 'flex';
+        }
+
+        // Hide tutorial
+        function hideTutorial() {
+            elements.tutorialOverlay.style.display = 'none';
+        }
+
+        // Toggle sound
+        function toggleSound() {
+            gameState.soundEnabled = !gameState.soundEnabled;
+            
+            if (gameState.soundEnabled) {
+                elements.soundToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
+                if (gameState.running && !gameState.paused) {
+                    elements.bgMusic.play();
+                }
+            } else {
+                elements.soundToggle.innerHTML = '<i class="fas fa-volume-mute"></i>';
+                elements.bgMusic.pause();
+            }
+        }
+
+        // Handle keyboard input
+        function handleKeyDown(e) {
+            gameState.keys[e.key] = true;
+            
+            if (gameState.running && !gameState.paused) {
+                // Jump (Up arrow or Space or W)
+                if ((e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w') && !gameState.player.isSliding) {
+                    if (!gameState.player.isJumping) {
+                        // Regular jump
+                        gameState.player.isJumping = true;
+                        gameState.player.canDoubleJump = true;
+                        gameState.player.velocity = gameState.player.jumpForce;
+                        elements.player.classList.add('jump-animation');
+                        
+                        // Play jump sound
+                        if (gameState.soundEnabled) {
+                            elements.jumpSound.currentTime = 0;
+                            elements.jumpSound.play();
+                        }
+                        
+                        setTimeout(() => {
+                            elements.player.classList.remove('jump-animation');
+                        }, 500);
+                    } else if (gameState.player.canDoubleJump) {
+                        // Double jump
+                        gameState.player.canDoubleJump = false;
+                        gameState.player.velocity = gameState.player.jumpForce * 0.8;
+                        
+                        // Play jump sound
+                        if (gameState.soundEnabled) {
+                            elements.jumpSound.currentTime = 0;
+                            elements.jumpSound.play();
+                        }
+                    }
+                }
+                
+                // Slide (Down arrow or Shift or S)
+                if ((e.key === 'ArrowDown' || e.key === 'Shift' || e.key === 's') && !gameState.player.isJumping && !gameState.player.isSliding) {
+                    gameState.player.isSliding = true;
+                    elements.player.classList.add('slide-animation');
+                    
+                    // Play slide sound
+                    if (gameState.soundEnabled) {
+                        elements.slideSound.currentTime = 0;
+                        elements.slideSound.play();
+                    }
+                    
+                    setTimeout(() => {
+                        gameState.player.isSliding = false;
+                        elements.player.classList.remove('slide-animation');
+                    }, 500);
+                }
+                
+                // Pause (P key)
+                if (e.key === 'p' || e.key === 'Escape') {
+                    togglePause();
+                }
+            }
+        }
+
+        function handleKeyUp(e) {
+            gameState.keys[e.key] = false;
+        }
+
+        // Handle touch input
+        function handleTouch(e) {
+            if (gameState.running && !gameState.paused) {
+                const touchX = e.touches[0].clientX;
+                const screenWidth = window.innerWidth;
+                const touchY = e.touches[0].clientY;
+                const screenHeight = window.innerHeight;
+                
+                // Bottom half of screen for actions
+                if (touchY > screenHeight / 2) {
+                    // Left side of screen for slide
+                    if (touchX < screenWidth / 2) {
+                        if (!gameState.player.isJumping && !gameState.player.isSliding) {
+                            gameState.player.isSliding = true;
+                            elements.player.classList.add('slide-animation');
+                            
+                            // Play slide sound
+                            if (gameState.soundEnabled) {
+                                elements.slideSound.currentTime = 0;
+                                elements.slideSound.play();
+                            }
+                            
+                            setTimeout(() => {
+                                gameState.player.isSliding = false;
+                                elements.player.classList.remove('slide-animation');
+                            }, 500);
+                        }
+                    }
+                    // Right side of screen for jump
+                    else {
+                        if (!gameState.player.isSliding) {
+                            if (!gameState.player.isJumping) {
+                                // Regular jump
+                                gameState.player.isJumping = true;
+                                gameState.player.canDoubleJump = true;
+                                gameState.player.velocity = gameState.player.jumpForce;
+                                elements.player.classList.add('jump-animation';
+                                
+                                // Play jump sound
+                                if (gameState.soundEnabled) {
+                                    elements.jumpSound.currentTime = 0;
+                                    elements.jumpSound.play();
+                                }
+                                
+                                setTimeout(() => {
+                                    elements.player.classList.remove('jump-animation');
+                                }, 500);
+                            } else if (gameState.player.canDoubleJump) {
+                                // Double jump
+                                gameState.player.canDoubleJump = false;
+                                gameState.player.velocity = gameState.player.jumpForce * 0.8;
+                                
+                                // Play jump sound
+                                if (gameState.soundEnabled) {
+                                    elements.jumpSound.currentTime = 0;
+                                    elements.jumpSound.play();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Initialize the game when the window loads
+        window.onload = init;
+    </script>
+</body>
+</html>

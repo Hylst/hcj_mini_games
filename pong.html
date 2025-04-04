@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Pong with AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #111827;
+            font-family: 'Arial', sans-serif;
+        }
+        canvas {
+            display: block;
+            background-color: #1f2937;
+        }
+        #gameUI {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            pointer-events: all;
+        }
+        #gameOverScreen {
+            display: none;
+        }
+        .btn {
+            pointer-events: all;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 10px;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-width: 180px;
+            text-align: center;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 16px;
+            min-width: 120px;
+        }
+        .stats {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            font-size: 24px;
+            padding: 0 40px;
+            box-sizing: border-box;
+        }
+        .pulse {
+            animation: pulse 0.5s;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .trail {
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+        }
+        .mode-selector {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .mode-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 15px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .mode-btn.active {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        .difficulty-selector {
+            margin: 20px 0;
+            width: 80%;
+            max-width: 300px;
+        }
+        .difficulty-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            color: white;
+        }
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            outline: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="gameUI">
+        <div class="stats">
+            <div id="player1Score">0</div>
+            <div id="player2Score">0</div>
+        </div>
+        
+        <div id="startScreen">
+            <h1 class="text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">ADVANCED PONG</h1>
+            
+            <div class="mode-selector">
+                <div class="mode-btn active" data-mode="1p">1 Player</div>
+                <div class="mode-btn" data-mode="2p">2 Players</div>
+            </div>
+            
+            <div class="difficulty-selector" id="difficultyContainer">
+                <div class="difficulty-label">
+                    <span>Easy</span>
+                    <span>AI Difficulty</span>
+                    <span>Hard</span>
+                </div>
+                <input type="range" min="0" max="100" value="70" class="slider" id="difficultySlider">
+            </div>
+            
+            <button id="startBtn" class="btn">START GAME</button>
+            
+            <div class="mt-8 text-gray-300 text-center">
+                <p class="mb-2 text-xl">Controls:</p>
+                <p class="mb-1"><span class="font-bold">Player 1:</span> W/S or Arrow Up/Down</p>
+                <p><span class="font-bold">Player 2:</span> (2P mode) Mouse or Touch</p>
+            </div>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1 class="text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500" id="winnerText">PLAYER 1 WINS!</h1>
+            <p class="text-xl mb-4">Final Score: <span id="finalScore1">0</span> - <span id="finalScore2">0</span></p>
+            <button id="restartBtn" class="btn">PLAY AGAIN</button>
+            <button id="menuBtn" class="btn btn-sm mt-4">MAIN MENU</button>
+        </div>
+    </div>
+
+    <audio id="paddleSound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+    <audio id="wallSound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+    <audio id="scoreSound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+    <audio id="gameOverSound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
+
+    <script>
+        // Game canvas setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // UI elements
+        const player1ScoreElement = document.getElementById('player1Score');
+        const player2ScoreElement = document.getElementById('player2Score');
+        const finalScore1Element = document.getElementById('finalScore1');
+        const finalScore2Element = document.getElementById('finalScore2');
+        const winnerTextElement = document.getElementById('winnerText');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const menuBtn = document.getElementById('menuBtn');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const difficultySlider = document.getElementById('difficultySlider');
+        const difficultyContainer = document.getElementById('difficultyContainer');
+        
+        // Sound effects
+        const paddleSound = document.getElementById('paddleSound');
+        const wallSound = document.getElementById('wallSound');
+        const scoreSound = document.getElementById('scoreSound');
+        const gameOverSound = document.getElementById('gameOverSound');
+        
+        // Set canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Game state
+        let gameRunning = false;
+        let gameMode = '1p'; // '1p' or '2p'
+        let player1Score = 0;
+        let player2Score = 0;
+        let winningScore = 7;
+        let lastTime = 0;
+        let trailParticles = [];
+        
+        // Game objects
+        const ball = {
+            x: 0,
+            y: 0,
+            radius: 10,
+            speed: 5,
+            velocityX: 0,
+            velocityY: 0,
+            color: '#ffffff'
+        };
+        
+        const paddle1 = {
+            x: 0,
+            y: 0,
+            width: 15,
+            height: 100,
+            speed: 8,
+            color: '#3b82f6',
+            up: false,
+            down: false
+        };
+        
+        const paddle2 = {
+            x: 0,
+            y: 0,
+            width: 15,
+            height: 100,
+            speed: 8,
+            color: '#8b5cf6',
+            up: false,
+            down: false
+        };
+        
+        // Enhanced AI settings
+        const ai = {
+            difficulty: 0.7, // 0 (easy) to 1 (hard) - will be set by slider
+            reactionDelay: 100, // ms
+            lastMoveTime: 0,
+            predictionError: 0.3, // How much error in prediction (0 = perfect)
+            movementError: 0.2, // How much error in movement
+            speedVariation: 0.3, // How much speed varies
+            decisionInterval: 50, // How often AI makes decisions (ms)
+            lastDecisionTime: 0,
+            targetY: 0,
+            currentSpeed: 0,
+            isLearning: true, // AI learns from player patterns
+            playerPatterns: [],
+            patternDetectionThreshold: 3, // How many similar shots to detect a pattern
+            lastBallDirection: 0,
+            lastHitPosition: 0
+        };
+        
+        // Event listeners
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+        menuBtn.addEventListener('click', showMenu);
+        
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                gameMode = btn.dataset.mode;
+                
+                // Show/hide difficulty slider based on mode
+                if (gameMode === '1p') {
+                    difficultyContainer.style.display = 'block';
+                } else {
+                    difficultyContainer.style.display = 'none';
+                }
+            });
+        });
+        
+        // Set initial difficulty from slider
+        difficultySlider.addEventListener('input', () => {
+            ai.difficulty = difficultySlider.value / 100;
+        });
+        
+        window.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            switch(e.key) {
+                case 'w':
+                case 'ArrowUp':
+                    paddle1.up = true;
+                    break;
+                case 's':
+                case 'ArrowDown':
+                    paddle1.down = true;
+                    break;
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            if (!gameRunning) return;
+            
+            switch(e.key) {
+                case 'w':
+                case 'ArrowUp':
+                    paddle1.up = false;
+                    break;
+                case 's':
+                case 'ArrowDown':
+                    paddle1.down = false;
+                    break;
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameRunning || gameMode !== '2p') return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseY = e.clientY - rect.top;
+            
+            paddle2.y = mouseY - paddle2.height / 2;
+            
+            // Keep paddle within canvas
+            if (paddle2.y < 0) paddle2.y = 0;
+            if (paddle2.y + paddle2.height > canvas.height) paddle2.y = canvas.height - paddle2.height;
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            if (!gameRunning || gameMode !== '2p') return;
+            e.preventDefault();
+            
+            const rect = canvas.getBoundingClientRect();
+            const touchY = e.touches[0].clientY - rect.top;
+            
+            paddle2.y = touchY - paddle2.height / 2;
+            
+            // Keep paddle within canvas
+            if (paddle2.y < 0) paddle2.y = 0;
+            if (paddle2.y + paddle2.height > canvas.height) paddle2.y = canvas.height - paddle2.height;
+        });
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            resetGame();
+        });
+        
+        // Initialize sound effects with base64 encoded short audio clips
+        function initSounds() {
+            // Paddle hit sound (short beep)
+            paddleSound.src = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
+            
+            // Wall hit sound (slightly lower pitch)
+            wallSound.src = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
+            
+            // Score sound (higher pitch)
+            scoreSound.src = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
+            
+            // Game over sound (two tones)
+            gameOverSound.src = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
+        }
+        
+        // Game functions
+        function startGame() {
+            initSounds();
+            resetGame();
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameRunning = true;
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function showMenu() {
+            gameOverScreen.style.display = 'none';
+            startScreen.style.display = 'flex';
+        }
+        
+        function resetGame() {
+            // Reset scores
+            player1Score = 0;
+            player2Score = 0;
+            updateScoreDisplay();
+            
+            // Reset paddles
+            paddle1.x = 30;
+            paddle1.y = canvas.height / 2 - paddle1.height / 2;
+            
+            paddle2.x = canvas.width - 30 - paddle2.width;
+            paddle2.y = canvas.height / 2 - paddle2.height / 2;
+            
+            // Reset AI learning
+            ai.playerPatterns = [];
+            ai.lastBallDirection = 0;
+            ai.lastHitPosition = 0;
+            
+            // Reset ball
+            resetBall();
+        }
+        
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            
+            // Random initial direction
+            const angle = (Math.random() * Math.PI / 3) - Math.PI / 6; // -30 to 30 degrees
+            const direction = Math.random() > 0.5 ? 1 : -1;
+            
+            ball.velocityX = direction * ball.speed * Math.cos(angle);
+            ball.velocityY = ball.speed * Math.sin(angle);
+            
+            // Add some randomness to speed
+            ball.velocityX *= 0.8 + Math.random() * 0.4;
+            ball.velocityY *= 0.8 + Math.random() * 0.4;
+        }
+        
+        function gameLoop(timestamp) {
+            if (!gameRunning) return;
+            
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            update(deltaTime);
+            render();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function update(deltaTime) {
+            // Move paddles
+            if (paddle1.up) paddle1.y -= paddle1.speed;
+            if (paddle1.down) paddle1.y += paddle1.speed;
+            
+            // Enhanced AI control for player 2 in 1p mode
+            if (gameMode === '1p' && timestamp - ai.lastDecisionTime > ai.decisionInterval) {
+                updateAI(timestamp);
+                ai.lastDecisionTime = timestamp;
+            }
+            
+            // Keep paddles within canvas
+            if (paddle1.y < 0) paddle1.y = 0;
+            if (paddle1.y + paddle1.height > canvas.height) paddle1.y = canvas.height - paddle1.height;
+            
+            if (paddle2.y < 0) paddle2.y = 0;
+            if (paddle2.y + paddle2.height > canvas.height) paddle2.y = canvas.height - paddle2.height;
+            
+            // Move ball
+            ball.x += ball.velocityX;
+            ball.y += ball.velocityY;
+            
+            // Ball collision with top and bottom walls
+            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
+                ball.velocityY = -ball.velocityY;
+                
+                // Add trail effect
+                createTrail(ball.x, ball.y);
+                
+                // Play sound
+                wallSound.currentTime = 0;
+                wallSound.play();
+            }
+            
+            // Ball collision with paddles
+            if (ball.x - ball.radius < paddle1.x + paddle1.width &&
+                ball.y > paddle1.y &&
+                ball.y < paddle1.y + paddle1.height) {
+                
+                // Calculate angle based on where ball hits paddle
+                const hitPosition = (ball.y - (paddle1.y + paddle1.height / 2)) / (paddle1.height / 2);
+                const angle = hitPosition * Math.PI / 4; // Max 45 degrees
+                
+                ball.velocityX = Math.abs(ball.velocityX) * 1.05; // Increase speed slightly
+                ball.velocityY = ball.speed * Math.sin(angle);
+                
+                // Record player hit pattern for AI learning
+                if (gameMode === '1p' && ai.isLearning) {
+                    recordPlayerPattern(hitPosition, angle);
+                }
+                
+                // Add trail effect
+                createTrail(ball.x, ball.y);
+                
+                // Play sound
+                paddleSound.currentTime = 0;
+                paddleSound.play();
+            }
+            
+            if (ball.x + ball.radius > paddle2.x &&
+                ball.y > paddle2.y &&
+                ball.y < paddle2.y + paddle2.height) {
+                
+                // Calculate angle based on where ball hits paddle
+                const hitPosition = (ball.y - (paddle2.y + paddle2.height / 2)) / (paddle2.height / 2);
+                const angle = hitPosition * Math.PI / 4; // Max 45 degrees
+                
+                ball.velocityX = -Math.abs(ball.velocityX) * 1.05; // Increase speed slightly
+                ball.velocityY = ball.speed * Math.sin(angle);
+                
+                // Add trail effect
+                createTrail(ball.x, ball.y);
+                
+                // Play sound
+                paddleSound.currentTime = 0;
+                paddleSound.play();
+            }
+            
+            // Ball out of bounds (score)
+            if (ball.x - ball.radius < 0) {
+                player2Score++;
+                updateScoreDisplay();
+                resetBall();
+                
+                // Play sound
+                scoreSound.currentTime = 0;
+                scoreSound.play();
+                
+                // Check for winner
+                if (player2Score >= winningScore) {
+                    gameOver('Player 2');
+                }
+            }
+            
+            if (ball.x + ball.radius > canvas.width) {
+                player1Score++;
+                updateScoreDisplay();
+                resetBall();
+                
+                // Play sound
+                scoreSound.currentTime = 0;
+                scoreSound.play();
+                
+                // Check for winner
+                if (player1Score >= winningScore) {
+                    gameOver('Player 1');
+                }
+            }
+            
+            // Update trail particles
+            updateTrailParticles();
+        }
+        
+        function updateAI(timestamp) {
+            // Only move when ball is coming towards AI paddle
+            if (ball.velocityX > 0) return;
+            
+            // Calculate predicted intercept point with some error based on difficulty
+            const interceptX = paddle2.x;
+            const timeToIntercept = (interceptX - ball.x) / ball.velocityX;
+            let predictedY = ball.y + (ball.velocityY * timeToIntercept);
+            
+            // Add prediction error based on difficulty
+            const maxError = canvas.height * (1 - ai.difficulty) * 0.5;
+            const predictionError = (Math.random() * 2 - 1) * maxError;
+            predictedY += predictionError;
+            
+            // Keep prediction within bounds
+            predictedY = Math.max(ball.radius, Math.min(canvas.height - ball.radius, predictedY));
+            
+            // Adjust for player patterns if detected
+            if (ai.isLearning && ai.playerPatterns.length > 0) {
+                const recentPatterns = ai.playerPatterns.slice(-5); // Look at last 5 hits
+                const pattern = detectPlayerPattern(recentPatterns);
+                
+                if (pattern) {
+                    // Adjust prediction based on detected pattern
+                    predictedY += pattern.bias * ai.difficulty * 50;
+                }
+            }
+            
+            // Calculate target position (center of paddle to predicted ball position)
+            ai.targetY = predictedY - paddle2.height / 2;
+            
+            // Add some movement error based on difficulty
+            const movementError = (Math.random() * 2 - 1) * paddle2.height * (1 - ai.difficulty) * 0.3;
+            ai.targetY += movementError;
+            
+            // Calculate speed with some variation
+            ai.currentSpeed = paddle2.speed * (0.7 + ai.difficulty * 0.6);
+            
+            // Move paddle towards target
+            const paddleCenter = paddle2.y + paddle2.height / 2;
+            const distanceToTarget = ai.targetY + paddle2.height / 2 - paddleCenter;
+            
+            if (Math.abs(distanceToTarget) > 5) { // Only move if significant distance
+                if (distanceToTarget > 0) {
+                    paddle2.y += Math.min(distanceToTarget, ai.currentSpeed);
+                } else {
+                    paddle2.y += Math.max(distanceToTarget, -ai.currentSpeed);
+                }
+            }
+            
+            // Record last ball direction for pattern detection
+            ai.lastBallDirection = Math.sign(ball.velocityY);
+        }
+        
+        function recordPlayerPattern(hitPosition, angle) {
+            // Record the player's hit pattern
+            ai.playerPatterns.push({
+                hitPosition: hitPosition,
+                angle: angle,
+                timestamp: performance.now()
+            });
+            
+            // Keep only the last 20 patterns to limit memory
+            if (ai.playerPatterns.length > 20) {
+                ai.playerPatterns.shift();
+            }
+        }
+        
+        function detectPlayerPattern(patterns) {
+            if (patterns.length < ai.patternDetectionThreshold) return null;
+            
+            // Look for consistent hit positions
+            const lastHit = patterns[patterns.length - 1];
+            let similarHits = 0;
+            let totalBias = 0;
+            
+            for (let i = patterns.length - 2; i >= 0; i--) {
+                const pattern = patterns[i];
+                
+                // Check if hits are similar (same general area of paddle)
+                if (Math.sign(pattern.hitPosition) === Math.sign(lastHit.hitPosition) &&
+                    Math.abs(pattern.hitPosition - lastHit.hitPosition) < 0.3) {
+                    
+                    similarHits++;
+                    totalBias += pattern.hitPosition;
+                }
+            }
+            
+            // If we found enough similar hits, return the pattern
+            if (similarHits >= ai.patternDetectionThreshold - 1) {
+                const avgBias = totalBias / similarHits;
+                return {
+                    bias: avgBias,
+                    confidence: similarHits / patterns.length
+                };
+            }
+            
+            return null;
+        }
+        
+        function render() {
+            // Clear canvas
+            ctx.fillStyle = '#1f2937';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw center line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw paddles
+            ctx.fillStyle = paddle1.color;
+            ctx.fillRect(paddle1.x, paddle1.y, paddle1.width, paddle1.height);
+            
+            ctx.fillStyle = paddle2.color;
+            ctx.fillRect(paddle2.x, paddle2.y, paddle2.width, paddle2.height);
+            
+            // Add glow to paddles
+            addGlow(paddle1.x + paddle1.width / 2, paddle1.y + paddle1.height / 2, paddle1.color);
+            addGlow(paddle2.x + paddle2.width / 2, paddle2.y + paddle2.height / 2, paddle2.color);
+            
+            // Draw ball
+            ctx.fillStyle = ball.color;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add glow to ball
+            addGlow(ball.x, ball.y, ball.color);
+            
+            // Draw trail particles
+            drawTrailParticles();
+            
+            // Draw AI prediction (debug visualization - can be removed)
+            if (gameMode === '1p' && false) { // Change to true to see AI prediction
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+                ctx.beginPath();
+                ctx.arc(paddle2.x, ai.targetY + paddle2.height / 2, 10, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function updateScoreDisplay() {
+            player1ScoreElement.textContent = player1Score;
+            player2ScoreElement.textContent = player2Score;
+            
+            // Add pulse animation to score
+            if (player1Score > 0) player1ScoreElement.classList.add('pulse');
+            if (player2Score > 0) player2ScoreElement.classList.add('pulse');
+            
+            setTimeout(() => {
+                player1ScoreElement.classList.remove('pulse');
+                player2ScoreElement.classList.remove('pulse');
+            }, 500);
+        }
+        
+        function gameOver(winner) {
+            gameRunning = false;
+            
+            // Update UI
+            winnerTextElement.textContent = `${winner} WINS!`;
+            finalScore1Element.textContent = player1Score;
+            finalScore2Element.textContent = player2Score;
+            
+            // Change gradient color based on winner
+            if (winner === 'Player 1') {
+                winnerTextElement.className = 'text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500';
+            } else {
+                winnerTextElement.className = 'text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500';
+            }
+            
+            // Play sound
+            gameOverSound.currentTime = 0;
+            gameOverSound.play();
+            
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        function addGlow(x, y, color) {
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, 30);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, 30, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function createTrail(x, y) {
+            for (let i = 0; i < 5; i++) {
+                trailParticles.push({
+                    x: x,
+                    y: y,
+                    radius: Math.random() * 5 + 2,
+                    alpha: 0.7,
+                    color: `rgba(255, 255, 255, ${0.7})`,
+                    velocityX: (Math.random() - 0.5) * 2,
+                    velocityY: (Math.random() - 0.5) * 2,
+                    lifetime: Math.random() * 500 + 300
+                });
+            }
+        }
+        
+        function updateTrailParticles() {
+            for (let i = trailParticles.length - 1; i >= 0; i--) {
+                const p = trailParticles[i];
+                
+                p.x += p.velocityX;
+                p.y += p.velocityY;
+                p.lifetime -= 16;
+                p.alpha = p.lifetime / 800;
+                
+                if (p.lifetime <= 0) {
+                    trailParticles.splice(i, 1);
+                }
+            }
+        }
+        
+        function drawTrailParticles() {
+            for (const p of trailParticles) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    </script>
+</body>
+</html>

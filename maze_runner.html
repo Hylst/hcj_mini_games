@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hylst Maze Runner Extreme</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .shake {
+            animation: shake 0.5s;
+        }
+        
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+        
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .blink {
+            animation: blink 1s steps(1) infinite;
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+        
+        /* Smooth movement transition */
+        .smooth-move {
+            transition: transform 0.2s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="text-center mb-4">
+        <h1 class="text-4xl font-bold text-yellow-400 mb-2">Hylst Maze Runner Extreme</h1>
+        <div class="flex justify-center gap-8 mb-4">
+            <div class="bg-gray-800 p-3 rounded-lg">
+                <span class="text-green-400"><i class="fas fa-clock mr-2"></i>Time:</span>
+                <span id="time" class="text-xl font-mono">60</span>
+            </div>
+            <div class="bg-gray-800 p-3 rounded-lg">
+                <span class="text-blue-400"><i class="fas fa-star mr-2"></i>Score:</span>
+                <span id="score" class="text-xl font-mono">0</span>
+            </div>
+            <div class="bg-gray-800 p-3 rounded-lg">
+                <span class="text-purple-400"><i class="fas fa-bolt mr-2"></i>Power:</span>
+                <span id="power" class="text-xl font-mono">0</span>
+            </div>
+        </div>
+        <div class="flex justify-center gap-4 mb-4">
+            <button id="startBtn" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-bold transition">
+                <i class="fas fa-play mr-2"></i>Start Game
+            </button>
+            <button id="newMazeBtn" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-bold transition">
+                <i class="fas fa-sync-alt mr-2"></i>New Maze
+            </button>
+            <select id="difficulty" class="bg-gray-800 text-white px-4 py-2 rounded-lg">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+                <option value="extreme">Extreme</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="relative">
+        <canvas id="mazeCanvas" width="900" height="600" class="border-4 border-gray-700 rounded-lg shadow-xl"></canvas>
+        <div id="gameOver" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center rounded-lg">
+            <h2 class="text-5xl font-bold text-red-500 mb-4">GAME OVER</h2>
+            <p class="text-2xl mb-6">Your score: <span id="finalScore" class="text-yellow-400">0</span></p>
+            <button id="restartBtn" class="bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg font-bold text-xl transition">
+                <i class="fas fa-redo mr-2"></i>Play Again
+            </button>
+        </div>
+        <div id="levelComplete" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center rounded-lg">
+            <h2 class="text-5xl font-bold text-green-500 mb-4">LEVEL COMPLETE!</h2>
+            <p class="text-2xl mb-6">Score: <span id="levelScore" class="text-yellow-400">0</span></p>
+            <button id="nextLevelBtn" class="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-bold text-xl transition">
+                <i class="fas fa-arrow-right mr-2"></i>Next Level
+            </button>
+        </div>
+        <div id="instructions" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center rounded-lg">
+            <h2 class="text-3xl font-bold text-yellow-400 mb-6">HOW TO PLAY</h2>
+            <div class="bg-gray-800 p-6 rounded-lg max-w-md">
+                <ul class="list-disc pl-5 space-y-3 text-lg">
+                    <li>Use <span class="bg-gray-700 px-2 py-1 rounded">WASD</span> or <span class="bg-gray-700 px-2 py-1 rounded">Arrow Keys</span> to move</li>
+                    <li>Collect <span class="text-yellow-400">★ stars</span> for points</li>
+                    <li>Grab <span class="text-blue-400">⚡ power-ups</span> for abilities</li>
+                    <li>Avoid <span class="text-red-400">☠️ enemies</span> or use power to destroy them</li>
+                    <li>Press <span class="bg-gray-700 px-2 py-1 rounded">SPACE</span> to use power</li>
+                    <li>Reach the <span class="text-green-400">🚩 exit</span> before time runs out</li>
+                </ul>
+                <button id="closeInstructions" class="mt-6 bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-bold transition w-full">
+                    Got it!
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-6 bg-gray-800 p-4 rounded-lg max-w-2xl">
+        <div class="flex justify-between items-center">
+            <h3 class="text-xl font-bold text-yellow-400 mb-2"><i class="fas fa-info-circle mr-2"></i>Game Principles:</h3>
+            <button id="showInstructions" class="text-blue-400 hover:text-blue-300">
+                <i class="fas fa-question-circle mr-1"></i>Show Full Instructions
+            </button>
+        </div>
+        <ul class="list-disc pl-5 space-y-1">
+            <li>Navigate through randomly generated mazes</li>
+            <li>Higher levels = more enemies & tighter time limits</li>
+            <li>Complete levels faster for time bonuses</li>
+            <li>Destroy enemies with collected power (spacebar)</li>
+            <li>Difficulty affects enemy count, items, and time</li>
+        </ul>
+    </div>
+
+    <script>
+        // Game elements
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const newMazeBtn = document.getElementById('newMazeBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const nextLevelBtn = document.getElementById('nextLevelBtn');
+        const difficultySelect = document.getElementById('difficulty');
+        const gameOverScreen = document.getElementById('gameOver');
+        const levelCompleteScreen = document.getElementById('levelComplete');
+        const instructionsScreen = document.getElementById('instructions');
+        const showInstructionsBtn = document.getElementById('showInstructions');
+        const closeInstructionsBtn = document.getElementById('closeInstructions');
+        const timeDisplay = document.getElementById('time');
+        const scoreDisplay = document.getElementById('score');
+        const powerDisplay = document.getElementById('power');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const levelScoreDisplay = document.getElementById('levelScore');
+        
+        // Game settings
+        const cellSize = 30;
+        const rows = Math.floor(canvas.height / cellSize);
+        const cols = Math.floor(canvas.width / cellSize);
+        let maze = [];
+        let player = { 
+            x: 1, 
+            y: 1, 
+            size: cellSize * 0.7,
+            targetX: 1, // For smooth movement
+            targetY: 1,
+            moving: false
+        };
+        let exit = { x: cols - 2, y: rows - 2 };
+        let stars = [];
+        let enemies = [];
+        let powerUps = [];
+        let score = 0;
+        let power = 0;
+        let timeLeft = 60;
+        let gameRunning = false;
+        let gameInterval;
+        let timeInterval;
+        let currentLevel = 1;
+        let difficulty = 'medium';
+        let speedBoostActive = false;
+        let lastTime = 0;
+        
+        // Difficulty settings
+        const difficultySettings = {
+            easy: { enemyCount: 2, starCount: 5, powerUpCount: 2, time: 90, enemySpeed: 0.1 },
+            medium: { enemyCount: 4, starCount: 8, powerUpCount: 3, time: 60, enemySpeed: 0.15 },
+            hard: { enemyCount: 6, starCount: 10, powerUpCount: 4, time: 45, enemySpeed: 0.2 },
+            extreme: { enemyCount: 8, starCount: 12, powerUpCount: 5, time: 30, enemySpeed: 0.25 }
+        };
+        
+        // Initialize game
+        function initGame() {
+            generateMaze();
+            placePlayer();
+            placeExit();
+            generateItems();
+            drawMaze();
+            
+            // Show instructions first time
+            if (!localStorage.getItem('instructionsShown')) {
+                instructionsScreen.classList.remove('hidden');
+                localStorage.setItem('instructionsShown', 'true');
+            }
+            
+            // Event listeners
+            document.addEventListener('keydown', handleKeyPress);
+            startBtn.addEventListener('click', startGame);
+            newMazeBtn.addEventListener('click', resetGame);
+            restartBtn.addEventListener('click', resetGame);
+            nextLevelBtn.addEventListener('click', nextLevel);
+            difficultySelect.addEventListener('change', updateDifficulty);
+            showInstructionsBtn.addEventListener('click', () => instructionsScreen.classList.remove('hidden'));
+            closeInstructionsBtn.addEventListener('click', () => instructionsScreen.classList.add('hidden'));
+            
+            // Start game loop with requestAnimationFrame for smoother animation
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Main game loop
+        function gameLoop(timestamp) {
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            if (gameRunning) {
+                updateGame(deltaTime);
+            }
+            
+            drawMaze();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Update game state
+        function updateGame(deltaTime) {
+            // Smooth player movement
+            if (player.moving) {
+                const moveSpeed = speedBoostActive ? 0.2 : 0.1;
+                const dx = (player.targetX - player.x) * moveSpeed;
+                const dy = (player.targetY - player.y) * moveSpeed;
+                
+                player.x += dx;
+                player.y += dy;
+                
+                // Check if close enough to target
+                if (Math.abs(player.x - player.targetX) < 0.05 && Math.abs(player.y - player.targetY) < 0.05) {
+                    player.x = player.targetX;
+                    player.y = player.targetY;
+                    player.moving = false;
+                    checkCollisions();
+                }
+            }
+            
+            // Move enemies
+            moveEnemies(deltaTime);
+        }
+        
+        // Generate maze using recursive backtracking algorithm
+        function generateMaze() {
+            // Initialize maze grid
+            maze = [];
+            for (let y = 0; y < rows; y++) {
+                maze[y] = [];
+                for (let x = 0; x < cols; x++) {
+                    maze[y][x] = (x % 2 === 1 && y % 2 === 1) ? 0 : 1;
+                }
+            }
+            
+            // Carve paths
+            carvePath(1, 1);
+            
+            // Ensure exit is reachable
+            maze[exit.y][exit.x] = 0;
+            maze[exit.y-1][exit.x] = 0;
+            maze[exit.y][exit.x-1] = 0;
+        }
+        
+        function carvePath(x, y) {
+            const directions = [
+                [1, 0], [-1, 0], [0, 1], [0, -1]
+            ];
+            
+            // Shuffle directions
+            for (let i = directions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [directions[i], directions[j]] = [directions[j], directions[i]];
+            }
+            
+            for (const [dx, dy] of directions) {
+                const nx = x + dx * 2;
+                const ny = y + dy * 2;
+                
+                if (nx > 0 && nx < cols - 1 && ny > 0 && ny < rows - 1 && maze[ny][nx] === 1) {
+                    maze[y + dy][x + dx] = 0;
+                    maze[ny][nx] = 0;
+                    carvePath(nx, ny);
+                }
+            }
+        }
+        
+        // Place player at start position
+        function placePlayer() {
+            player.x = 1;
+            player.y = 1;
+            player.targetX = 1;
+            player.targetY = 1;
+            player.moving = false;
+        }
+        
+        // Place exit at end position
+        function placeExit() {
+            exit.x = cols - 2;
+            exit.y = rows - 2;
+        }
+        
+        // Generate stars, enemies and power-ups
+        function generateItems() {
+            stars = [];
+            enemies = [];
+            powerUps = [];
+            
+            const settings = difficultySettings[difficulty];
+            const adjustedStarCount = Math.floor(settings.starCount * (1 + currentLevel * 0.2));
+            const adjustedEnemyCount = Math.floor(settings.enemyCount * (1 + currentLevel * 0.2));
+            const adjustedPowerUpCount = Math.floor(settings.powerUpCount * (1 + currentLevel * 0.1));
+            
+            // Generate stars
+            for (let i = 0; i < adjustedStarCount; i++) {
+                let x, y;
+                do {
+                    x = Math.floor(Math.random() * (cols - 2)) + 1;
+                    y = Math.floor(Math.random() * (rows - 2)) + 1;
+                } while (maze[y][x] === 1 || 
+                         (x === player.x && y === player.y) || 
+                         (x === exit.x && y === exit.y) ||
+                         stars.some(s => s.x === x && s.y === y));
+                
+                stars.push({ x, y, collected: false });
+            }
+            
+            // Generate enemies
+            for (let i = 0; i < adjustedEnemyCount; i++) {
+                let x, y;
+                do {
+                    x = Math.floor(Math.random() * (cols - 2)) + 1;
+                    y = Math.floor(Math.random() * (rows - 2)) + 1;
+                } while (maze[y][x] === 1 || 
+                         (x === player.x && y === player.y) || 
+                         (x === exit.x && y === exit.y) ||
+                         enemies.some(e => e.x === x && e.y === y) ||
+                         stars.some(s => s.x === x && s.y === y));
+                
+                enemies.push({ 
+                    x, 
+                    y, 
+                    direction: Math.floor(Math.random() * 4), // 0: up, 1: right, 2: down, 3: left
+                    speed: settings.enemySpeed * (1 + currentLevel * 0.1),
+                    moveTimer: 0,
+                    moveInterval: Math.floor(30 + Math.random() * 70)
+                });
+            }
+            
+            // Generate power-ups
+            for (let i = 0; i < adjustedPowerUpCount; i++) {
+                let x, y;
+                do {
+                    x = Math.floor(Math.random() * (cols - 2)) + 1;
+                    y = Math.floor(Math.random() * (rows - 2)) + 1;
+                } while (maze[y][x] === 1 || 
+                         (x === player.x && y === player.y) || 
+                         (x === exit.x && y === exit.y) ||
+                         powerUps.some(p => p.x === x && p.y === y) ||
+                         stars.some(s => s.x === x && s.y === y) ||
+                         enemies.some(e => e.x === x && e.y === y));
+                
+                powerUps.push({ x, y, type: Math.random() > 0.5 ? 'speed' : 'power' });
+            }
+        }
+        
+        // Draw the maze and all game elements
+        function drawMaze() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw maze walls and paths
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (maze[y][x] === 1) {
+                        ctx.fillStyle = '#1F2937'; // Wall color
+                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    } else {
+                        ctx.fillStyle = '#111827'; // Path color
+                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+            
+            // Draw exit
+            ctx.fillStyle = '#10B981';
+            ctx.beginPath();
+            ctx.arc(
+                exit.x * cellSize + cellSize / 2, 
+                exit.y * cellSize + cellSize / 2, 
+                cellSize / 2, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            ctx.fillStyle = '#111827';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🚩', exit.x * cellSize + cellSize / 2, exit.y * cellSize + cellSize / 2);
+            
+            // Draw stars
+            stars.forEach(star => {
+                if (!star.collected) {
+                    ctx.fillStyle = '#FBBF24';
+                    ctx.beginPath();
+                    ctx.arc(
+                        star.x * cellSize + cellSize / 2, 
+                        star.y * cellSize + cellSize / 2, 
+                        cellSize / 3, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    // Add star icon
+                    ctx.fillStyle = '#111827';
+                    ctx.font = 'bold 16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('★', star.x * cellSize + cellSize / 2, star.y * cellSize + cellSize / 2);
+                }
+            });
+            
+            // Draw power-ups
+            powerUps.forEach(powerUp => {
+                ctx.fillStyle = powerUp.type === 'speed' ? '#3B82F6' : '#8B5CF6';
+                ctx.beginPath();
+                ctx.arc(
+                    powerUp.x * cellSize + cellSize / 2, 
+                    powerUp.y * cellSize + cellSize / 2, 
+                    cellSize / 3, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Add icon
+                ctx.fillStyle = '#111827';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(
+                    powerUp.type === 'speed' ? '⚡' : '🛡️', 
+                    powerUp.x * cellSize + cellSize / 2, 
+                    powerUp.y * cellSize + cellSize / 2
+                );
+            });
+            
+            // Draw enemies
+            enemies.forEach(enemy => {
+                ctx.fillStyle = '#EF4444';
+                ctx.beginPath();
+                ctx.arc(
+                    enemy.x * cellSize + cellSize / 2, 
+                    enemy.y * cellSize + cellSize / 2, 
+                    cellSize / 2.5, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Add skull icon
+                ctx.fillStyle = '#111827';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('☠️', enemy.x * cellSize + cellSize / 2, enemy.y * cellSize + cellSize / 2);
+            });
+            
+            // Draw player
+            ctx.fillStyle = '#F59E0B';
+            ctx.beginPath();
+            ctx.arc(
+                player.x * cellSize + cellSize / 2, 
+                player.y * cellSize + cellSize / 2, 
+                player.size / 2, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Add player icon
+            ctx.fillStyle = '#111827';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('😃', player.x * cellSize + cellSize / 2, player.y * cellSize + cellSize / 2);
+            
+            // Draw level indicator
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`Level ${currentLevel}`, 10, 10);
+            
+            // Draw score multiplier
+            ctx.fillStyle = '#FBBF24';
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(`x${currentLevel}`, canvas.width - 10, 10);
+            
+            // Draw directional hints (arrows pointing to nearest star)
+            if (stars.some(s => !s.collected)) {
+                const nearestStar = findNearestStar();
+                if (nearestStar) {
+                    drawDirectionArrow(nearestStar.x, nearestStar.y);
+                }
+            }
+            
+            // Draw power meter
+            if (power > 0) {
+                const meterWidth = 100;
+                const meterHeight = 10;
+                const fillWidth = (power / 100) * meterWidth;
+                
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(canvas.width / 2 - meterWidth / 2, canvas.height - 20, meterWidth, meterHeight);
+                
+                ctx.fillStyle = '#8B5CF6';
+                ctx.fillRect(canvas.width / 2 - meterWidth / 2, canvas.height - 20, fillWidth, meterHeight);
+                
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.strokeRect(canvas.width / 2 - meterWidth / 2, canvas.height - 20, meterWidth, meterHeight);
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('POWER', canvas.width / 2, canvas.height - 25);
+            }
+        }
+        
+        // Find the nearest uncollected star
+        function findNearestStar() {
+            const uncollectedStars = stars.filter(s => !s.collected);
+            if (uncollectedStars.length === 0) return null;
+            
+            let nearest = uncollectedStars[0];
+            let minDist = distance(player.x, player.y, nearest.x, nearest.y);
+            
+            for (let i = 1; i < uncollectedStars.length; i++) {
+                const dist = distance(player.x, player.y, uncollectedStars[i].x, uncollectedStars[i].y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = uncollectedStars[i];
+                }
+            }
+            
+            return nearest;
+        }
+        
+        // Draw arrow pointing to target position
+        function drawDirectionArrow(targetX, targetY) {
+            const centerX = player.x * cellSize + cellSize / 2;
+            const centerY = player.y * cellSize + cellSize / 2;
+            const targetCenterX = targetX * cellSize + cellSize / 2;
+            const targetCenterY = targetY * cellSize + cellSize / 2;
+            
+            const angle = Math.atan2(targetCenterY - centerY, targetCenterX - centerX);
+            const arrowSize = cellSize / 2;
+            const distanceFromPlayer = cellSize * 1.5;
+            
+            const arrowX = centerX + Math.cos(angle) * distanceFromPlayer;
+            const arrowY = centerY + Math.sin(angle) * distanceFromPlayer;
+            
+            ctx.save();
+            ctx.translate(arrowX, arrowY);
+            ctx.rotate(angle);
+            
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(arrowSize, 0);
+            ctx.lineTo(-arrowSize / 2, -arrowSize / 2);
+            ctx.lineTo(-arrowSize / 2, arrowSize / 2);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Calculate distance between two points
+        function distance(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        }
+        
+        // Handle keyboard input
+        function handleKeyPress(e) {
+            if (!gameRunning) return;
+            
+            const keys = {
+                'ArrowUp': { dx: 0, dy: -1 },
+                'ArrowDown': { dx: 0, dy: 1 },
+                'ArrowLeft': { dx: -1, dy: 0 },
+                'ArrowRight': { dx: 1, dy: 0 },
+                'w': { dx: 0, dy: -1 },
+                's': { dx: 0, dy: 1 },
+                'a': { dx: -1, dy: 0 },
+                'd': { dx: 1, dy: 0 }
+            };
+            
+            if (keys[e.key] && !player.moving) {
+                const { dx, dy } = keys[e.key];
+                const newX = player.x + dx;
+                const newY = player.y + dy;
+                
+                if (newX >= 0 && newX < cols && newY >= 0 && newY < rows && maze[newY][newX] === 0) {
+                    player.targetX = newX;
+                    player.targetY = newY;
+                    player.moving = true;
+                }
+            }
+            
+            // Space to use power (destroy nearby enemies)
+            if (e.key === ' ' && power > 0) {
+                usePower();
+            }
+        }
+        
+        // Check for collisions with items, enemies, or exit
+        function checkCollisions() {
+            // Check for star collection
+            stars.forEach(star => {
+                if (!star.collected && player.x === star.x && player.y === star.y) {
+                    star.collected = true;
+                    score += 10 * currentLevel;
+                    scoreDisplay.textContent = score;
+                    power += 5;
+                    powerDisplay.textContent = power;
+                    
+                    // Add visual feedback
+                    scoreDisplay.classList.add('pulse');
+                    setTimeout(() => scoreDisplay.classList.remove('pulse'), 500);
+                }
+            });
+            
+            // Check for power-up collection
+            powerUps = powerUps.filter(powerUp => {
+                if (player.x === powerUp.x && player.y === powerUp.y) {
+                    if (powerUp.type === 'speed') {
+                        // Temporary speed boost
+                        speedBoostActive = true;
+                        setTimeout(() => {
+                            speedBoostActive = false;
+                        }, 5000);
+                    } else {
+                        // Power boost
+                        power += 15;
+                        powerDisplay.textContent = power;
+                    }
+                    
+                    // Add visual feedback
+                    powerDisplay.classList.add('pulse');
+                    setTimeout(() => powerDisplay.classList.remove('pulse'), 500);
+                    
+                    return false;
+                }
+                return true;
+            });
+            
+            // Check for enemy collisions
+            enemies.forEach(enemy => {
+                if (player.x === enemy.x && player.y === enemy.y) {
+                    gameOver();
+                }
+            });
+            
+            // Check for exit
+            if (player.x === exit.x && player.y === exit.y) {
+                if (stars.every(star => star.collected)) {
+                    levelComplete();
+                } else {
+                    // Show message about collecting all stars
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(canvas.width / 2 - 150, canvas.height / 2 - 20, 300, 40);
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText("Collect all stars before exiting!", canvas.width / 2, canvas.height / 2);
+                }
+            }
+        }
+        
+        // Use power to destroy nearby enemies
+        function usePower() {
+            if (power <= 0) return;
+            
+            power -= 1;
+            powerDisplay.textContent = power;
+            
+            // Find and destroy nearby enemies
+            const blastRadius = 2;
+            enemies = enemies.filter(enemy => {
+                const dist = distance(player.x, player.y, enemy.x, enemy.y);
+                if (dist <= blastRadius) {
+                    // Add points for destroyed enemy
+                    score += 5 * currentLevel;
+                    scoreDisplay.textContent = score;
+                    return false;
+                }
+                return true;
+            });
+            
+            // Visual effect
+            ctx.fillStyle = 'rgba(139, 92, 246, 0.3)';
+            ctx.beginPath();
+            ctx.arc(
+                player.x * cellSize + cellSize / 2, 
+                player.y * cellSize + cellSize / 2, 
+                blastRadius * cellSize, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Shake effect
+            canvas.classList.add('shake');
+            setTimeout(() => canvas.classList.remove('shake'), 500);
+        }
+        
+        // Move enemies
+        function moveEnemies(deltaTime) {
+            enemies.forEach(enemy => {
+                enemy.moveTimer += deltaTime;
+                
+                if (enemy.moveTimer >= enemy.moveInterval) {
+                    enemy.moveTimer = 0;
+                    
+                    // Change direction randomly
+                    if (Math.random() < 0.3) {
+                        enemy.direction = Math.floor(Math.random() * 4);
+                    }
+                    
+                    // Try to move in current direction
+                    let dx = 0, dy = 0;
+                    switch (enemy.direction) {
+                        case 0: dy = -1; break; // up
+                        case 1: dx = 1; break;  // right
+                        case 2: dy = 1; break;  // down
+                        case 3: dx = -1; break; // left
+                    }
+                    
+                    const newX = Math.round(enemy.x + dx * enemy.speed);
+                    const newY = Math.round(enemy.y + dy * enemy.speed);
+                    
+                    if (newX >= 0 && newX < cols && newY >= 0 && newY < rows && maze[newY][newX] === 0) {
+                        enemy.x = newX;
+                        enemy.y = newY;
+                    } else {
+                        // Hit a wall, change direction
+                        enemy.direction = Math.floor(Math.random() * 4);
+                    }
+                }
+            });
+            
+            // Check for enemy collisions after moving
+            enemies.forEach(enemy => {
+                if (player.x === enemy.x && player.y === enemy.y) {
+                    gameOver();
+                }
+            });
+        }
+        
+        // Start the game
+        function startGame() {
+            if (gameRunning) return;
+            
+            gameRunning = true;
+            timeLeft = difficultySettings[difficulty].time + (currentLevel * 5);
+            timeDisplay.textContent = timeLeft;
+            
+            // Start timer
+            timeInterval = setInterval(() => {
+                timeLeft--;
+                timeDisplay.textContent = timeLeft;
+                
+                if (timeLeft <= 10) {
+                    timeDisplay.classList.add('blink');
+                }
+                
+                if (timeLeft <= 0) {
+                    gameOver();
+                }
+            }, 1000);
+            
+            startBtn.disabled = true;
+            newMazeBtn.disabled = true;
+        }
+        
+        // Game over
+        function gameOver() {
+            clearInterval(timeInterval);
+            gameRunning = false;
+            
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.classList.remove('hidden');
+            
+            startBtn.disabled = false;
+            newMazeBtn.disabled = false;
+        }
+        
+        // Level complete
+        function levelComplete() {
+            clearInterval(timeInterval);
+            gameRunning = false;
+            
+            // Bonus points for remaining time
+            const timeBonus = timeLeft * 2;
+            score += timeBonus;
+            
+            levelScoreDisplay.textContent = score;
+            levelCompleteScreen.classList.remove('hidden');
+            
+            startBtn.disabled = false;
+            newMazeBtn.disabled = false;
+        }
+        
+        // Next level
+        function nextLevel() {
+            currentLevel++;
+            levelCompleteScreen.classList.add('hidden');
+            resetGame(false);
+        }
+        
+        // Reset game
+        function resetGame(restartLevel = true) {
+            clearInterval(timeInterval);
+            
+            if (restartLevel) {
+                currentLevel = 1;
+            }
+            
+            score = 0;
+            power = 0;
+            speedBoostActive = false;
+            scoreDisplay.textContent = score;
+            powerDisplay.textContent = power;
+            timeDisplay.textContent = difficultySettings[difficulty].time;
+            timeDisplay.classList.remove('blink');
+            
+            generateMaze();
+            placePlayer();
+            placeExit();
+            generateItems();
+            
+            gameOverScreen.classList.add('hidden');
+            levelCompleteScreen.classList.add('hidden');
+            gameRunning = false;
+            
+            startBtn.disabled = false;
+            newMazeBtn.disabled = false;
+        }
+        
+        // Update difficulty
+        function updateDifficulty() {
+            difficulty = difficultySelect.value;
+            resetGame();
+        }
+        
+        // Initialize the game
+        initGame();
+    </script>
+</body>
+</html>

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hylst Memory Match Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes flipIn {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(180deg); }
+        }
+        @keyframes flipOut {
+            0% { transform: rotateY(180deg); }
+            100% { transform: rotateY(0deg); }
+        }
+        .card {
+            perspective: 1000px;
+            transform-style: preserve-3d;
+            transition: all 0.3s;
+        }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .card-front {
+            background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+            transform: rotateY(180deg);
+        }
+        .card-back {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            color: white;
+        }
+        .card.matched {
+            opacity: 0.7;
+            transform: scale(0.95);
+            filter: brightness(0.9);
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            border-radius: 50%;
+            animation: fall 3s linear forwards;
+        }
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .glow {
+            animation: glow 2s infinite alternate;
+        }
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 5px -5px #8b5cf6;
+            }
+            to {
+                box-shadow: 0 0 20px 5px #8b5cf6;
+            }
+        }
+        .theme-icon {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+        }
+        .card-image {
+            max-width: 80%;
+            max-height: 80%;
+            object-fit: contain;
+        }
+        .progress-bar {
+            height: 6px;
+            background: linear-gradient(90deg, #6d28d9, #8b5cf6);
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+    <header class="bg-gradient-to-r from-purple-900 to-purple-700 py-4 shadow-lg">
+        <div class="container mx-auto px-4">
+            <h1 class="text-3xl md:text-4xl font-bold text-center text-white">
+                <i class="fas fa-brain mr-2"></i> Hylst Memory Match Master
+            </h1>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Game Controls -->
+            <div class="bg-gray-800 rounded-xl p-6 mb-8 shadow-lg border border-purple-900/50">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="difficulty" class="block text-sm font-medium mb-1 text-purple-300">Difficulty</label>
+                        <select id="difficulty" class="w-full bg-gray-700 border border-purple-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="easy"><i class="fas fa-baby theme-icon"></i> Easy (4x4)</option>
+                            <option value="medium"><i class="fas fa-user theme-icon"></i> Medium (6x6)</option>
+                            <option value="hard"><i class="fas fa-running theme-icon"></i> Hard (8x8)</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="theme" class="block text-sm font-medium mb-1 text-purple-300">Theme</label>
+                        <select id="theme" class="w-full bg-gray-700 border border-purple-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="animals"><i class="fas fa-paw theme-icon"></i> Animals</option>
+                            <option value="fruits"><i class="fas fa-apple-alt theme-icon"></i> Fruits</option>
+                            <option value="flags"><i class="fas fa-flag theme-icon"></i> Flags</option>
+                            <option value="emoji"><i class="fas fa-smile theme-icon"></i> Emoji</option>
+                            <option value="vehicles"><i class="fas fa-car theme-icon"></i> Vehicles</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-4">
+                        <button id="newGameBtn" class="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-6 py-2 rounded-lg font-medium transition-all flex items-center shadow-lg hover:shadow-purple-500/30">
+                            <i class="fas fa-play mr-2"></i> New Game
+                        </button>
+                        <button id="resetBtn" class="bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-700 hover:to-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-all flex items-center shadow-lg">
+                            <i class="fas fa-redo mr-2"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Stats -->
+            <div class="bg-gray-800 rounded-xl p-6 mb-8 shadow-lg grid grid-cols-1 md:grid-cols-4 gap-4 border border-purple-900/50">
+                <div class="bg-gradient-to-br from-gray-700 to-gray-800 p-4 rounded-lg text-center border border-purple-900/30">
+                    <div class="text-sm text-purple-300"><i class="fas fa-clock mr-1"></i> Time</div>
+                    <div id="timer" class="text-2xl font-bold text-purple-400">00:00</div>
+                </div>
+                <div class="bg-gradient-to-br from-gray-700 to-gray-800 p-4 rounded-lg text-center border border-purple-900/30">
+                    <div class="text-sm text-purple-300"><i class="fas fa-shoe-prints mr-1"></i> Moves</div>
+                    <div id="moves" class="text-2xl font-bold text-purple-400">0</div>
+                </div>
+                <div class="bg-gradient-to-br from-gray-700 to-gray-800 p-4 rounded-lg text-center border border-purple-900/30">
+                    <div class="text-sm text-purple-300"><i class="fas fa-star mr-1"></i> Score</div>
+                    <div id="score" class="text-2xl font-bold text-purple-400">0</div>
+                </div>
+                <div class="bg-gradient-to-br from-gray-700 to-gray-800 p-4 rounded-lg text-center border border-purple-900/30">
+                    <div class="text-sm text-purple-300"><i class="fas fa-trophy mr-1"></i> Progress</div>
+                    <div class="h-2 bg-gray-600 rounded-full mt-2 overflow-hidden">
+                        <div id="progressBar" class="progress-bar h-full rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Board -->
+            <div id="gameBoard" class="grid gap-3 mb-8"></div>
+
+            <!-- Game Message -->
+            <div id="message" class="text-center text-xl font-bold mb-4 hidden p-4 bg-gradient-to-r from-purple-900 to-purple-700 rounded-lg glow"></div>
+
+            <!-- Celebration Area -->
+            <div id="celebration" class="fixed inset-0 pointer-events-none z-10 hidden"></div>
+        </div>
+    </main>
+
+    <footer class="bg-gradient-to-r from-purple-900 to-purple-700 py-4 text-center text-purple-200 text-sm">
+        <p>© 2023 Memory Match Master | Test your memory skills!</p>
+    </footer>
+
+    <audio id="flipSound" src="https://assets.mixkit.co/sfx/preview/mixkit-card-flip-914.mp3" preload="auto"></audio>
+    <audio id="matchSound" src="https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3" preload="auto"></audio>
+    <audio id="mismatchSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3" preload="auto"></audio>
+    <audio id="winSound" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" preload="auto"></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game elements
+            const gameBoard = document.getElementById('gameBoard');
+            const newGameBtn = document.getElementById('newGameBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const difficultySelect = document.getElementById('difficulty');
+            const themeSelect = document.getElementById('theme');
+            const timerDisplay = document.getElementById('timer');
+            const movesDisplay = document.getElementById('moves');
+            const scoreDisplay = document.getElementById('score');
+            const messageDisplay = document.getElementById('message');
+            const celebrationArea = document.getElementById('celebration');
+            const progressBar = document.getElementById('progressBar');
+
+            // Sound elements
+            const flipSound = document.getElementById('flipSound');
+            const matchSound = document.getElementById('matchSound');
+            const mismatchSound = document.getElementById('mismatchSound');
+            const winSound = document.getElementById('winSound');
+
+            // Game state
+            let cards = [];
+            let flippedCards = [];
+            let matchedPairs = 0;
+            let moves = 0;
+            let score = 0;
+            let timer = null;
+            let seconds = 0;
+            let gameActive = false;
+            let boardSize = 4; // Default 4x4 (16 cards)
+            let totalPairs = 0;
+
+            // Enhanced themes with images
+            const themes = {
+                animals: [
+                    'https://cdn-icons-png.flaticon.com/512/616/616408.png',
+                    'https://cdn-icons-png.flaticon.com/512/616/616430.png',
+                    'https://cdn-icons-png.flaticon.com/512/3069/3069172.png',
+                    'https://cdn-icons-png.flaticon.com/512/3069/3069197.png',
+                    'https://cdn-icons-png.flaticon.com/512/3069/3069178.png',
+                    'https://cdn-icons-png.flaticon.com/512/3069/3069185.png',
+                    'https://cdn-icons-png.flaticon.com/512/3069/3069203.png',
+                    'https://cdn-icons-png.flaticon.com/512/3069/3069210.png'
+                ],
+                fruits: [
+                    'https://cdn-icons-png.flaticon.com/512/415/415682.png',
+                    'https://cdn-icons-png.flaticon.com/512/415/415733.png',
+                    'https://cdn-icons-png.flaticon.com/512/415/415714.png',
+                    'https://cdn-icons-png.flaticon.com/512/415/415733.png',
+                    'https://cdn-icons-png.flaticon.com/512/415/415682.png',
+                    'https://cdn-icons-png.flaticon.com/512/415/415733.png',
+                    'https://cdn-icons-png.flaticon.com/512/415/415714.png',
+                    'https://cdn-icons-png.flaticon.com/512/415/415733.png'
+                ],
+                flags: [
+                    'https://cdn-icons-png.flaticon.com/512/197/197484.png',
+                    'https://cdn-icons-png.flaticon.com/512/197/197374.png',
+                    'https://cdn-icons-png.flaticon.com/512/197/197430.png',
+                    'https://cdn-icons-png.flaticon.com/512/197/197560.png',
+                    'https://cdn-icons-png.flaticon.com/512/197/197375.png',
+                    'https://cdn-icons-png.flaticon.com/512/197/197604.png',
+                    'https://cdn-icons-png.flaticon.com/512/197/197507.png',
+                    'https://cdn-icons-png.flaticon.com/512/197/197386.png'
+                ],
+                emoji: [
+                    '😀', '😂', '😍', '😎', 
+                    '🤔', '😴', '😡', '🥳'
+                ],
+                vehicles: [
+                    'https://cdn-icons-png.flaticon.com/512/744/744465.png',
+                    'https://cdn-icons-png.flaticon.com/512/3663/3663378.png',
+                    'https://cdn-icons-png.flaticon.com/512/3663/3663371.png',
+                    'https://cdn-icons-png.flaticon.com/512/3663/3663385.png',
+                    'https://cdn-icons-png.flaticon.com/512/3663/3663392.png',
+                    'https://cdn-icons-png.flaticon.com/512/3663/3663406.png',
+                    'https://cdn-icons-png.flaticon.com/512/3663/3663413.png',
+                    'https://cdn-icons-png.flaticon.com/512/3663/3663420.png'
+                ]
+            };
+
+            // Initialize game
+            function initGame() {
+                // Clear previous game
+                clearInterval(timer);
+                gameBoard.innerHTML = '';
+                celebrationArea.innerHTML = '';
+                messageDisplay.classList.add('hidden');
+                
+                // Reset game state
+                cards = [];
+                flippedCards = [];
+                matchedPairs = 0;
+                moves = 0;
+                score = 0;
+                seconds = 0;
+                gameActive = true;
+                
+                // Update displays
+                movesDisplay.textContent = moves;
+                scoreDisplay.textContent = score;
+                timerDisplay.textContent = '00:00';
+                progressBar.style.width = '0%';
+                
+                // Set board size based on difficulty
+                const difficulty = difficultySelect.value;
+                if (difficulty === 'easy') boardSize = 4;
+                else if (difficulty === 'medium') boardSize = 6;
+                else if (difficulty === 'hard') boardSize = 8;
+                
+                // Set theme
+                const theme = themeSelect.value;
+                const icons = themes[theme];
+                
+                // Create pairs of cards
+                totalPairs = (boardSize * boardSize) / 2;
+                let cardValues = [];
+                
+                // Ensure we don't exceed available icons
+                const availableIcons = [...icons];
+                while (cardValues.length < totalPairs) {
+                    if (availableIcons.length === 0) {
+                        availableIcons.push(...icons);
+                    }
+                    const randomIndex = Math.floor(Math.random() * availableIcons.length);
+                    cardValues.push(availableIcons[randomIndex]);
+                    availableIcons.splice(randomIndex, 1);
+                }
+                
+                // Duplicate to create pairs and shuffle
+                cardValues = [...cardValues, ...cardValues];
+                cardValues = shuffleArray(cardValues);
+                
+                // Create game board
+                gameBoard.style.gridTemplateColumns = `repeat(${boardSize}, minmax(0, 1fr))`;
+                gameBoard.className = `grid gap-3 mb-8 grid-cols-${boardSize}`;
+                
+                // Create cards
+                cardValues.forEach((value, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'card h-20 md:h-28 lg:h-32 bg-gray-700 rounded-lg cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20';
+                    card.dataset.index = index;
+                    card.dataset.value = value;
+                    
+                    const cardInner = document.createElement('div');
+                    cardInner.className = 'card-inner w-full h-full';
+                    
+                    const cardFront = document.createElement('div');
+                    cardFront.className = 'card-face card-front';
+                    
+                    if (theme === 'emoji') {
+                        // For emoji theme, use text
+                        const emoji = document.createElement('div');
+                        emoji.className = 'text-4xl md:text-5xl';
+                        emoji.textContent = value;
+                        cardFront.appendChild(emoji);
+                    } else {
+                        // For other themes, use images
+                        const img = document.createElement('img');
+                        img.src = value;
+                        img.className = 'card-image';
+                        img.alt = 'Card image';
+                        cardFront.appendChild(img);
+                    }
+                    
+                    const cardBack = document.createElement('div');
+                    cardBack.className = 'card-face card-back flex items-center justify-center';
+                    
+                    const questionIcon = document.createElement('div');
+                    questionIcon.className = 'text-3xl text-purple-400';
+                    
+                    if (theme === 'emoji') {
+                        questionIcon.innerHTML = '<i class="fas fa-question"></i>';
+                    } else {
+                        const img = document.createElement('img');
+                        img.src = 'https://cdn-icons-png.flaticon.com/512/942/942748.png';
+                        img.className = 'card-image opacity-70';
+                        img.alt = 'Card back';
+                        questionIcon.appendChild(img);
+                    }
+                    
+                    cardBack.appendChild(questionIcon);
+                    cardInner.appendChild(cardBack);
+                    cardInner.appendChild(cardFront);
+                    card.appendChild(cardInner);
+                    
+                    card.addEventListener('click', () => flipCard(card));
+                    
+                    gameBoard.appendChild(card);
+                    cards.push(card);
+                });
+                
+                // Start timer
+                timer = setInterval(updateTimer, 1000);
+            }
+            
+            // Flip card
+            function flipCard(card) {
+                if (!gameActive || card.classList.contains('flipped') || card.classList.contains('matched') || flippedCards.length >= 2) {
+                    return;
+                }
+                
+                // Play flip sound
+                playSound('flip');
+                
+                card.classList.add('flipped');
+                flippedCards.push(card);
+                
+                // Check for match when two cards are flipped
+                if (flippedCards.length === 2) {
+                    moves++;
+                    movesDisplay.textContent = moves;
+                    
+                    // Calculate score based on time and moves
+                    score = Math.max(0, 1000 - (moves * 10) - (seconds * 2));
+                    scoreDisplay.textContent = score;
+                    
+                    checkForMatch();
+                }
+            }
+            
+            // Check for matching cards
+            function checkForMatch() {
+                const [card1, card2] = flippedCards;
+                
+                if (card1.dataset.value === card2.dataset.value) {
+                    // Match found
+                    playSound('match');
+                    
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    card1.classList.add('pulse');
+                    card2.classList.add('pulse');
+                    
+                    setTimeout(() => {
+                        card1.classList.remove('pulse');
+                        card2.classList.remove('pulse');
+                    }, 1000);
+                    
+                    matchedPairs++;
+                    flippedCards = [];
+                    
+                    // Update progress
+                    const progress = (matchedPairs / totalPairs) * 100;
+                    progressBar.style.width = `${progress}%`;
+                    
+                    // Check if game is complete
+                    if (matchedPairs === totalPairs) {
+                        endGame();
+                    }
+                } else {
+                    // No match
+                    setTimeout(() => {
+                        playSound('mismatch');
+                        card1.classList.remove('flipped');
+                        card2.classList.remove('flipped');
+                        flippedCards = [];
+                    }, 1000);
+                }
+            }
+            
+            // End game
+            function endGame() {
+                gameActive = false;
+                clearInterval(timer);
+                
+                // Calculate final score
+                const finalScore = score + (100 - seconds) * 5;
+                scoreDisplay.textContent = finalScore;
+                
+                // Show celebration
+                showCelebration();
+                playSound('win');
+                
+                // Show message
+                messageDisplay.textContent = `🎉 Congratulations! You completed the game in ${formatTime(seconds)} with ${moves} moves! Final Score: ${finalScore}`;
+                messageDisplay.classList.remove('hidden');
+                messageDisplay.classList.add('animate-bounce', 'text-white');
+            }
+            
+            // Update timer
+            function updateTimer() {
+                seconds++;
+                timerDisplay.textContent = formatTime(seconds);
+            }
+            
+            // Format time as MM:SS
+            function formatTime(seconds) {
+                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                return `${mins}:${secs}`;
+            }
+            
+            // Shuffle array
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+            
+            // Play sound
+            function playSound(type) {
+                try {
+                    switch(type) {
+                        case 'flip':
+                            flipSound.currentTime = 0;
+                            flipSound.play();
+                            break;
+                        case 'match':
+                            matchSound.currentTime = 0;
+                            matchSound.play();
+                            break;
+                        case 'mismatch':
+                            mismatchSound.currentTime = 0;
+                            mismatchSound.play();
+                            break;
+                        case 'win':
+                            winSound.currentTime = 0;
+                            winSound.play();
+                            break;
+                    }
+                } catch(e) {
+                    console.log('Error playing sound:', e);
+                }
+            }
+            
+            // Show celebration (confetti)
+            function showCelebration() {
+                celebrationArea.classList.remove('hidden');
+                
+                const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff', '#fff'];
+                const shapes = ['circle', 'square', 'triangle'];
+                
+                for (let i = 0; i < 150; i++) {
+                    const confetti = document.createElement('div');
+                    const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                    
+                    confetti.style.left = `${Math.random() * 100}%`;
+                    confetti.style.top = `-20px`;
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.width = `${Math.random() * 12 + 6}px`;
+                    confetti.style.height = `${Math.random() * 12 + 6}px`;
+                    confetti.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                    confetti.style.animationDelay = `${Math.random() * 2}s`;
+                    
+                    if (shape === 'circle') {
+                        confetti.style.borderRadius = '50%';
+                    } else if (shape === 'triangle') {
+                        confetti.style.width = '0';
+                        confetti.style.height = '0';
+                        confetti.style.backgroundColor = 'transparent';
+                        confetti.style.borderLeft = `${Math.random() * 10 + 5}px solid transparent`;
+                        confetti.style.borderRight = `${Math.random() * 10 + 5}px solid transparent`;
+                        confetti.style.borderBottom = `${Math.random() * 15 + 10}px solid ${colors[Math.floor(Math.random() * colors.length)]}`;
+                    }
+                    
+                    confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                    confetti.style.opacity = Math.random() * 0.7 + 0.3;
+                    
+                    celebrationArea.appendChild(confetti);
+                    
+                    // Remove confetti after animation
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 5000);
+                }
+            }
+            
+            // Event listeners
+            newGameBtn.addEventListener('click', initGame);
+            resetBtn.addEventListener('click', () => {
+                clearInterval(timer);
+                initGame();
+            });
+            
+            // Initialize on load
+            initGame();
+        });
+    </script>
+</body>
+</html>

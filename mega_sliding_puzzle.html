@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hylst Mega Sliding Puzzle Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes tileSlide {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes bonusPulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(255, 215, 0, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+        }
+        
+        @keyframes hintGlow {
+            0% { box-shadow: 0 0 5px 0 rgba(255, 255, 0, 0.7); }
+            50% { box-shadow: 0 0 20px 10px rgba(255, 255, 0, 0.9); }
+            100% { box-shadow: 0 0 5px 0 rgba(255, 255, 0, 0.7); }
+        }
+        
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .tile {
+            transition: all 0.3s ease;
+            user-select: none;
+            position: relative;
+        }
+        
+        .tile-move {
+            animation: tileSlide 0.3s ease;
+        }
+        
+        .bonus-tile {
+            animation: bonusPulse 2s infinite;
+            z-index: 10;
+        }
+        
+        .empty-tile {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .puzzle-container {
+            perspective: 1000px;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        .hint-tile {
+            animation: hintGlow 1.5s infinite;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            opacity: 0;
+            z-index: 100;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .tile-number {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            z-index: 5;
+        }
+        
+        .theme-dark {
+            --bg-color: #1a202c;
+            --text-color: #f7fafc;
+            --tile-bg: #2d3748;
+            --tile-text: #e2e8f0;
+            --empty-tile: rgba(255, 255, 255, 0.05);
+        }
+        
+        .theme-light {
+            --bg-color: #f7fafc;
+            --text-color: #1a202c;
+            --tile-bg: #ffffff;
+            --tile-text: #2d3748;
+            --empty-tile: rgba(0, 0, 0, 0.05);
+        }
+        
+        .theme-ocean {
+            --bg-color: #ebf8ff;
+            --text-color: #2b6cb0;
+            --tile-bg: #bee3f8;
+            --tile-text: #2c5282;
+            --empty-tile: rgba(66, 153, 225, 0.1);
+        }
+        
+        .theme-space {
+            --bg-color: #1a202c;
+            --text-color: #a0aec0;
+            --tile-bg: #2d3748;
+            --tile-text: #e2e8f0;
+            --empty-tile: rgba(113, 128, 150, 0.1);
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        
+        .tile-bg {
+            background-color: var(--tile-bg);
+            color: var(--tile-text);
+        }
+        
+        .empty-tile {
+            background-color: var(--empty-tile);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 theme-light">
+    <div class="max-w-6xl w-full">
+        <div class="flex flex-col md:flex-row gap-8 items-start justify-center">
+            <!-- Main Puzzle Area (4x larger) -->
+            <div class="flex-1">
+                <h1 class="text-5xl font-bold mb-4 text-center text-indigo-700">Hylst Mega Sliding Puzzle</h1>
+                
+                <div class="puzzle-container bg-white rounded-2xl shadow-2xl p-4 md:p-6 relative overflow-hidden mb-6">
+                    <div id="puzzle-board" class="grid gap-2 md:gap-3 relative"></div>
+                    <div id="win-message" class="absolute inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center hidden z-50">
+                        <h2 class="text-5xl font-bold text-white mb-6">Puzzle Solved!</h2>
+                        <div class="grid grid-cols-2 gap-6 mb-8">
+                            <div class="bg-indigo-600 rounded-xl p-4 text-center">
+                                <p class="text-sm text-indigo-100">Moves</p>
+                                <p id="final-moves" class="text-4xl font-bold text-white">0</p>
+                            </div>
+                            <div class="bg-indigo-600 rounded-xl p-4 text-center">
+                                <p class="text-sm text-indigo-100">Time</p>
+                                <p id="final-time" class="text-4xl font-bold text-white">00:00</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <button id="play-again" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-all transform hover:scale-105 flex items-center">
+                                <i class="fas fa-redo mr-2"></i> Play Again
+                            </button>
+                            <button id="share-score" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-all transform hover:scale-105 flex items-center">
+                                <i class="fas fa-share-alt mr-2"></i> Share
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile Controls -->
+                <div class="md:hidden grid grid-cols-3 gap-3 mb-6">
+                    <button id="move-up" class="bg-indigo-600 text-white p-4 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-arrow-up text-2xl"></i>
+                    </button>
+                    <button id="move-down" class="bg-indigo-600 text-white p-4 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-arrow-down text-2xl"></i>
+                    </button>
+                    <button id="move-left" class="bg-indigo-600 text-white p-4 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-arrow-left text-2xl"></i>
+                    </button>
+                    <button id="move-right" class="bg-indigo-600 text-white p-4 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-arrow-right text-2xl"></i>
+                    </button>
+                    <button id="mobile-hint" class="bg-yellow-500 text-white p-4 rounded-lg flex items-center justify-center col-span-3">
+                        <i class="fas fa-lightbulb mr-2"></i> Show Hint
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Control Panel -->
+            <div class="bg-white rounded-2xl shadow-xl p-6 w-full md:w-96 sticky top-4">
+                <div class="flex flex-col gap-6">
+                    <div class="text-center">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Game Controls</h2>
+                        
+                        <!-- Game Stats -->
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="bg-indigo-50 rounded-xl p-4">
+                                <p class="text-sm text-indigo-600 font-medium">Moves</p>
+                                <p id="move-counter" class="text-4xl font-bold text-indigo-800">0</p>
+                            </div>
+                            <div class="bg-indigo-50 rounded-xl p-4">
+                                <p class="text-sm text-indigo-600 font-medium">Time</p>
+                                <p id="timer" class="text-4xl font-bold text-indigo-800">00:00</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Bonus Progress -->
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-600 mb-1">Next Bonus Tile</p>
+                            <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
+                                <div id="bonus-progress" class="h-full bg-yellow-500 progress-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Game Settings -->
+                    <div class="space-y-4">
+                        <div>
+                            <label for="puzzle-size" class="block text-sm font-medium text-gray-700 mb-1">Puzzle Size</label>
+                            <select id="puzzle-size" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="3">3x3 (Easy)</option>
+                                <option value="4">4x4 (Medium)</option>
+                                <option value="5">5x5 (Hard)</option>
+                                <option value="6">6x6 (Expert)</option>
+                                <option value="7">7x7 (Master)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="image-select" class="block text-sm font-medium text-gray-700 mb-1">Puzzle Image</label>
+                            <select id="image-select" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="nature">Nature</option>
+                                <option value="animals">Animals</option>
+                                <option value="art">Art</option>
+                                <option value="space">Space</option>
+                                <option value="food">Food</option>
+                                <option value="custom">Custom Image</option>
+                            </select>
+                        </div>
+                        
+                        <div id="custom-image-container" class="hidden">
+                            <label for="custom-image" class="block text-sm font-medium text-gray-700 mb-1">Custom Image URL</label>
+                            <input type="text" id="custom-image" placeholder="https://example.com/image.jpg" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        
+                        <div>
+                            <label for="theme-select" class="block text-sm font-medium text-gray-700 mb-1">Theme</label>
+                            <select id="theme-select" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                                <option value="ocean">Ocean</option>
+                                <option value="space">Space</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="new-game" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center">
+                            <i class="fas fa-plus-circle mr-2"></i> New Game
+                        </button>
+                        <button id="hint-button" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center">
+                            <i class="fas fa-lightbulb mr-2"></i> Hint
+                        </button>
+                        <button id="auto-solve" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center col-span-2">
+                            <i class="fas fa-robot mr-2"></i> Auto-Solve
+                        </button>
+                    </div>
+                    
+                    <!-- Difficulty Info -->
+                    <div class="bg-blue-50 rounded-lg p-4 text-sm text-blue-800">
+                        <p class="font-medium mb-1">Difficulty Tips:</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Smaller puzzles are easier</li>
+                            <li>Use hints when stuck</li>
+                            <li>Bonus tiles reduce moves</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game state
+            let puzzleSize = 4;
+            let board = [];
+            let emptyPos = { row: 0, col: 0 };
+            let moves = 0;
+            let seconds = 0;
+            let timerInterval;
+            let isGameActive = false;
+            let bonusTileValue = null;
+            let bonusActive = false;
+            let bonusProgress = 0;
+            let draggedTile = null;
+            let autoSolveInterval = null;
+            let lastBonusTime = 0;
+            
+            // DOM elements
+            const puzzleBoard = document.getElementById('puzzle-board');
+            const moveCounter = document.getElementById('move-counter');
+            const timer = document.getElementById('timer');
+            const puzzleSizeSelect = document.getElementById('puzzle-size');
+            const imageSelect = document.getElementById('image-select');
+            const customImageContainer = document.getElementById('custom-image-container');
+            const customImageInput = document.getElementById('custom-image');
+            const newGameButton = document.getElementById('new-game');
+            const hintButton = document.getElementById('hint-button');
+            const winMessage = document.getElementById('win-message');
+            const finalMoves = document.getElementById('final-moves');
+            const finalTime = document.getElementById('final-time');
+            const playAgainButton = document.getElementById('play-again');
+            const shareScoreButton = document.getElementById('share-score');
+            const bonusProgressBar = document.getElementById('bonus-progress');
+            const themeSelect = document.getElementById('theme-select');
+            const autoSolveButton = document.getElementById('auto-solve');
+            const moveUpButton = document.getElementById('move-up');
+            const moveDownButton = document.getElementById('move-down');
+            const moveLeftButton = document.getElementById('move-left');
+            const moveRightButton = document.getElementById('move-right');
+            const mobileHintButton = document.getElementById('mobile-hint');
+            
+            // Image options
+            const imageOptions = {
+                nature: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
+                animals: 'https://images.unsplash.com/photo-1474511320723-9a56873867b5',
+                art: 'https://images.unsplash.com/photo-1541963463532-d68292c34b19',
+                space: 'https://images.unsplash.com/photo-1454789548928-9efd52dc4031',
+                food: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836',
+                custom: ''
+            };
+            
+            // Event listeners
+            puzzleSizeSelect.addEventListener('change', () => {
+                puzzleSize = parseInt(puzzleSizeSelect.value);
+                if (isGameActive) {
+                    startNewGame();
+                }
+            });
+            
+            imageSelect.addEventListener('change', () => {
+                if (imageSelect.value === 'custom') {
+                    customImageContainer.classList.remove('hidden');
+                } else {
+                    customImageContainer.classList.add('hidden');
+                    if (isGameActive) {
+                        startNewGame();
+                    }
+                }
+            });
+            
+            customImageInput.addEventListener('change', () => {
+                if (isGameActive) {
+                    startNewGame();
+                }
+            });
+            
+            themeSelect.addEventListener('change', () => {
+                document.body.className = `min-h-screen flex flex-col items-center justify-center p-4 theme-${themeSelect.value}`;
+            });
+            
+            newGameButton.addEventListener('click', startNewGame);
+            hintButton.addEventListener('click', showHint);
+            mobileHintButton.addEventListener('click', showHint);
+            playAgainButton.addEventListener('click', startNewGame);
+            shareScoreButton.addEventListener('click', shareScore);
+            autoSolveButton.addEventListener('click', toggleAutoSolve);
+            
+            // Mobile controls
+            moveUpButton.addEventListener('click', () => moveEmptySpace('up'));
+            moveDownButton.addEventListener('click', () => moveEmptySpace('down'));
+            moveLeftButton.addEventListener('click', () => moveEmptySpace('left'));
+            moveRightButton.addEventListener('click', () => moveEmptySpace('right'));
+            
+            // Initialize game
+            startNewGame();
+            
+            function startNewGame() {
+                // Reset game state
+                clearInterval(timerInterval);
+                if (autoSolveInterval) {
+                    clearInterval(autoSolveInterval);
+                    autoSolveInterval = null;
+                    autoSolveButton.innerHTML = '<i class="fas fa-robot mr-2"></i> Auto-Solve';
+                }
+                
+                moves = 0;
+                seconds = 0;
+                isGameActive = true;
+                bonusActive = false;
+                bonusTileValue = null;
+                bonusProgress = 0;
+                lastBonusTime = 0;
+                
+                // Update UI
+                moveCounter.textContent = '0';
+                timer.textContent = '00:00';
+                bonusProgressBar.style.width = '0%';
+                winMessage.classList.add('hidden');
+                
+                // Initialize board
+                initializeBoard();
+                renderBoard();
+                
+                // Shuffle the board
+                shuffleBoard();
+                
+                // Start timer
+                timerInterval = setInterval(updateTimer, 1000);
+            }
+            
+            function initializeBoard() {
+                board = [];
+                let counter = 1;
+                
+                for (let row = 0; row < puzzleSize; row++) {
+                    board[row] = [];
+                    for (let col = 0; col < puzzleSize; col++) {
+                        if (row === puzzleSize - 1 && col === puzzleSize - 1) {
+                            board[row][col] = 0; // Empty tile
+                            emptyPos = { row, col };
+                        } else {
+                            board[row][col] = counter++;
+                        }
+                    }
+                }
+            }
+            
+            function renderBoard() {
+                puzzleBoard.innerHTML = '';
+                puzzleBoard.className = `grid gap-2 md:gap-3 relative`;
+                puzzleBoard.style.gridTemplateColumns = `repeat(${puzzleSize}, minmax(0, 1fr))`;
+                
+                const imageUrl = imageSelect.value === 'custom' && customImageInput.value 
+                    ? customImageInput.value 
+                    : imageOptions[imageSelect.value];
+                
+                for (let row = 0; row < puzzleSize; row++) {
+                    for (let col = 0; col < puzzleSize; col++) {
+                        const value = board[row][col];
+                        const tile = document.createElement('div');
+                        
+                        // Set tile size based on puzzle size
+                        const tileSize = puzzleSize <= 4 ? 'h-32' : 
+                                        puzzleSize <= 6 ? 'h-24' : 'h-20';
+                        
+                        if (value === 0) {
+                            tile.className = `empty-tile tile rounded-lg ${tileSize}`;
+                        } else {
+                            tile.className = `tile tile-bg rounded-lg flex items-center justify-center font-bold cursor-pointer relative overflow-hidden ${tileSize}`;
+                            
+                            if (value === bonusTileValue) {
+                                tile.classList.add('bonus-tile');
+                                tile.style.backgroundColor = 'gold';
+                            }
+                            
+                            // Add image background if available
+                            if (imageUrl) {
+                                const imgDiv = document.createElement('div');
+                                imgDiv.className = 'absolute inset-0 bg-cover bg-center opacity-80';
+                                imgDiv.style.backgroundImage = `url(${imageUrl})`;
+                                
+                                // Calculate background position for the tile
+                                const size = puzzleSize;
+                                const tileSize = 100 / (size - 1);
+                                const originalRow = Math.floor((value - 1) / size);
+                                const originalCol = (value - 1) % size;
+                                const xPos = -originalCol * tileSize;
+                                const yPos = -originalRow * tileSize;
+                                
+                                imgDiv.style.backgroundPosition = `${xPos}% ${yPos}%`;
+                                imgDiv.style.backgroundSize = `${size * 100}%`;
+                                tile.appendChild(imgDiv);
+                            }
+                            
+                            // Add tile number (always visible but smaller on larger puzzles)
+                            const numberSpan = document.createElement('div');
+                            numberSpan.className = 'tile-number';
+                            numberSpan.textContent = value;
+                            tile.appendChild(numberSpan);
+                            
+                            // Drag and drop events
+                            tile.draggable = true;
+                            tile.addEventListener('dragstart', handleDragStart);
+                            tile.addEventListener('dragover', handleDragOver);
+                            tile.addEventListener('drop', handleDrop);
+                            tile.addEventListener('dragend', handleDragEnd);
+                            
+                            // Click/touch events
+                            tile.addEventListener('click', () => handleTileClick(row, col));
+                            tile.addEventListener('touchstart', (e) => {
+                                e.preventDefault();
+                                handleTileClick(row, col);
+                            }, { passive: false });
+                        }
+                        
+                        tile.dataset.row = row;
+                        tile.dataset.col = col;
+                        tile.dataset.value = value;
+                        puzzleBoard.appendChild(tile);
+                    }
+                }
+            }
+            
+            function shuffleBoard() {
+                // Perform random valid moves to shuffle the board
+                const shuffleMoves = puzzleSize * 100;
+                let lastMove = null;
+                
+                for (let i = 0; i < shuffleMoves; i++) {
+                    const directions = [];
+                    const { row, col } = emptyPos;
+                    
+                    // Determine possible moves
+                    if (row > 0 && lastMove !== 'down') directions.push('up');
+                    if (row < puzzleSize - 1 && lastMove !== 'up') directions.push('down');
+                    if (col > 0 && lastMove !== 'right') directions.push('left');
+                    if (col < puzzleSize - 1 && lastMove !== 'left') directions.push('right');
+                    
+                    // Randomly select a direction
+                    if (directions.length > 0) {
+                        const direction = directions[Math.floor(Math.random() * directions.length)];
+                        lastMove = direction;
+                        
+                        switch (direction) {
+                            case 'up':
+                                swapTiles(row - 1, col);
+                                break;
+                            case 'down':
+                                swapTiles(row + 1, col);
+                                break;
+                            case 'left':
+                                swapTiles(row, col - 1);
+                                break;
+                            case 'right':
+                                swapTiles(row, col + 1);
+                                break;
+                        }
+                    }
+                }
+                
+                // Re-render after shuffle
+                setTimeout(() => {
+                    renderBoard();
+                }, 100);
+            }
+            
+            function handleTileClick(row, col) {
+                if (!isGameActive) return;
+                
+                // Check if the clicked tile is adjacent to the empty space
+                if ((Math.abs(row - emptyPos.row) === 1 && col === emptyPos.col) || 
+                    (Math.abs(col - emptyPos.col) === 1 && row === emptyPos.row)) {
+                    swapTiles(row, col);
+                } else {
+                    // Shake animation for invalid moves
+                    const tile = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    if (tile) {
+                        tile.classList.add('shake');
+                        setTimeout(() => {
+                            tile.classList.remove('shake');
+                        }, 500);
+                    }
+                }
+            }
+            
+            function swapTiles(row, col) {
+                if (!isGameActive) return;
+                
+                // Check if the move is valid
+                if ((Math.abs(row - emptyPos.row) === 1 && col === emptyPos.col) || 
+                    (Math.abs(col - emptyPos.col) === 1 && row === emptyPos.row)) {
+                    
+                    // Check if this is a bonus tile
+                    const isBonusTile = board[row][col] === bonusTileValue;
+                    
+                    // Swap tiles in the board array
+                    board[emptyPos.row][emptyPos.col] = board[row][col];
+                    board[row][col] = 0;
+                    
+                    // Update empty position
+                    emptyPos = { row, col };
+                    
+                    // Increment moves
+                    moves++;
+                    moveCounter.textContent = moves;
+                    
+                    // Re-render the board with animation
+                    renderBoard();
+                    
+                    // Add move animation to the moved tile
+                    const movedTile = document.querySelector(`[data-value="${board[emptyPos.row][emptyPos.col]}"]`);
+                    if (movedTile) {
+                        movedTile.classList.add('tile-move');
+                        setTimeout(() => {
+                            movedTile.classList.remove('tile-move');
+                        }, 300);
+                    }
+                    
+                    // Handle bonus tile collection
+                    if (isBonusTile) {
+                        handleBonusCollection();
+                    }
+                    
+                    // Check if puzzle is solved
+                    if (checkWin()) {
+                        gameWon();
+                    }
+                }
+            }
+            
+            function moveEmptySpace(direction) {
+                if (!isGameActive) return;
+                
+                const { row, col } = emptyPos;
+                let targetRow = row, targetCol = col;
+                
+                switch (direction) {
+                    case 'up':
+                        if (row < puzzleSize - 1) targetRow = row + 1;
+                        break;
+                    case 'down':
+                        if (row > 0) targetRow = row - 1;
+                        break;
+                    case 'left':
+                        if (col < puzzleSize - 1) targetCol = col + 1;
+                        break;
+                    case 'right':
+                        if (col > 0) targetCol = col - 1;
+                        break;
+                }
+                
+                if (targetRow !== row || targetCol !== col) {
+                    swapTiles(targetRow, targetCol);
+                }
+            }
+            
+            function checkWin() {
+                let counter = 1;
+                for (let row = 0; row < puzzleSize; row++) {
+                    for (let col = 0; col < puzzleSize; col++) {
+                        if (row === puzzleSize - 1 && col === puzzleSize - 1) {
+                            if (board[row][col] !== 0) return false;
+                        } else {
+                            if (board[row][col] !== counter++) return false;
+                        }
+                    }
+                }
+                return true;
+            }
+            
+            function gameWon() {
+                isGameActive = false;
+                clearInterval(timerInterval);
+                if (autoSolveInterval) {
+                    clearInterval(autoSolveInterval);
+                    autoSolveInterval = null;
+                    autoSolveButton.innerHTML = '<i class="fas fa-robot mr-2"></i> Auto-Solve';
+                }
+                
+                winMessage.classList.remove('hidden');
+                finalMoves.textContent = moves;
+                finalTime.textContent = timer.textContent;
+                
+                // Create confetti effect
+                createConfetti();
+                
+                // Save high score
+                saveHighScore();
+            }
+            
+            function createConfetti() {
+                const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff', '#f90', '#09f'];
+                const container = puzzleBoard.getBoundingClientRect();
+                
+                for (let i = 0; i < 150; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.left = Math.random() * container.width + 'px';
+                    confetti.style.top = Math.random() * container.height + 'px';
+                    confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                    puzzleBoard.appendChild(confetti);
+                    
+                    // Animate confetti
+                    const angle = Math.random() * Math.PI * 2;
+                    const velocity = 5 + Math.random() * 15;
+                    const rotation = Math.random() * 360;
+                    const rotationSpeed = Math.random() * 10 - 5;
+                    const size = 8 + Math.random() * 10;
+                    
+                    confetti.style.width = `${size}px`;
+                    confetti.style.height = `${size}px`;
+                    
+                    let posX = 0;
+                    let posY = 0;
+                    let opacity = 1;
+                    let scale = 0.5 + Math.random();
+                    
+                    const animate = () => {
+                        posX += Math.cos(angle) * velocity;
+                        posY += Math.sin(angle) * velocity + 1; // Add gravity
+                        rotation += rotationSpeed;
+                        opacity -= 0.01;
+                        
+                        confetti.style.transform = `translate(${posX}px, ${posY}px) rotate(${rotation}deg) scale(${scale})`;
+                        confetti.style.opacity = opacity;
+                        
+                        if (opacity > 0) {
+                            requestAnimationFrame(animate);
+                        } else {
+                            confetti.remove();
+                        }
+                    };
+                    
+                    setTimeout(() => {
+                        requestAnimationFrame(animate);
+                    }, i * 10);
+                }
+            }
+            
+            function updateTimer() {
+                if (!isGameActive) return;
+                
+                seconds++;
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                timer.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+                
+                // Update bonus progress
+                if (!bonusActive) {
+                    const timeSinceLastBonus = seconds - lastBonusTime;
+                    const bonusInterval = 30; // seconds between bonuses
+                    
+                    if (timeSinceLastBonus >= bonusInterval) {
+                        addBonusTile();
+                        lastBonusTime = seconds;
+                        bonusProgress = 0;
+                    } else {
+                        bonusProgress = (timeSinceLastBonus / bonusInterval) * 100;
+                    }
+                    
+                    bonusProgressBar.style.width = `${bonusProgress}%`;
+                }
+            }
+            
+            function addBonusTile() {
+                if (bonusActive || !isGameActive) return;
+                
+                // Find a random tile that's not the empty one
+                let row, col;
+                do {
+                    row = Math.floor(Math.random() * puzzleSize);
+                    col = Math.floor(Math.random() * puzzleSize);
+                } while (board[row][col] === 0);
+                
+                bonusTileValue = board[row][col];
+                bonusActive = true;
+                renderBoard();
+                
+                // Bonus tile expires after 15 seconds
+                setTimeout(() => {
+                    if (bonusActive) {
+                        bonusActive = false;
+                        bonusTileValue = null;
+                        lastBonusTime = seconds;
+                        renderBoard();
+                    }
+                }, 15000);
+            }
+            
+            function handleBonusCollection() {
+                if (!bonusActive) return;
+                
+                // Add bonus effect (reduce moves by 5% of total moves, min 3)
+                const bonusReduction = Math.max(3, Math.floor(moves * 0.05));
+                moves = Math.max(0, moves - bonusReduction);
+                moveCounter.textContent = moves;
+                
+                // Flash the move counter
+                moveCounter.classList.add('text-yellow-500', 'text-5xl');
+                setTimeout(() => {
+                    moveCounter.classList.remove('text-yellow-500', 'text-5xl');
+                }, 1000);
+                
+                bonusActive = false;
+                bonusTileValue = null;
+                lastBonusTime = seconds;
+                
+                // Show bonus message
+                const bonusMessage = document.createElement('div');
+                bonusMessage.className = 'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg z-50 fade-in';
+                bonusMessage.textContent = `Bonus! -${bonusReduction} moves`;
+                puzzleBoard.appendChild(bonusMessage);
+                
+                setTimeout(() => {
+                    bonusMessage.remove();
+                }, 2000);
+            }
+            
+            function showHint() {
+                if (!isGameActive) return;
+                
+                // Find a tile that can be moved
+                for (let row = 0; row < puzzleSize; row++) {
+                    for (let col = 0; col < puzzleSize; col++) {
+                        if (board[row][col] !== 0 && 
+                            ((Math.abs(row - emptyPos.row) === 1 && col === emptyPos.col) || 
+                             (Math.abs(col - emptyPos.col) === 1 && row === emptyPos.row))) {
+                            
+                            // Highlight the tile
+                            const tile = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                            if (tile) {
+                                tile.classList.add('hint-tile');
+                                setTimeout(() => {
+                                    tile.classList.remove('hint-tile');
+                                }, 2000);
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+            
+            function toggleAutoSolve() {
+                if (autoSolveInterval) {
+                    clearInterval(autoSolveInterval);
+                    autoSolveInterval = null;
+                    autoSolveButton.innerHTML = '<i class="fas fa-robot mr-2"></i> Auto-Solve';
+                    return;
+                }
+                
+                if (!isGameActive) return;
+                
+                autoSolveButton.innerHTML = '<i class="fas fa-stop mr-2"></i> Stop';
+                
+                // Simple auto-solver that makes random valid moves
+                autoSolveInterval = setInterval(() => {
+                    if (!isGameActive) {
+                        clearInterval(autoSolveInterval);
+                        autoSolveInterval = null;
+                        return;
+                    }
+                    
+                    const directions = [];
+                    const { row, col } = emptyPos;
+                    
+                    // Determine possible moves
+                    if (row > 0) directions.push('up');
+                    if (row < puzzleSize - 1) directions.push('down');
+                    if (col > 0) directions.push('left');
+                    if (col < puzzleSize - 1) directions.push('right');
+                    
+                    // Randomly select a direction
+                    if (directions.length > 0) {
+                        const direction = directions[Math.floor(Math.random() * directions.length)];
+                        
+                        switch (direction) {
+                            case 'up':
+                                swapTiles(row - 1, col);
+                                break;
+                            case 'down':
+                                swapTiles(row + 1, col);
+                                break;
+                            case 'left':
+                                swapTiles(row, col - 1);
+                                break;
+                            case 'right':
+                                swapTiles(row, col + 1);
+                                break;
+                        }
+                    }
+                }, 300);
+            }
+            
+            function saveHighScore() {
+                // In a real app, you would save to localStorage or a server
+                console.log(`New high score: ${moves} moves in ${timer.textContent}`);
+            }
+            
+            function shareScore() {
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'I solved the Mega Sliding Puzzle!',
+                        text: `I completed the ${puzzleSize}x${puzzleSize} puzzle in ${moves} moves and ${timer.textContent} time!`,
+                        url: window.location.href
+                    }).catch(console.error);
+                } else {
+                    alert(`Share your achievement: I completed the ${puzzleSize}x${puzzleSize} puzzle in ${moves} moves and ${timer.textContent} time!`);
+                }
+            }
+            
+            // Drag and drop functions
+            function handleDragStart(e) {
+                draggedTile = this;
+                e.dataTransfer.setData('text/plain', this.dataset.value);
+                setTimeout(() => {
+                    this.classList.add('opacity-50');
+                }, 0);
+            }
+            
+            function handleDragOver(e) {
+                e.preventDefault();
+            }
+            
+            function handleDrop(e) {
+                e.preventDefault();
+                const value = e.dataTransfer.getData('text/plain');
+                const targetRow = parseInt(this.dataset.row);
+                const targetCol = parseInt(this.dataset.col);
+                
+                // Check if the drop target is adjacent to the empty space
+                if ((Math.abs(targetRow - emptyPos.row) === 1 && targetCol === emptyPos.col) || 
+                    (Math.abs(targetCol - emptyPos.col) === 1 && targetRow === emptyPos.row)) {
+                    swapTiles(targetRow, targetCol);
+                }
+            }
+            
+            function handleDragEnd() {
+                this.classList.remove('opacity-50');
+                draggedTile = null;
+            }
+        });
+    </script>
+</body>
+</html>
