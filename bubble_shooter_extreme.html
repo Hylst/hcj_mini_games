@@ -75,6 +75,16 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
+        
+        .cannon-flash {
+            animation: cannonFlash 0.2s ease-out;
+        }
+        
+        @keyframes cannonFlash {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+        }
     </style>
 </head>
 <body class="flex items-center justify-center h-screen bg-gray-900 text-white">
@@ -154,11 +164,16 @@
         </div>
     </div>
 
+    <!-- Audio Elements -->
     <audio id="shoot-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-short-laser-gun-shot-1670.mp3" preload="auto"></audio>
     <audio id="pop-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3" preload="auto"></audio>
     <audio id="combo-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3" preload="auto"></audio>
     <audio id="game-over-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3" preload="auto"></audio>
     <audio id="win-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" preload="auto"></audio>
+    <audio id="bounce-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-ball-bouncing-2041.mp3" preload="auto"></audio>
+    <audio id="click-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3" preload="auto"></audio>
+    <audio id="attach-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3" preload="auto"></audio>
+    <audio id="danger-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-unfair-game-notification-958.mp3" preload="auto"></audio>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -188,6 +203,10 @@
             const comboSound = document.getElementById('combo-sound');
             const gameOverSound = document.getElementById('game-over-sound');
             const winSound = document.getElementById('win-sound');
+            const bounceSound = document.getElementById('bounce-sound');
+            const clickSound = document.getElementById('click-sound');
+            const attachSound = document.getElementById('attach-sound');
+            const dangerSound = document.getElementById('danger-sound');
             
             // Game variables
             let score = 0;
@@ -200,6 +219,7 @@
             let nextBubbleColor = '';
             let cannonAngle = 90;
             let aimLine = null;
+            let moveLeft, moveRight;
             
             // Bubble colors
             const colors = [
@@ -234,6 +254,12 @@
                 
                 // Hide game over screen
                 gameOverScreen.classList.add('hidden');
+                
+                // Reset game over title
+                const gameOverTitle = gameOverScreen.querySelector('h1');
+                gameOverTitle.textContent = 'GAME OVER';
+                gameOverTitle.classList.remove('text-green-500');
+                gameOverTitle.classList.add('text-red-500');
                 
                 // Update displays
                 updateScore();
@@ -322,6 +348,10 @@
                 shootSound.currentTime = 0;
                 shootSound.play();
                 
+                // Add cannon flash effect
+                cannon.classList.add('cannon-flash');
+                setTimeout(() => cannon.classList.remove('cannon-flash'), 200);
+                
                 const bubble = document.createElement('div');
                 bubble.className = `bubble absolute ${currentBubbleColor}`;
                 bubble.style.width = `${bubbleRadius * 2}px`;
@@ -358,6 +388,9 @@
                     // Check for collisions with walls
                     if (posX - bubbleRadius <= 0 || posX + bubbleRadius >= boardWidth) {
                         // Bounce off walls
+                        bounceSound.currentTime = 0;
+                        bounceSound.play();
+                        
                         const newAngleRad = Math.atan2(velocityY, -velocityX);
                         const newVelocityX = Math.cos(newAngleRad) * 10;
                         const newVelocityY = -Math.sin(newAngleRad) * 10;
@@ -368,6 +401,8 @@
                     
                     // Check for collisions with ceiling
                     if (posY - bubbleRadius <= 0) {
+                        attachSound.currentTime = 0;
+                        attachSound.play();
                         attachBubble(posX, posY);
                         return;
                     }
@@ -375,6 +410,8 @@
                     // Check for collisions with other bubbles
                     const collidedBubble = checkCollision(posX, posY);
                     if (collidedBubble) {
+                        attachSound.currentTime = 0;
+                        attachSound.play();
                         attachBubble(posX, posY, collidedBubble);
                         return;
                     }
@@ -751,6 +788,8 @@
                             // Bubble in danger zone
                             if (row >= rows - 1) {
                                 // Bubble at the very bottom - lose life
+                                dangerSound.currentTime = 0;
+                                dangerSound.play();
                                 loseLife();
                             }
                             return;
@@ -882,11 +921,14 @@
                 // Button controls
                 leftBtn.addEventListener('mousedown', () => {
                     if (!gameActive) return;
+                    clickSound.currentTime = 0;
+                    clickSound.play();
+                    
                     cannonAngle = Math.min(175, cannonAngle + 2);
                     updateCannonPosition();
                     updateAimLine();
                     
-                    const moveLeft = () => {
+                    moveLeft = () => {
                         cannonAngle = Math.min(175, cannonAngle + 2);
                         updateCannonPosition();
                         updateAimLine();
@@ -908,11 +950,14 @@
                 
                 rightBtn.addEventListener('mousedown', () => {
                     if (!gameActive) return;
+                    clickSound.currentTime = 0;
+                    clickSound.play();
+                    
                     cannonAngle = Math.max(5, cannonAngle - 2);
                     updateCannonPosition();
                     updateAimLine();
                     
-                    const moveRight = () => {
+                    moveRight = () => {
                         cannonAngle = Math.max(5, cannonAngle - 2);
                         updateCannonPosition();
                         updateAimLine();
@@ -989,12 +1034,16 @@
             
             // Start game
             startBtn.addEventListener('click', () => {
+                clickSound.currentTime = 0;
+                clickSound.play();
                 startScreen.classList.add('hidden');
                 initGame();
             });
             
             // Restart game
             restartBtn.addEventListener('click', () => {
+                clickSound.currentTime = 0;
+                clickSound.play();
                 initGame();
             });
             
