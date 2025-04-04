@@ -151,6 +151,40 @@
             transition: opacity 0.3s;
             z-index: 100;
         }
+        
+        .power-up-indicator {
+            position: absolute;
+            bottom: 180px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            z-index: 10;
+        }
+        
+        .power-up-badge {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+        
+        .bomb-badge {
+            background: linear-gradient(to bottom right, #f59e0b, #ef4444);
+        }
+        
+        .color-changer-badge {
+            background: linear-gradient(to bottom right, #8b5cf6, #3b82f6);
+        }
+        
+        .multi-shot-badge {
+            background: linear-gradient(to bottom right, #10b981, #06b6d4);
+        }
     </style>
 </head>
 <body class="flex items-center justify-center h-screen text-white p-4">
@@ -173,6 +207,22 @@
             <div class="flex items-center space-x-2">
                 <i class="fas fa-heart text-red-500"></i>
                 <span id="lives" class="font-bold text-xl">3</span>
+            </div>
+        </div>
+        
+        <!-- Power Up Indicators -->
+        <div class="power-up-indicator">
+            <div id="bomb-indicator" class="power-up-badge bomb-badge hidden" title="Bomb Shots Remaining">
+                <i class="fas fa-bomb"></i>
+                <span id="bomb-count" class="ml-1">0</span>
+            </div>
+            <div id="color-changer-indicator" class="power-up-badge color-changer-badge hidden" title="Color Changer Shots Remaining">
+                <i class="fas fa-paint-brush"></i>
+                <span id="color-changer-count" class="ml-1">0</span>
+            </div>
+            <div id="multi-shot-indicator" class="power-up-badge multi-shot-badge hidden" title="Multi-Shots Remaining">
+                <i class="fas fa-expand"></i>
+                <span id="multi-shot-count" class="ml-1">0</span>
             </div>
         </div>
         
@@ -276,6 +326,14 @@
             const levelNumber = document.getElementById('level-number');
             const dangerZone = document.querySelector('.danger-zone');
             
+            // Power-up indicators
+            const bombIndicator = document.getElementById('bomb-indicator');
+            const colorChangerIndicator = document.getElementById('color-changer-indicator');
+            const multiShotIndicator = document.getElementById('multi-shot-indicator');
+            const bombCount = document.getElementById('bomb-count');
+            const colorChangerCount = document.getElementById('color-changer-count');
+            const multiShotCount = document.getElementById('multi-shot-count');
+            
             // Buttons
             const leftBtn = document.getElementById('left-btn');
             const rightBtn = document.getElementById('right-btn');
@@ -366,6 +424,7 @@
                 updateLives();
                 updateCombo();
                 updateLevel();
+                updatePowerUpIndicators();
                 
                 // Generate initial bubbles
                 generateBubbles();
@@ -390,6 +449,33 @@
                 
                 // Set up tooltips
                 setupTooltips();
+            }
+            
+            // Update power-up indicators
+            function updatePowerUpIndicators() {
+                // Bomb indicator
+                if (powerUps.bomb > 0) {
+                    bombIndicator.classList.remove('hidden');
+                    bombCount.textContent = powerUps.bomb;
+                } else {
+                    bombIndicator.classList.add('hidden');
+                }
+                
+                // Color changer indicator
+                if (powerUps.colorChanger > 0) {
+                    colorChangerIndicator.classList.remove('hidden');
+                    colorChangerCount.textContent = powerUps.colorChanger;
+                } else {
+                    colorChangerIndicator.classList.add('hidden');
+                }
+                
+                // Multi-shot indicator
+                if (powerUps.multiShot > 0) {
+                    multiShotIndicator.classList.remove('hidden');
+                    multiShotCount.textContent = powerUps.multiShot;
+                } else {
+                    multiShotIndicator.classList.add('hidden');
+                }
             }
             
             // Set up tooltips
@@ -562,6 +648,9 @@
                             break;
                     }
                     
+                    // Update indicators
+                    updatePowerUpIndicators();
+                    
                     // Generate new bubble immediately since power-up is activated
                     generateNewBubble();
                     isShooting = false;
@@ -572,6 +661,8 @@
                 if (powerUps.multiShot > 0) {
                     shootMultipleBubbles();
                     powerUps.multiShot--;
+                    updatePowerUpIndicators();
+                    
                     if (powerUps.multiShot <= 0) {
                         // Flash cannon to indicate power-up ending
                         cannon.classList.add('bg-yellow-400');
@@ -607,6 +698,7 @@
                 if (powerUps.colorChanger > 0) {
                     bubble.className = `bubble absolute bg-white`;
                     powerUps.colorChanger--;
+                    updatePowerUpIndicators();
                 } else {
                     bubble.className = `bubble absolute ${currentBubbleColor}`;
                 }
@@ -744,6 +836,8 @@
                 if (powerUps.bomb > 0) {
                     detonateBomb(row, col);
                     powerUps.bomb--;
+                    updatePowerUpIndicators();
+                    
                     if (powerUps.bomb <= 0) {
                         // Flash cannon to indicate power-up ending
                         cannon.classList.add('bg-yellow-400');
@@ -989,8 +1083,8 @@
                     const bubbles = document.querySelectorAll('.bubble');
                     bubbles.forEach(bubble => {
                         if (bubble.dataset.row == row && bubble.dataset.col == col) {
-                            bubble.classList.add('bubble-popped');
-                            setTimeout(() => bubble.remove(), 300);
+                        bubble.classList.add('bubble-popped');
+                        setTimeout(() => bubble.remove(), 300);
                         }
                     });
                 });
