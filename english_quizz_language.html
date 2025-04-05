@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Quiz Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .pulse {
+            animation: pulse 0.5s ease-in-out;
+        }
+        .shake {
+            animation: shake 0.3s ease-in-out;
+        }
+        .progress-bar {
+            transition: width 0.3s ease-out;
+        }
+        .option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .option {
+            transition: all 0.2s ease;
+        }
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            animation: confetti 3s ease-out forwards;
+            z-index: 1000;
+        }
+        .highlight {
+            background-color: #FFEB3B;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="text-center mb-8 fade-in">
+            <h1 class="text-4xl font-bold text-indigo-800 mb-2">English Quiz Challenge</h1>
+            <p class="text-lg text-indigo-600">Améliorez votre anglais tout en vous amusant !</p>
+            <div class="mt-4 flex justify-center space-x-4">
+                <button id="soundToggle" class="p-2 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                <button id="helpBtn" class="p-2 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+                <button id="themeToggle" class="p-2 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Game Modes Selection -->
+        <div id="modeSelection" class="bg-white rounded-xl shadow-lg p-6 mb-8 fade-in">
+            <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Choisissez votre niveau</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button data-mode="easy" class="mode-btn bg-green-100 hover:bg-green-200 text-green-800 py-4 px-6 rounded-lg transition flex flex-col items-center">
+                    <i class="fas fa-seedling text-2xl mb-2"></i>
+                    <span class="font-medium">Débutant</span>
+                    <small class="text-sm opacity-75">Vocabulaire de base</small>
+                </button>
+                <button data-mode="medium" class="mode-btn bg-yellow-100 hover:bg-yellow-200 text-yellow-800 py-4 px-6 rounded-lg transition flex flex-col items-center">
+                    <i class="fas fa-tree text-2xl mb-2"></i>
+                    <span class="font-medium">Intermédiaire</span>
+                    <small class="text-sm opacity-75">Grammaire essentielle</small>
+                </button>
+                <button data-mode="hard" class="mode-btn bg-red-100 hover:bg-red-200 text-red-800 py-4 px-6 rounded-lg transition flex flex-col items-center">
+                    <i class="fas fa-mountain text-2xl mb-2"></i>
+                    <span class="font-medium">Avancé</span>
+                    <small class="text-sm opacity-75">Expressions idiomatiques</small>
+                </button>
+            </div>
+            
+            <!-- Category Selection -->
+            <div id="categorySelection" class="mt-6 hidden">
+                <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Choisissez une catégorie</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button data-category="vocabulary" class="category-btn bg-blue-50 hover:bg-blue-100 text-blue-800 py-3 px-4 rounded-lg transition flex items-center">
+                        <i class="fas fa-book mr-2"></i>
+                        Vocabulaire
+                    </button>
+                    <button data-category="grammar" class="category-btn bg-purple-50 hover:bg-purple-100 text-purple-800 py-3 px-4 rounded-lg transition flex items-center">
+                        <i class="fas fa-pencil-alt mr-2"></i>
+                        Grammaire
+                    </button>
+                    <button data-category="phrases" class="category-btn bg-green-50 hover:bg-green-100 text-green-800 py-3 px-4 rounded-lg transition flex items-center">
+                        <i class="fas fa-comments mr-2"></i>
+                        Phrases utiles
+                    </button>
+                    <button data-category="mix" class="category-btn bg-yellow-50 hover:bg-yellow-100 text-yellow-800 py-3 px-4 rounded-lg transition flex items-center">
+                        <i class="fas fa-random mr-2"></i>
+                        Mix
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz Container (initially hidden) -->
+        <div id="quizContainer" class="hidden bg-white rounded-xl shadow-lg p-6 mb-8">
+            <!-- Question Progress -->
+            <div class="flex justify-between items-center mb-4">
+                <div class="text-sm font-medium text-indigo-600">
+                    Question <span id="currentQuestion">1</span>/<span id="totalQuestions">10</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 max-w-md ml-4">
+                    <div id="progressBar" class="progress-bar bg-indigo-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Timer and Score -->
+            <div class="flex justify-between mb-4">
+                <div class="flex items-center bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full">
+                    <i class="fas fa-star mr-2"></i>
+                    Score: <span id="currentScore">0</span>
+                </div>
+                <div class="flex items-center bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full">
+                    <i class="fas fa-clock mr-2"></i>
+                    <span id="timer">30</span>s
+                </div>
+            </div>
+
+            <!-- Question -->
+            <div class="mb-6">
+                <h2 id="questionText" class="text-xl font-medium text-gray-800 mb-4"></h2>
+                <div id="questionImage" class="hidden mb-4">
+                    <img src="" alt="Question image" class="rounded-lg max-h-40 mx-auto">
+                </div>
+                <div id="questionAudio" class="hidden mb-4 text-center">
+                    <button id="playAudioBtn" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 p-3 rounded-full">
+                        <i class="fas fa-volume-up text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div id="optionsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6"></div>
+
+            <!-- Feedback -->
+            <div id="feedbackContainer" class="hidden p-4 rounded-lg mb-6">
+                <div class="flex items-start">
+                    <i id="feedbackIcon" class="text-2xl mr-3 mt-1"></i>
+                    <div>
+                        <h3 id="feedbackTitle" class="font-medium"></h3>
+                        <p id="feedbackText" class="text-sm"></p>
+                        <div id="exampleSentence" class="mt-2 p-2 bg-gray-50 rounded hidden">
+                            <p class="text-sm font-medium text-gray-700">Exemple en contexte:</p>
+                            <p id="exampleText" class="text-sm italic"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Next Button -->
+            <div class="flex justify-center">
+                <button id="nextBtn" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg transition">
+                    Question suivante <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Screen (initially hidden) -->
+        <div id="resultsScreen" class="hidden bg-white rounded-xl shadow-lg p-8 text-center">
+            <div class="mb-6">
+                <i id="resultIcon" class="fas fa-trophy text-6xl text-yellow-500 mb-4"></i>
+                <h2 class="text-3xl font-bold text-indigo-800 mb-2">Quiz Terminé !</h2>
+                <p class="text-lg text-gray-600 mb-6">Votre score final est</p>
+                <div class="inline-block bg-indigo-100 text-indigo-800 text-4xl font-bold px-8 py-4 rounded-lg mb-6">
+                    <span id="finalScore">0</span>/<span id="maxScore">50</span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="text-blue-800 font-medium mb-1">Bonnes réponses</div>
+                    <div id="correctCount" class="text-2xl font-bold text-blue-600">0</div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <div class="text-green-800 font-medium mb-1">Bonus temps</div>
+                    <div id="timeBonus" class="text-2xl font-bold text-green-600">0</div>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <div class="text-purple-800 font-medium mb-1">Série</div>
+                    <div id="streakCount" class="text-2xl font-bold text-purple-600">0</div>
+                </div>
+            </div>
+            
+            <div id="improvementTips" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 text-left rounded-r-lg mb-6 hidden">
+                <h3 class="font-medium text-yellow-800 mb-2">Conseils pour progresser :</h3>
+                <ul class="list-disc pl-5 text-sm text-yellow-700 space-y-1">
+                    <li id="tip1"></li>
+                    <li id="tip2"></li>
+                    <li id="tip3"></li>
+                </ul>
+            </div>
+            
+            <div class="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4 justify-center">
+                <button id="restartBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg transition">
+                    <i class="fas fa-redo mr-2"></i> Rejouer
+                </button>
+                <button id="changeModeBtn" class="bg-white border border-indigo-600 hover:bg-indigo-50 text-indigo-600 font-medium py-2 px-6 rounded-lg transition">
+                    <i class="fas fa-cog mr-2"></i> Changer de niveau
+                </button>
+                <button id="reviewBtn" class="bg-white border border-indigo-600 hover:bg-indigo-50 text-indigo-600 font-medium py-2 px-6 rounded-lg transition">
+                    <i class="fas fa-book-open mr-2"></i> Réviser
+                </button>
+            </div>
+        </div>
+
+        <!-- Review Screen (initially hidden) -->
+        <div id="reviewScreen" class="hidden bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold text-indigo-800 mb-4">Révision des questions</h2>
+            <div id="reviewQuestions" class="space-y-6"></div>
+            <div class="mt-6 flex justify-center">
+                <button id="backToResultsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg transition">
+                    <i class="fas fa-arrow-left mr-2"></i> Retour aux résultats
+                </button>
+            </div>
+        </div>
+
+        <!-- Help Modal (initially hidden) -->
+        <div id="helpModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-indigo-800">Comment jouer</h3>
+                    <button id="closeHelpModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4 text-gray-700">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-indigo-500 mt-1 mr-3"></i>
+                        <p>Répondez aux questions d'anglais avant que le temps ne s'écoule.</p>
+                    </div>
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                        <p>Les bonnes réponses rapportent des points selon la difficulté et le temps restant.</p>
+                    </div>
+                    <div class="flex items-start">
+                        <i class="fas fa-bolt text-yellow-500 mt-1 mr-3"></i>
+                        <p>Plusieurs bonnes réponses d'affilée donnent des bonus supplémentaires !</p>
+                    </div>
+                    <div class="flex items-start">
+                        <i class="fas fa-clock text-red-500 mt-1 mr-3"></i>
+                        <p>Débutant: 30s par question<br>Intermédiaire: 25s par question<br>Avancé: 20s par question</p>
+                    </div>
+                    <div class="pt-4 border-t border-gray-200">
+                        <p class="text-sm text-gray-500">Conçu pour l'apprentissage de l'anglais</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio elements -->
+    <audio id="correctSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
+    <audio id="wrongSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
+    <audio id="timeoutSound" src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3"></audio>
+    <audio id="completeSound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3"></audio>
+    <audio id="clickSound" src="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3"></audio>
+    <audio id="questionAudio" src=""></audio>
+
+    <script>
+        // Game state
+        const gameState = {
+            currentMode: null,
+            currentCategory: null,
+            questions: [],
+            currentQuestionIndex: 0,
+            score: 0,
+            timeLeft: 30,
+            timerInterval: null,
+            selectedOption: null,
+            answered: false,
+            correctStreak: 0,
+            soundEnabled: true,
+            darkMode: false,
+            mistakes: []
+        };
+
+        // Enhanced question database by difficulty and category
+        const questionDatabase = {
+            easy: {
+                vocabulary: [
+                    {
+                        question: "Comment dit-on 'chien' en anglais ?",
+                        options: ["Cat", "Dog", "Bird", "Fish"],
+                        correctAnswer: 1,
+                        explanation: "'Dog' est le mot anglais pour 'chien'.",
+                        example: "I have a <span class='highlight'>dog</span> named Max. (J'ai un chien qui s'appelle Max.)",
+                        image: "https://images.unsplash.com/photo-1561037404-61cd46aa615b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                    },
+                    {
+                        question: "Traduisez 'pomme' en anglais",
+                        options: ["Orange", "Banana", "Apple", "Pear"],
+                        correctAnswer: 2,
+                        explanation: "'Apple' signifie 'pomme' en anglais.",
+                        example: "She's eating an <span class='highlight'>apple</span> for breakfast. (Elle mange une pomme pour le petit-déjeuner.)",
+                        image: "https://images.unsplash.com/photo-1568701284081-5ca61f7e11d0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                    },
+                    {
+                        question: "Quel est le mot anglais pour 'maison' ?",
+                        options: ["House", "Car", "Tree", "School"],
+                        correctAnswer: 0,
+                        explanation: "'House' se traduit par 'maison' en français.",
+                        example: "They live in a big <span class='highlight'>house</span> near the park. (Ils vivent dans une grande maison près du parc.)",
+                        audio: "https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"
+                    }
+                ],
+                grammar: [
+                    {
+                        question: "Quelle est la forme correcte au présent simple pour 'I ___ (to eat) an apple' ?",
+                        options: ["I eating an apple", "I eats an apple", "I eat an apple", "I am eat an apple"],
+                        correctAnswer: 2,
+                        explanation: "La forme correcte est 'I eat' pour le présent simple.",
+                        example: "Every morning, <span class='highlight'>I eat</span> an apple. (Chaque matin, je mange une pomme.)"
+                    },
+                    {
+                        question: "Completez: 'She ___ a teacher.'",
+                        options: ["am", "is", "are", "be"],
+                        correctAnswer: 1,
+                        explanation: "Avec 'she' on utilise 'is' comme auxiliaire.",
+                        example: "<span class='highlight'>She is</span> a French teacher. (Elle est professeur de français.)"
+                    }
+                ],
+                phrases: [
+                    {
+                        question: "Comment dit-on 'Bonjour' en anglais ?",
+                        options: ["Goodbye", "Hello", "Thank you", "Please"],
+                        correctAnswer: 1,
+                        explanation: "'Hello' est la traduction standard de 'Bonjour'.",
+                        example: "<span class='highlight'>Hello</span>, how are you today? (Bonjour, comment allez-vous aujourd'hui ?)"
+                    },
+                    {
+                        question: "Traduisez 'Comment allez-vous ?'",
+                        options: ["What's your name?", "How are you?", "Where are you?", "What time is it?"],
+                        correctAnswer: 1,
+                        explanation: "'How are you?' est la façon courante de demander comment va quelqu'un.",
+                        example: "<span class='highlight'>How are you</span> feeling today? (Comment vous sentez-vous aujourd'hui ?)"
+                    }
+                ]
+            },
+            medium: {
+                vocabulary: [
+                    {
+                        question: "Quel mot signifie 'épuisé' en anglais ?",
+                        options: ["Happy", "Excited", "Tired", "Angry"],
+                        correctAnswer: 2,
+                        explanation: "'Tired' signifie 'épuisé' ou 'fatigué' en anglais.",
+                        example: "After the marathon, I was completely <span class='highlight'>tired</span>. (Après le marathon, j'étais complètement épuisé.)"
+                    },
+                    {
+                        question: "Traduisez 'délicieux' en anglais",
+                        options: ["Delicious", "Terrible", "Strange", "Simple"],
+                        correctAnswer: 0,
+                        explanation: "'Delicious' est l'équivalent de 'délicieux'.",
+                        example: "This cake is absolutely <span class='highlight'>delicious</span>! (Ce gâteau est absolument délicieux !)"
+                    }
+                ],
+                grammar: [
+                    {
+                        question: "Quelle phrase utilise correctement le present perfect ?",
+                        options: [
+                            "I have seen that movie yesterday.",
+                            "I saw that movie yesterday.",
+                            "I have seen that movie three times.",
+                            "I seeing that movie now."
+                        ],
+                        correctAnswer: 2,
+                        explanation: "Le present perfect s'utilise pour des actions non datées avec un impact sur le présent.",
+                        example: "<span class='highlight'>I have visited</span> Paris several times. (J'ai visité Paris plusieurs fois.)"
+                    },
+                    {
+                        question: "Choisissez la forme comparative correcte: 'This book is ___ (interesting) than that one.'",
+                        options: [
+                            "interestinger",
+                            "more interesting",
+                            "most interesting",
+                            "interestmore"
+                        ],
+                        correctAnswer: 1,
+                        explanation: "Les adjectifs longs utilisent 'more' pour former le comparatif.",
+                        example: "This museum is <span class='highlight'>more fascinating</span> than the last one we visited. (Ce musée est plus fascinant que le dernier que nous avons visité.)"
+                    }
+                ],
+                phrases: [
+                    {
+                        question: "Comment demander 'Où est la gare ?' en anglais ?",
+                        options: [
+                            "When does the train leave?",
+                            "How much is the ticket?",
+                            "Where is the train station?",
+                            "I'm looking for the hotel"
+                        ],
+                        correctAnswer: 2,
+                        explanation: "'Where is the train station?' est la traduction correcte.",
+                        example: "Excuse me, <span class='highlight'>where is the nearest</span> train station? (Excusez-moi, où est la gare la plus proche ?)"
+                    },
+                    {
+                        question: "Traduisez 'Je ne comprends pas' en anglais",
+                        options: [
+                            "I don't know",
+                            "I don't understand",
+                            "I don't speak English",
+                            "I don't want"
+                        ],
+                        correctAnswer: 1,
+                        explanation: "'I don't understand' est la traduction correcte.",
+                        example: "Sorry, <span class='highlight'>I don't understand</span> this question. (Désolé, je ne comprends pas cette question.)"
+                    }
+                ]
+            },
+            hard: {
+                vocabulary: [
+                    {
+                        question: "Que signifie l'expression 'to hit the books' ?",
+                        options: [
+                            "Détruire des livres",
+                            "Étudier sérieusement",
+                            "Acheter des livres",
+                            "Jeter des livres"
+                        ],
+                        correctAnswer: 1,
+                        explanation: "'To hit the books' est une expression idiomatique qui signifie 'étudier sérieusement'.",
+                        example: "I have an exam tomorrow, so I need to <span class='highlight'>hit the books</span> tonight. (J'ai un examen demain, donc je dois étudier sérieusement ce soir.)"
+                    },
+                    {
+                        question: "Que veut dire 'a piece of cake' dans ce contexte: 'The test was a piece of cake' ?",
+                        options: [
+                            "C'était difficile",
+                            "C'était un gâteau",
+                            "C'était très facile",
+                            "C'était délicieux"
+                        ],
+                        correctAnswer: 2,
+                        explanation: "'A piece of cake' signifie que quelque chose est très facile.",
+                        example: "After years of practice, playing this song is now <span class='highlight'>a piece of cake</span>. (Après des années de pratique, jouer cette chanson est maintenant très facile.)"
+                    }
+                ],
+                grammar: [
+                    {
+                        question: "Quelle phrase utilise correctement le subjonctif en anglais ?",
+                        options: [
+                            "It's important that he is on time.",
+                            "It's important that he be on time.",
+                            "It's important that he will be on time.",
+                            "It's important that he to be on time."
+                        ],
+                        correctAnswer: 1,
+                        explanation: "Le subjonctif en anglais utilise la forme de base du verbe après certaines expressions.",
+                        example: "It's crucial that <span class='highlight'>she arrive</span> early tomorrow. (Il est crucial qu'elle arrive tôt demain.)"
+                    },
+                    {
+                        question: "Identifiez la phrase avec inversion correcte:",
+                        options: [
+                            "Never I have seen such beauty.",
+                            "Never have I seen such beauty.",
+                            "Never have seen I such beauty.",
+                            "Never I seen have such beauty."
+                        ],
+                        correctAnswer: 1,
+                        explanation: "Avec 'never' en début de phrase, on utilise l'inversion sujet-verbe.",
+                        example: "<span class='highlight'>Rarely do we see</span> such dedication. (Rarement voyons-nous un tel dévouement.)"
+                    }
+                ],
+                phrases: [
+                    {
+                        question: "Comment dit-on 'Il pleut des cordes' en anglais ?",
+                        options: [
+                            "It's raining cats and dogs",
+                            "It's raining ropes",
+                            "It's heavy rain",
+                            "The rain is strong"
+                        ],
+                        correctAnswer: 0,
+                        explanation: "'It's raining cats and dogs' est l'équivalent idiomatique.",
+                        example: "We can't go out now, <span class='highlight'>it's raining cats and dogs</span>! (Nous ne pouvons pas sortir maintenant, il pleut des cordes !)"
+                    },
+                    {
+                        question: "Traduisez 'C'est la goutte d'eau qui fait déborder le vase'",
+                        options: [
+                            "It's the last drop that makes the glass overflow",
+                            "It's the straw that broke the camel's back",
+                            "It's the water that makes the vase fall",
+                            "It's the drop that makes the difference"
+                        ],
+                        correctAnswer: 1,
+                        explanation: "L'équivalent anglais utilise l'image d'une paille et d'un chameau.",
+                        example: "When he forgot our anniversary, that was <span class='highlight'>the straw that broke the camel's back</span>. (Quand il a oublié notre anniversaire, ça a été la goutte d'eau qui a fait déborder le vase.)"
+                    }
+                ]
+            }
+        };
+
+        // DOM elements
+        const elements = {
+            modeSelection: document.getElementById('modeSelection'),
+            categorySelection: document.getElementById('categorySelection'),
+            quizContainer: document.getElementById('quizContainer'),
+            resultsScreen: document.getElementById('resultsScreen'),
+            reviewScreen: document.getElementById('reviewScreen'),
+            questionText: document.getElementById('questionText'),
+            questionImage: document.getElementById('questionImage'),
+            questionAudio: document.getElementById('questionAudio'),
+            playAudioBtn: document.getElementById('playAudioBtn'),
+            optionsContainer: document.getElementById('optionsContainer'),
+            feedbackContainer: document.getElementById('feedbackContainer'),
+            feedbackIcon: document.getElementById('feedbackIcon'),
+            feedbackTitle: document.getElementById('feedbackTitle'),
+            feedbackText: document.getElementById('feedbackText'),
+            exampleSentence: document.getElementById('exampleSentence'),
+            exampleText: document.getElementById('exampleText'),
+            nextBtn: document.getElementById('nextBtn'),
+            currentQuestion: document.getElementById('currentQuestion'),
+            totalQuestions: document.getElementById('totalQuestions'),
+            progressBar: document.getElementById('progressBar'),
+            timer: document.getElementById('timer'),
+            currentScore: document.getElementById('currentScore'),
+            finalScore: document.getElementById('finalScore'),
+            maxScore: document.getElementById('maxScore'),
+            correctCount: document.getElementById('correctCount'),
+            timeBonus: document.getElementById('timeBonus'),
+            streakCount: document.getElementById('streakCount'),
+            improvementTips: document.getElementById('improvementTips'),
+            tip1: document.getElementById('tip1'),
+            tip2: document.getElementById('tip2'),
+            tip3: document.getElementById('tip3'),
+            restartBtn: document.getElementById('restartBtn'),
+            changeModeBtn: document.getElementById('changeModeBtn'),
+            reviewBtn: document.getElementById('reviewBtn'),
+            backToResultsBtn: document.getElementById('backToResultsBtn'),
+            reviewQuestions: document.getElementById('reviewQuestions'),
+            helpModal: document.getElementById('helpModal'),
+            closeHelpModal: document.getElementById('closeHelpModal'),
+            helpBtn: document.getElementById('helpBtn'),
+            soundToggle: document.getElementById('soundToggle'),
+            themeToggle: document.getElementById('themeToggle'),
+            modeButtons: document.querySelectorAll('.mode-btn'),
+            categoryButtons: document.querySelectorAll('.category-btn'),
+            // Audio elements
+            correctSound: document.getElementById('correctSound'),
+            wrongSound: document.getElementById('wrongSound'),
+            timeoutSound: document.getElementById('timeoutSound'),
+            completeSound: document.getElementById('completeSound'),
+            clickSound: document.getElementById('clickSound'),
+            questionAudio: document.getElementById('questionAudio')
+        };
+
+        // Event listeners
+        elements.modeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                playSound('click');
+                const mode = button.dataset.mode;
+                gameState.currentMode = mode;
+                elements.categorySelection.classList.remove('hidden');
+                document.querySelectorAll('.category-btn').forEach(btn => {
+                    btn.classList.remove('bg-indigo-100', 'text-indigo-800');
+                    btn.classList.add(`bg-${getColorForMode(mode)}-50`, `text-${getColorForMode(mode)}-800`, `hover:bg-${getColorForMode(mode)}-100`);
+                });
+            });
+        });
+
+        elements.categoryButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                playSound('click');
+                const category = button.dataset.category;
+                gameState.currentCategory = category;
+                startGame(gameState.currentMode, category);
+            });
+        });
+
+        elements.nextBtn.addEventListener('click', () => {
+            playSound('click');
+            nextQuestion();
+        });
+
+        elements.restartBtn.addEventListener('click', () => {
+            playSound('click');
+            startGame(gameState.currentMode, gameState.currentCategory);
+        });
+
+        elements.changeModeBtn.addEventListener('click', () => {
+            playSound('click');
+            showModeSelection();
+        });
+
+        elements.reviewBtn.addEventListener('click', () => {
+            playSound('click');
+            showReviewScreen();
+        });
+
+        elements.backToResultsBtn.addEventListener('click', () => {
+            playSound('click');
+            elements.reviewScreen.classList.add('hidden');
+            elements.resultsScreen.classList.remove('hidden');
+        });
+
+        elements.helpBtn.addEventListener('click', () => {
+            playSound('click');
+            elements.helpModal.classList.remove('hidden');
+        });
+
+        elements.closeHelpModal.addEventListener('click', () => {
+            playSound('click');
+            elements.helpModal.classList.add('hidden');
+        });
+
+        elements.soundToggle.addEventListener('click', () => {
+            gameState.soundEnabled = !gameState.soundEnabled;
+            if (gameState.soundEnabled) {
+                elements.soundToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
+                playSound('click');
+            } else {
+                elements.soundToggle.innerHTML = '<i class="fas fa-volume-mute"></i>';
+            }
+        });
+
+        elements.themeToggle.addEventListener('click', () => {
+            gameState.darkMode = !gameState.darkMode;
+            toggleDarkMode();
+            playSound('click');
+        });
+
+        elements.playAudioBtn.addEventListener('click', () => {
+            playSound('question');
+        });
+
+        // Helper functions
+        function getColorForMode(mode) {
+            switch(mode) {
+                case 'easy': return 'green';
+                case 'medium': return 'yellow';
+                case 'hard': return 'red';
+                default: return 'indigo';
+            }
+        }
+
+        function playSound(type) {
+            if (!gameState.soundEnabled) return;
+            
+            switch(type) {
+                case 'correct':
+                    elements.correctSound.currentTime = 0;
+                    elements.correctSound.play();
+                    break;
+                case 'wrong':
+                    elements.wrongSound.currentTime = 0;
+                    elements.wrongSound.play();
+                    break;
+                case 'timeout':
+                    elements.timeoutSound.currentTime = 0;
+                    elements.timeoutSound.play();
+                    break;
+                case 'complete':
+                    elements.completeSound.currentTime = 0;
+                    elements.completeSound.play();
+                    break;
+                case 'click':
+                    elements.clickSound.currentTime = 0;
+                    elements.clickSound.play();
+                    break;
+                case 'question':
+                    elements.questionAudio.currentTime = 0;
+                    elements.questionAudio.play();
+                    break;
+            }
+        }
+
+        function toggleDarkMode() {
+            if (gameState.darkMode) {
+                document.body.classList.remove('bg-gradient-to-br', 'from-blue-50', 'to-indigo-100');
+                document.body.classList.add('bg-gray-900', 'text-gray-100');
+                elements.themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                
+                // Update all containers
+                document.querySelectorAll('.bg-white').forEach(el => {
+                    el.classList.remove('bg-white');
+                    el.classList.add('bg-gray-800');
+                });
+                
+                // Update text colors
+                document.querySelectorAll('.text-indigo-800').forEach(el => {
+                    el.classList.remove('text-indigo-800');
+                    el.classList.add('text-indigo-300');
+                });
+                
+                document.querySelectorAll('.text-gray-800').forEach(el => {
+                    el.classList.remove('text-gray-800');
+                    el.classList.add('text-gray-100');
+                });
+            } else {
+                document.body.classList.add('bg-gradient-to-br', 'from-blue-50', 'to-indigo-100');
+                document.body.classList.remove('bg-gray-900', 'text-gray-100');
+                elements.themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                
+                // Revert all containers
+                document.querySelectorAll('.bg-gray-800').forEach(el => {
+                    el.classList.remove('bg-gray-800');
+                    el.classList.add('bg-white');
+                });
+                
+                // Revert text colors
+                document.querySelectorAll('.text-indigo-300').forEach(el => {
+                    el.classList.remove('text-indigo-300');
+                    el.classList.add('text-indigo-800');
+                });
+                
+                document.querySelectorAll('.text-gray-100').forEach(el => {
+                    el.classList.remove('text-gray-100');
+                    el.classList.add('text-gray-800');
+                });
+            }
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function getTimeForMode(mode) {
+            switch(mode) {
+                case 'easy': return 30;
+                case 'medium': return 25;
+                case 'hard': return 20;
+                default: return 30;
+            }
+        }
+
+        function createConfetti() {
+            const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff'];
+            
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.width = Math.random() * 10 + 5 + 'px';
+                confetti.style.height = Math.random() * 10 + 5 + 'px';
+                confetti.style.animationDuration = Math.random() * 2 + 2 + 's';
+                confetti.style.animationDelay = Math.random() * 2 + 's';
+                document.body.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
+        }
+
+        // Game functions
+        function startGame(mode, category) {
+            gameState.currentMode = mode;
+            gameState.currentCategory = category;
+            
+            // Select questions based on mode and category
+            let selectedQuestions = [];
+            if (category === 'mix') {
+                // Mix questions from all categories
+                for (const cat in questionDatabase[mode]) {
+                    selectedQuestions = selectedQuestions.concat(questionDatabase[mode][cat]);
+                }
+            } else {
+                selectedQuestions = questionDatabase[mode][category];
+            }
+            
+            gameState.questions = shuffleArray([...selectedQuestions]).slice(0, 10);
+            gameState.currentQuestionIndex = 0;
+            gameState.score = 0;
+            gameState.correctStreak = 0;
+            gameState.mistakes = [];
+            
+            // Hide mode selection, show quiz
+            elements.modeSelection.classList.add('hidden');
+            elements.categorySelection.classList.add('hidden');
+            elements.quizContainer.classList.remove('hidden');
+            elements.resultsScreen.classList.add('hidden');
+            elements.reviewScreen.classList.add('hidden');
+            
+            // Update score display
+            elements.currentScore.textContent = gameState.score;
+            
+            // Set up first question
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            // Reset state for new question
+            gameState.answered = false;
+            gameState.selectedOption = null;
+            elements.feedbackContainer.classList.add('hidden');
+            elements.nextBtn.classList.add('hidden');
+            elements.exampleSentence.classList.add('hidden');
+            
+            // Get current question
+            const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+            
+            // Update UI
+            elements.questionText.textContent = currentQuestion.question;
+            elements.currentQuestion.textContent = gameState.currentQuestionIndex + 1;
+            elements.totalQuestions.textContent = gameState.questions.length;
+            elements.progressBar.style.width = `${(gameState.currentQuestionIndex / gameState.questions.length) * 100}%`;
+            
+            // Clear previous options
+            elements.optionsContainer.innerHTML = '';
+            
+            // Add new options
+            currentQuestion.options.forEach((option, index) => {
+                const optionElement = document.createElement('button');
+                optionElement.className = 'option bg-white border border-gray-200 hover:border-indigo-300 text-gray-800 font-medium py-3 px-4 rounded-lg text-left transition';
+                optionElement.textContent = option;
+                optionElement.dataset.index = index;
+                optionElement.addEventListener('click', () => selectOption(index));
+                elements.optionsContainer.appendChild(optionElement);
+            });
+            
+            // Show image if available
+            if (currentQuestion.image) {
+                elements.questionImage.classList.remove('hidden');
+                elements.questionImage.querySelector('img').src = currentQuestion.image;
+            } else {
+                elements.questionImage.classList.add('hidden');
+            }
+            
+            // Show audio button if available
+            if (currentQuestion.audio) {
+                elements.questionAudio.classList.remove('hidden');
+                elements.questionAudio.src = currentQuestion.audio;
+            } else {
+                elements.questionAudio.classList.add('hidden');
+            }
+            
+            // Start timer
+            startTimer(getTimeForMode(gameState.currentMode));
+        }
+
+        function startTimer(seconds) {
+            // Clear any existing timer
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+            }
+            
+            gameState.timeLeft = seconds;
+            elements.timer.textContent = gameState.timeLeft;
+            
+            gameState.timerInterval = setInterval(() => {
+                gameState.timeLeft--;
+                elements.timer.textContent = gameState.timeLeft;
+                
+                // Change color when time is running low
+                if (gameState.timeLeft <= 5) {
+                    elements.timer.parentElement.classList.remove('bg-indigo-100', 'text-indigo-800');
+                    elements.timer.parentElement.classList.add('bg-red-100', 'text-red-800');
+                    elements.timer.parentElement.classList.add('pulse');
+                } else {
+                    elements.timer.parentElement.classList.remove('bg-red-100', 'text-red-800');
+                    elements.timer.parentElement.classList.add('bg-indigo-100', 'text-indigo-800');
+                    elements.timer.parentElement.classList.remove('pulse');
+                }
+                
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    timeExpired();
+                }
+            }, 1000);
+        }
+
+        function selectOption(optionIndex) {
+            if (gameState.answered) return;
+            
+            playSound('click');
+            gameState.selectedOption = optionIndex;
+            gameState.answered = true;
+            
+            // Highlight selected option
+            const optionElements = elements.optionsContainer.querySelectorAll('.option');
+            optionElements.forEach((el, idx) => {
+                if (idx === optionIndex) {
+                    el.classList.add('bg-indigo-100', 'border-indigo-400');
+                } else {
+                    el.classList.add('opacity-50');
+                }
+                el.classList.remove('hover:border-indigo-300');
+            });
+            
+            // Check answer
+            const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+            const isCorrect = optionIndex === currentQuestion.correctAnswer;
+            
+            // Stop timer
+            clearInterval(gameState.timerInterval);
+            
+            // Calculate time bonus (1 point per 3 seconds remaining)
+            const timeBonus = Math.floor(gameState.timeLeft / 3);
+            
+            if (isCorrect) {
+                // Correct answer
+                gameState.correctStreak++;
+                const streakBonus = Math.min(gameState.correctStreak - 1, 3); // Max 3-point streak bonus
+                const questionPoints = 1 + timeBonus + streakBonus;
+                gameState.score += questionPoints;
+                
+                // Update score display with animation
+                elements.currentScore.textContent = gameState.score;
+                elements.currentScore.classList.add('pulse');
+                setTimeout(() => elements.currentScore.classList.remove('pulse'), 500);
+                
+                // Show feedback
+                showFeedback(true, currentQuestion.explanation, timeBonus, streakBonus);
+                playSound('correct');
+                
+                // Highlight correct option
+                optionElements[optionIndex].classList.add('bg-green-100', 'border-green-400');
+                
+                // Show example sentence if available
+                if (currentQuestion.example) {
+                    elements.exampleText.innerHTML = currentQuestion.example;
+                    elements.exampleSentence.classList.remove('hidden');
+                }
+            } else {
+                // Wrong answer
+                gameState.correctStreak = 0;
+                showFeedback(false, currentQuestion.explanation);
+                playSound('wrong');
+                
+                // Record mistake for review
+                gameState.mistakes.push({
+                    question: currentQuestion.question,
+                    selectedOption: currentQuestion.options[optionIndex],
+                    correctOption: currentQuestion.options[currentQuestion.correctAnswer],
+                    explanation: currentQuestion.explanation,
+                    example: currentQuestion.example
+                });
+                
+                // Highlight correct option
+                optionElements[currentQuestion.correctAnswer].classList.add('bg-green-100', 'border-green-400');
+                // Highlight wrong option
+                optionElements[optionIndex].classList.add('bg-red-100', 'border-red-400', 'shake');
+                
+                // Show example sentence if available
+                if (currentQuestion.example) {
+                    elements.exampleText.innerHTML = currentQuestion.example;
+                    elements.exampleSentence.classList.remove('hidden');
+                }
+            }
+            
+            // Show next button
+            elements.nextBtn.classList.remove('hidden');
+        }
+
+        function showFeedback(isCorrect, explanation, timeBonus = 0, streakBonus = 0) {
+            elements.feedbackContainer.classList.remove('hidden');
+            
+            if (isCorrect) {
+                elements.feedbackContainer.className = 'bg-green-50 border border-green-200 p-4 rounded-lg mb-6 fade-in';
+                elements.feedbackIcon.className = 'fas fa-check-circle text-green-500 text-2xl mr-3 mt-1';
+                elements.feedbackTitle.textContent = 'Correct !';
+                
+                let feedbackText = explanation + '<br><br>';
+                feedbackText += `<span class="text-green-600 font-medium">+1</span> pour la bonne réponse`;
+                
+                if (timeBonus > 0) {
+                    feedbackText += `<br><span class="text-blue-600 font-medium">+${timeBonus}</span> bonus temps`;
+                }
+                
+                if (streakBonus > 0) {
+                    feedbackText += `<br><span class="text-purple-600 font-medium">+${streakBonus}</span> bonus série`;
+                }
+                
+                elements.feedbackText.innerHTML = feedbackText;
+            } else {
+                elements.feedbackContainer.className = 'bg-red-50 border border-red-200 p-4 rounded-lg mb-6 fade-in';
+                elements.feedbackIcon.className = 'fas fa-times-circle text-red-500 text-2xl mr-3 mt-1';
+                elements.feedbackTitle.textContent = 'Incorrect';
+                elements.feedbackText.textContent = explanation;
+            }
+        }
+
+        function timeExpired() {
+            if (gameState.answered) return;
+            
+            playSound('timeout');
+            gameState.answered = true;
+            gameState.correctStreak = 0;
+            
+            // Highlight all options as expired
+            const optionElements = elements.optionsContainer.querySelectorAll('.option');
+            optionElements.forEach(el => {
+                el.classList.add('opacity-50');
+                el.classList.remove('hover:border-indigo-300');
+            });
+            
+            // Show correct answer
+            const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+            optionElements[currentQuestion.correctAnswer].classList.add('bg-green-100', 'border-green-400');
+            
+            // Record as mistake (timeout)
+            gameState.mistakes.push({
+                question: currentQuestion.question,
+                selectedOption: null,
+                correctOption: currentQuestion.options[currentQuestion.correctAnswer],
+                explanation: "Temps écoulé ! " + currentQuestion.explanation,
+                example: currentQuestion.example
+            });
+            
+            // Show feedback
+            showFeedback(false, "Temps écoulé ! " + currentQuestion.explanation);
+            
+            // Show example sentence if available
+            if (currentQuestion.example) {
+                elements.exampleText.innerHTML = currentQuestion.example;
+                elements.exampleSentence.classList.remove('hidden');
+            }
+            
+            // Show next button
+            elements.nextBtn.classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            gameState.currentQuestionIndex++;
+            
+            if (gameState.currentQuestionIndex < gameState.questions.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            elements.quizContainer.classList.add('hidden');
+            elements.resultsScreen.classList.remove('hidden');
+            
+            // Calculate stats
+            const maxPossibleScore = gameState.questions.length * 5; // 1 base + 4 max bonus
+            const correctAnswers = Math.round(gameState.score / 3); // Approximate
+            
+            // Update UI
+            elements.finalScore.textContent = gameState.score;
+            elements.maxScore.textContent = maxPossibleScore;
+            elements.correctCount.textContent = correctAnswers;
+            elements.timeBonus.textContent = gameState.score - correctAnswers; // Approximate
+            elements.streakCount.textContent = gameState.correctStreak;
+            
+            // Set result icon based on performance
+            const percentage = (gameState.score / maxPossibleScore) * 100;
+            const resultIcon = elements.resultIcon;
+            
+            if (percentage >= 80) {
+                resultIcon.className = 'fas fa-trophy text-6xl text-yellow-500 mb-4 pulse';
+                createConfetti();
+                elements.improvementTips.classList.add('hidden');
+            } else if (percentage >= 50) {
+                resultIcon.className = 'fas fa-award text-6xl text-blue-400 mb-4';
+                elements.improvementTips.classList.remove('hidden');
+                elements.tip1.textContent = "Continuez à pratiquer régulièrement pour améliorer votre anglais.";
+                elements.tip2.textContent = "Essayez de lire des articles ou regarder des vidéos en anglais.";
+                elements.tip3.textContent = "Notez les mots nouveaux et révisez-les fréquemment.";
+            } else {
+                resultIcon.className = 'fas fa-star text-6xl text-purple-400 mb-4';
+                elements.improvementTips.classList.remove('hidden');
+                elements.tip1.textContent = "Commencez par apprendre le vocabulaire de base et les phrases courantes.";
+                elements.tip2.textContent = "Utilisez des applications d'apprentissage de langues pour les bases.";
+                elements.tip3.textContent = "Ne vous découragez pas - l'apprentissage prend du temps !";
+            }
+            
+            playSound('complete');
+        }
+
+        function showReviewScreen() {
+            elements.resultsScreen.classList.add('hidden');
+            elements.reviewScreen.classList.remove('hidden');
+            
+            elements.reviewQuestions.innerHTML = '';
+            
+            if (gameState.mistakes.length === 0) {
+                elements.reviewQuestions.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-check-circle text-5xl text-green-500 mb-4"></i>
+                        <p class="text-xl font-medium text-gray-700">Félicitations ! Vous n'avez fait aucune erreur.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            gameState.mistakes.forEach((mistake, index) => {
+                const reviewItem = document.createElement('div');
+                reviewItem.className = 'bg-gray-50 rounded-lg p-4';
+                reviewItem.innerHTML = `
+                    <h3 class="font-medium text-lg mb-2">Question ${index + 1}: ${mistake.question}</h3>
+                    ${mistake.selectedOption ? 
+                        `<p class="text-red-600 mb-1">Votre réponse: ${mistake.selectedOption}</p>` : 
+                        `<p class="text-red-600 mb-1">Vous n'avez pas répondu à temps</p>`}
+                    <p class="text-green-600 mb-1">Réponse correcte: ${mistake.correctOption}</p>
+                    <p class="text-sm mb-2">${mistake.explanation}</p>
+                    ${mistake.example ? 
+                        `<div class="p-2 bg-gray-100 rounded">
+                            <p class="text-sm font-medium text-gray-700">Exemple en contexte:</p>
+                            <p class="text-sm italic">${mistake.example}</p>
+                        </div>` : ''}
+                `;
+                elements.reviewQuestions.appendChild(reviewItem);
+            });
+        }
+
+        function showModeSelection() {
+            elements.modeSelection.classList.remove('hidden');
+            elements.categorySelection.classList.add('hidden');
+            elements.quizContainer.classList.add('hidden');
+            elements.resultsScreen.classList.add('hidden');
+            elements.reviewScreen.classList.add('hidden');
+        }
+
+        // Initialize
+        showModeSelection();
+    </script>
+</body>
+</html>

@@ -77,6 +77,16 @@
         .theme-selector:hover {
             transform: scale(1.1);
         }
+        
+        .selected-piece {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+        }
+        
+        .dragging {
+            opacity: 0.8;
+            transform: scale(1.1);
+            z-index: 10;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
@@ -189,7 +199,9 @@
                 computerScore: 0,
                 difficulty: 'medium',
                 theme: 'classic',
-                gameActive: true
+                gameActive: true,
+                isDragging: false,
+                dragStartPosition: null
             };
             
             // DOM elements
@@ -243,15 +255,16 @@
                 state.selectedPiece = null;
                 state.validMoves = [];
                 state.gameActive = true;
+                state.playerScore = 0;
+                state.computerScore = 0;
+                state.isDragging = false;
+                state.dragStartPosition = null;
                 
                 renderBoard();
                 updateScores();
                 updateTurnIndicator();
+                updateDifficultyButtons();
                 gameOverElement.classList.add('hidden');
-                
-                if (state.currentPlayer === 'black') {
-                    setTimeout(computerMove, 800);
-                }
             }
             
             // Create initial board setup
@@ -308,24 +321,37 @@
                             const pieceElement = document.createElement('div');
                             pieceElement.className = `checker-piece w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center ${piece.color === 'red' ? 'bg-red-500' : 'bg-gray-900'} ${piece.isKing ? 'ring-2 ring-yellow-400' : ''}`;
                             
+                            // Highlight selected piece
+                            if (state.selectedPiece && state.selectedPiece.row === row && state.selectedPiece.col === col) {
+                                pieceElement.classList.add('selected-piece');
+                            }
+                            
                             if (piece.isKing) {
                                 const crownIcon = document.createElement('i');
                                 crownIcon.className = 'fas fa-crown text-yellow-400 text-xs md:text-sm';
                                 pieceElement.appendChild(crownIcon);
                             }
                             
-                            // Add drag events
-                            pieceElement.draggable = true;
-                            pieceElement.addEventListener('dragstart', handleDragStart);
+                            // Add drag events for player pieces
+                            if (piece.color === 'red') {
+                                pieceElement.draggable = true;
+                                pieceElement.addEventListener('dragstart', (e) => handleDragStart(e, row, col));
+                                pieceElement.addEventListener('dragend', handleDragEnd);
+                            }
                             
                             // Add click event for selection
-                            pieceElement.addEventListener('click', () => handlePieceClick(row, col));
+                            pieceElement.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                handlePieceClick(row, col);
+                            });
                             
                             cell.appendChild(pieceElement);
                         } else {
-                            // Add drop target for empty cells
-                            cell.addEventListener('dragover', handleDragOver);
-                            cell.addEventListener('drop', handleDrop);
+                            // Add drop events for empty cells
+                            cell.addEventListener('dragover', (e) => e.preventDefault());
+                            cell.addEventListener('drop', (e) => handleDrop(e, row, col));
+                            
+                            // Add click event for empty cells
                             cell.addEventListener('click', () => handleCellClick(row, col));
                         }
                         
@@ -340,7 +366,7 @@
             
             // Handle piece selection
             function handlePieceClick(row, col) {
-                if (!state.gameActive) return;
+                if (!state.gameActive || state.currentPlayer !== 'red') return;
                 
                 const piece = state.board[row][col];
                 
@@ -362,7 +388,48 @@
             
             // Handle empty cell click
             function handleCellClick(row, col) {
-                if (!state.selectedPiece || !state.gameActive) return;
+                if (!state.selectedPiece || !state.gameActive || state.currentPlayer !== 'red') return;
+                
+                const move = state.validMoves.find(m => m.to.row === row && m.to.col === col);
+                if (move) {
+                    makeMove(move);
+                }
+            }
+            
+            // Handle drag start
+            function handleDragStart(e, row, col) {
+                if (!state.gameActive || state.currentPlayer !== 'red') {
+                    e.preventDefault();
+                    return;
+                }
+                
+                const piece = state.board[row][col];
+                if (piece.color !== state.currentPlayer) {
+                    e.preventDefault();
+                    return;
+                }
+                
+                state.isDragging = true;
+                state.dragStartPosition = { row, col };
+                state.selectedPiece = { row, col };
+                state.validMoves = getValidMoves(row, col);
+                
+                e.target.classList.add('dragging');
+                e.dataTransfer.setData('text/plain', ''); // Required for Firefox
+                e.dataTransfer.effectAllowed = 'move';
+            }
+            
+            // Handle drag end
+            function handleDragEnd(e) {
+                e.target.classList.remove('dragging');
+                state.isDragging = false;
+            }
+            
+            // Handle drop
+            function handleDrop(e, row, col) {
+                e.preventDefault();
+                
+                if (!state.selectedPiece || !state.gameActive || state.currentPlayer !== 'red') return;
                 
                 const move = state.validMoves.find(m => m.to.row === row && m.to.col === col);
                 if (move) {
@@ -519,7 +586,7 @@
                             to.row, to.col, piece.color, piece.isKing
                         );
                         
-                        if (additionalCaptures.length > 0) {
+                        if (additionalCaptures.length > 0 && piece.color === state.currentPlayer) {
                             state.selectedPiece = { row: to.row, col: to.col };
                             state.validMoves = additionalCaptures;
                             renderBoard();
@@ -770,70 +837,6 @@
                         cell.className = cell.className.replace(/bg-\w+-\d+/, bgColor);
                     }
                 });
-            }
-            
-            // Drag and drop handlers
-            function handleDragStart(e) {
-                const cell = e.target.closest('[data-row][data-col]');
-                if (!cell) return;
-                
-                const row = parseInt(cell.dataset.row);
-                const col = parseInt(cell.dataset.col);
-                
-                // Only allow dragging current player's pieces
-                const piece = state.board[row][col];
-                if (!piece || piece.color !== state.currentPlayer) {
-                    e.preventDefault();
-                    return;
-                }
-                
-                // Select the piece if not already selected
-                if (!state.selectedPiece || state.selectedPiece.row !== row || state.selectedPiece.col !== col) {
-                    state.selectedPiece = { row, col };
-                    state.validMoves = getValidMoves(row, col);
-                    renderBoard();
-                }
-                
-                e.dataTransfer.setData('text/plain', JSON.stringify({ row, col }));
-                e.dataTransfer.effectAllowed = 'move';
-                
-                // Add visual feedback
-                setTimeout(() => {
-                    e.target.classList.add('opacity-50');
-                }, 0);
-            }
-            
-            function handleDragOver(e) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-            }
-            
-            function handleDrop(e) {
-                e.preventDefault();
-                
-                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                const fromRow = data.row;
-                const fromCol = data.col;
-                const toRow = parseInt(e.target.closest('[data-row]').dataset.row);
-                const toCol = parseInt(e.target.closest('[data-col]').dataset.col);
-                
-                // Find if this is a valid move
-                const move = state.validMoves.find(m => 
-                    m.from.row === fromRow && 
-                    m.from.col === fromCol && 
-                    m.to.row === toRow && 
-                    m.to.col === toCol
-                );
-                
-                if (move) {
-                    makeMove(move);
-                }
-                
-                // Remove visual feedback
-                const draggedElement = document.querySelector('.checker-piece.opacity-50');
-                if (draggedElement) {
-                    draggedElement.classList.remove('opacity-50');
-                }
             }
         });
     </script>
