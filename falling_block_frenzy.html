@@ -3,19 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Falling Blocks Frenzy</title>
+    <title>Falling Blocks Frenzy - Enhanced</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <style>
         @keyframes blockFall {
-            0% { transform: translateY(-100px); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
+            0% { transform: translateY(-100px) scale(0.8); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
         }
         
         @keyframes lineClear {
-            0% { background-color: rgba(255, 255, 255, 0.8); }
-            50% { background-color: rgba(255, 255, 255, 0.3); }
-            100% { background-color: transparent; }
+            0% { background-color: rgba(255, 255, 255, 0.8); transform: scale(1); }
+            50% { background-color: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+            100% { background-color: transparent; transform: scale(1); }
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        
+        @keyframes scorePop {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+        
+        @keyframes blockLand {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
         
         .falling {
@@ -26,52 +46,101 @@
             animation: lineClear 0.5s ease-in-out;
         }
         
+        .shaking {
+            animation: shake 0.3s ease-in-out;
+        }
+        
+        .landing {
+            animation: blockLand 0.1s ease-out;
+        }
+        
         .game-container {
             perspective: 1000px;
         }
         
         .block {
-            transition: transform 0.1s;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.3);
         }
         
         .block:hover {
             transform: scale(1.05) rotateY(10deg);
             z-index: 10;
+            box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.5);
         }
         
         #game-board {
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
             border-radius: 10px;
             overflow: hidden;
+            position: relative;
         }
         
         .score-pop {
             animation: scorePop 0.5s ease-out;
             opacity: 0;
+            pointer-events: none;
         }
         
-        @keyframes scorePop {
-            0% { transform: scale(0.5); opacity: 0; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(1); opacity: 0; }
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 20;
+        }
+        
+        .ghost-block {
+            opacity: 0.3;
+            filter: brightness(1.5);
+        }
+        
+        .combo-indicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .combo-active {
+            opacity: 1;
+        }
+        
+        .hold-container {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-purple-900 to-blue-800 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
-    <div class="text-center mb-6">
+<body class="bg-gradient-to-br from-purple-900 to-blue-800 min-h-screen flex flex-col items-center justify-center p-4 font-sans overflow-hidden">
+    <div class="text-center mb-4">
         <h1 class="text-5xl font-bold text-white mb-2">Falling Blocks Frenzy</h1>
-        <p class="text-xl text-purple-200">Stack, clear, and score!</p>
+        <p class="text-xl text-purple-200">Enhanced Edition by Geoffroy Streit - Hylst</p>
     </div>
     
     <div class="flex flex-col md:flex-row items-center justify-center gap-8 w-full max-w-6xl">
         <div class="game-container relative">
             <div id="game-board" class="bg-gray-900 border-4 border-purple-400 relative">
                 <!-- Game board will be generated by JavaScript -->
+                <div id="combo-indicator" class="combo-indicator">COMBO x1</div>
             </div>
             
-            <div id="next-block-preview" class="mt-4 bg-gray-800 p-4 rounded-lg border-2 border-purple-300">
-                <h3 class="text-white text-center mb-2">Next Block</h3>
-                <div class="flex justify-center">
+            <div class="flex justify-between mt-4">
+                <div id="hold-container" class="hold-container">
+                    <h3 class="text-white text-center mb-2">Hold</h3>
+                    <div id="hold-block" class="w-20 h-20 grid grid-cols-4 grid-rows-4 gap-0"></div>
+                </div>
+                
+                <div id="next-block-preview" class="bg-gray-800 p-4 rounded-lg border-2 border-purple-300">
+                    <h3 class="text-white text-center mb-2">Next</h3>
                     <div id="next-block" class="w-20 h-20 grid grid-cols-4 grid-rows-4 gap-0"></div>
                 </div>
             </div>
@@ -90,24 +159,48 @@
             </div>
             
             <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-2">Stats</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-sm text-gray-300">Lines</div>
+                        <div id="lines-cleared" class="text-2xl font-mono">0</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-300">Combo</div>
+                        <div id="combo-count" class="text-2xl font-mono">0</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-300">High Score</div>
+                        <div id="high-score" class="text-2xl font-mono">0</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-300">Time</div>
+                        <div id="game-time" class="text-2xl font-mono">0:00</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-6">
                 <h2 class="text-2xl font-bold mb-2">Controls</h2>
                 <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="bg-gray-700 p-2 rounded">← Left</div>
                     <div class="bg-gray-700 p-2 rounded">↓ Drop</div>
                     <div class="bg-gray-700 p-2 rounded">→ Right</div>
                     <div class="bg-gray-700 p-2 rounded">↑ Rotate</div>
-                    <div class="bg-gray-700 p-2 rounded col-span-3">Space: Instant Drop</div>
+                    <div class="bg-gray-700 p-2 rounded">C Hold</div>
+                    <div class="bg-gray-700 p-2 rounded">P Pause</div>
+                    <div class="bg-gray-700 p-2 rounded col-span-3">Space: Hard Drop</div>
                 </div>
             </div>
             
             <div class="flex flex-col gap-3">
-                <button id="start-btn" class="bg-green-600 hover:bg-green-500 text-white py-3 px-6 rounded-lg font-bold text-lg transition">
+                <button id="start-btn" class="bg-green-600 hover:bg-green-500 text-white py-3 px-6 rounded-lg font-bold text-lg transition-all transform hover:scale-105">
                     <i class="fas fa-play mr-2"></i> Start Game
                 </button>
-                <button id="pause-btn" class="bg-yellow-600 hover:bg-yellow-500 text-white py-3 px-6 rounded-lg font-bold text-lg transition opacity-50" disabled>
+                <button id="pause-btn" class="bg-yellow-600 hover:bg-yellow-500 text-white py-3 px-6 rounded-lg font-bold text-lg transition-all transform hover:scale-105 opacity-50" disabled>
                     <i class="fas fa-pause mr-2"></i> Pause
                 </button>
-                <button id="sound-btn" class="bg-purple-600 hover:bg-purple-500 text-white py-3 px-6 rounded-lg font-bold text-lg transition">
+                <button id="sound-btn" class="bg-purple-600 hover:bg-purple-500 text-white py-3 px-6 rounded-lg font-bold text-lg transition-all transform hover:scale-105">
                     <i class="fas fa-volume-up mr-2"></i> Sound: ON
                 </button>
             </div>
@@ -115,10 +208,11 @@
     </div>
     
     <div id="game-over" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden z-50">
-        <div class="bg-gray-800 p-8 rounded-xl border-4 border-red-500 max-w-md w-full text-center">
+        <div class="bg-gray-800 p-8 rounded-xl border-4 border-red-500 max-w-md w-full text-center transform transition-all duration-300 scale-95">
             <h2 class="text-4xl font-bold text-red-500 mb-4">Game Over!</h2>
-            <p class="text-2xl text-white mb-6">Your final score: <span id="final-score" class="font-bold">0</span></p>
-            <button id="restart-btn" class="bg-purple-600 hover:bg-purple-500 text-white py-3 px-8 rounded-lg font-bold text-lg transition">
+            <div class="text-xl text-white mb-2">Final Score: <span id="final-score" class="font-bold">0</span></div>
+            <div class="text-lg text-gray-300 mb-4">Lines: <span id="final-lines">0</span> | Level: <span id="final-level">1</span></div>
+            <button id="restart-btn" class="bg-purple-600 hover:bg-purple-500 text-white py-3 px-8 rounded-lg font-bold text-lg transition-all transform hover:scale-105">
                 <i class="fas fa-redo mr-2"></i> Play Again
             </button>
         </div>
@@ -129,22 +223,24 @@
     <audio id="drop-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-mechanical-bling-210.mp3" preload="auto"></audio>
     <audio id="clear-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3" preload="auto"></audio>
     <audio id="gameover-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3" preload="auto"></audio>
+    <audio id="combo-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" preload="auto"></audio>
+    <audio id="hold-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-interface-hint-notification-911.mp3" preload="auto"></audio>
     
     <script>
-        // Game configuration
+        // Enhanced Game configuration
         const config = {
             rows: 20,
             cols: 10,
             cellSize: 30,
             colors: [
                 'bg-transparent',
-                'bg-cyan-500',
-                'bg-blue-500',
-                'bg-orange-500',
-                'bg-yellow-400',
-                'bg-green-500',
-                'bg-purple-500',
-                'bg-red-500'
+                'bg-cyan-500 shadow-cyan-500/50',
+                'bg-blue-500 shadow-blue-500/50',
+                'bg-orange-500 shadow-orange-500/50',
+                'bg-yellow-400 shadow-yellow-400/50',
+                'bg-green-500 shadow-green-500/50',
+                'bg-purple-500 shadow-purple-500/50',
+                'bg-red-500 shadow-red-500/50'
             ],
             blockShapes: [
                 [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]], // I
@@ -159,31 +255,50 @@
             speedIncrease: 50,
             pointsPerLine: 100,
             pointsPerLevel: 1000,
-            soundEnabled: true
+            comboMultiplier: 0.5,
+            soundEnabled: true,
+            ghostPieceEnabled: true
         };
 
-        // Game state
+        // Enhanced Game state
         let gameBoard = [];
         let currentBlock = null;
         let nextBlock = null;
+        let heldBlock = null;
+        let canHold = true;
         let currentPosition = { x: 0, y: 0 };
+        let ghostPosition = { x: 0, y: 0 };
         let gameInterval = null;
         let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
         let level = 1;
+        let linesCleared = 0;
+        let comboCount = 0;
+        let comboTimeout = null;
         let gameRunning = false;
         let gamePaused = false;
+        let gameStartTime = 0;
+        let gameTimeInterval = null;
 
         // DOM elements
         const gameBoardElement = document.getElementById('game-board');
         const nextBlockElement = document.getElementById('next-block');
+        const holdBlockElement = document.getElementById('hold-block');
         const scoreElement = document.getElementById('score');
         const levelElement = document.getElementById('level');
+        const linesElement = document.getElementById('lines-cleared');
+        const comboElement = document.getElementById('combo-count');
+        const highScoreElement = document.getElementById('high-score');
+        const gameTimeElement = document.getElementById('game-time');
         const startButton = document.getElementById('start-btn');
         const pauseButton = document.getElementById('pause-btn');
         const soundButton = document.getElementById('sound-btn');
         const gameOverElement = document.getElementById('game-over');
         const finalScoreElement = document.getElementById('final-score');
+        const finalLinesElement = document.getElementById('final-lines');
+        const finalLevelElement = document.getElementById('final-level');
         const restartButton = document.getElementById('restart-btn');
+        const comboIndicator = document.getElementById('combo-indicator');
         
         // Sound elements
         const moveSound = document.getElementById('move-sound');
@@ -191,6 +306,8 @@
         const dropSound = document.getElementById('drop-sound');
         const clearSound = document.getElementById('clear-sound');
         const gameoverSound = document.getElementById('gameover-sound');
+        const comboSound = document.getElementById('combo-sound');
+        const holdSound = document.getElementById('hold-sound');
 
         // Initialize the game board
         function initGameBoard() {
@@ -218,13 +335,17 @@
         // Generate a random block
         function getRandomBlock() {
             const randomIndex = Math.floor(Math.random() * config.blockShapes.length);
-            return config.blockShapes[randomIndex];
+            return JSON.parse(JSON.stringify(config.blockShapes[randomIndex]));
         }
 
         // Draw the current block on the board
         function drawBlock() {
             if (!currentBlock) return;
             
+            // Clear ghost piece first
+            clearGhost();
+            
+            // Draw current block
             for (let y = 0; y < currentBlock.length; y++) {
                 for (let x = 0; x < currentBlock[y].length; x++) {
                     if (currentBlock[y][x]) {
@@ -240,6 +361,50 @@
                     }
                 }
             }
+            
+            // Draw ghost piece
+            if (config.ghostPieceEnabled) {
+                drawGhost();
+            }
+        }
+
+        // Draw ghost piece (shows where block will land)
+        function drawGhost() {
+            // Calculate ghost position (where piece would land)
+            ghostPosition = { ...currentPosition };
+            while (canMove(0, 1, currentBlock, ghostPosition)) {
+                ghostPosition.y++;
+            }
+            
+            // Draw ghost
+            for (let y = 0; y < currentBlock.length; y++) {
+                for (let x = 0; x < currentBlock[y].length; x++) {
+                    if (currentBlock[y][x]) {
+                        const boardY = ghostPosition.y + y;
+                        const boardX = ghostPosition.x + x;
+                        
+                        if (boardY >= 0 && boardY < config.rows && boardX >= 0 && boardX < config.cols) {
+                            const cell = document.querySelector(`[data-x="${boardX}"][data-y="${boardY}"]`);
+                            if (cell && gameBoard[boardY][boardX] === 0) {
+                                cell.classList.add('ghost-block');
+                                cell.classList.add(config.colors[currentBlock[y][x]].split(' ')[0]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Clear ghost piece
+        function clearGhost() {
+            const ghostCells = document.querySelectorAll('.ghost-block');
+            ghostCells.forEach(cell => {
+                const colorClass = Array.from(cell.classList).find(cls => cls.startsWith('bg-'));
+                if (colorClass) {
+                    cell.classList.remove(colorClass);
+                }
+                cell.classList.remove('ghost-block');
+            });
         }
 
         // Clear the current block from the board (without erasing locked blocks)
@@ -257,14 +422,15 @@
         }
 
         // Check if the current block can move to the specified position
-        function canMove(offsetX, offsetY, rotatedBlock = null) {
-            const block = rotatedBlock || currentBlock;
-            const newX = currentPosition.x + offsetX;
-            const newY = currentPosition.y + offsetY;
+        function canMove(offsetX, offsetY, block = null, position = null) {
+            const testBlock = block || currentBlock;
+            const testPosition = position || currentPosition;
+            const newX = testPosition.x + offsetX;
+            const newY = testPosition.y + offsetY;
             
-            for (let y = 0; y < block.length; y++) {
-                for (let x = 0; x < block[y].length; x++) {
-                    if (block[y][x]) {
+            for (let y = 0; y < testBlock.length; y++) {
+                for (let x = 0; x < testBlock[y].length; x++) {
+                    if (testBlock[y][x]) {
                         const boardX = newX + x;
                         const boardY = newY + y;
                         
@@ -283,7 +449,7 @@
 
         // Move the current block
         function moveBlock(offsetX, offsetY) {
-            if (!gameRunning || gamePaused) return;
+            if (!gameRunning || gamePaused) return false;
             
             if (canMove(offsetX, offsetY)) {
                 clearBlock();
@@ -298,12 +464,68 @@
                 }
                 return true;
             }
+            
+            // If we couldn't move down, check if we've landed
+            if (offsetY > 0) {
+                createLandingParticles();
+                playSound(dropSound);
+                lockBlock();
+            }
+            
             return false;
+        }
+
+        // Create particles when block lands
+        function createLandingParticles() {
+            for (let y = 0; y < currentBlock.length; y++) {
+                for (let x = 0; x < currentBlock[y].length; x++) {
+                    if (currentBlock[y][x]) {
+                        const boardY = currentPosition.y + y;
+                        const boardX = currentPosition.x + x;
+                        
+                        if (boardY >= 0) {
+                            const color = config.colors[currentBlock[y][x]].split(' ')[0].replace('bg-', '');
+                            const cell = document.querySelector(`[data-x="${boardX}"][data-y="${boardY}"]`);
+                            
+                            if (cell) {
+                                cell.classList.add('landing');
+                                setTimeout(() => cell.classList.remove('landing'), 100);
+                                
+                                // Create particles
+                                for (let i = 0; i < 3; i++) {
+                                    const particle = document.createElement('div');
+                                    particle.className = `particle bg-${color}`;
+                                    particle.style.width = `${Math.random() * 6 + 4}px`;
+                                    particle.style.height = particle.style.width;
+                                    particle.style.left = `${boardX * config.cellSize + config.cellSize/2}px`;
+                                    particle.style.top = `${boardY * config.cellSize + config.cellSize/2}px`;
+                                    
+                                    const angle = Math.random() * Math.PI * 2;
+                                    const distance = Math.random() * 15 + 5;
+                                    const duration = Math.random() * 0.5 + 0.3;
+                                    
+                                    gameBoardElement.appendChild(particle);
+                                    
+                                    setTimeout(() => {
+                                        particle.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px)`;
+                                        particle.style.opacity = '0';
+                                        particle.style.transition = `all ${duration}s ease-out`;
+                                        
+                                        setTimeout(() => {
+                                            particle.remove();
+                                        }, duration * 1000);
+                                    }, 10);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Rotate the current block
         function rotateBlock() {
-            if (!gameRunning || gamePaused || !currentBlock) return;
+            if (!gameRunning || gamePaused || !currentBlock) return false;
             
             const rotated = currentBlock[0].map((_, i) => 
                 currentBlock.map(row => row[i]).reverse()
@@ -332,8 +554,70 @@
             return false;
         }
 
+        // Hold current block
+        function holdCurrentBlock() {
+            if (!gameRunning || gamePaused || !canHold) return;
+            
+            playSound(holdSound);
+            
+            clearBlock();
+            clearGhost();
+            
+            if (heldBlock) {
+                // Swap current block with held block
+                const temp = currentBlock;
+                currentBlock = heldBlock;
+                heldBlock = temp;
+            } else {
+                // Just hold current block and get next one
+                heldBlock = currentBlock;
+                currentBlock = nextBlock;
+                nextBlock = getRandomBlock();
+            }
+            
+            // Reset position
+            currentPosition = { 
+                x: Math.floor(config.cols / 2) - Math.floor(currentBlock[0].length / 2), 
+                y: -1 
+            };
+            
+            // Update displays
+            updateHoldBlockPreview();
+            updateNextBlockPreview();
+            
+            // Can't hold again until next block is placed
+            canHold = false;
+            
+            // Check if game over
+            if (!canMove(0, 0)) {
+                gameOver();
+                return;
+            }
+            
+            drawBlock();
+        }
+
         // Lock the current block in place
         function lockBlock() {
+            // Add landing effect to all blocks
+            for (let y = 0; y < currentBlock.length; y++) {
+                for (let x = 0; x < currentBlock[y].length; x++) {
+                    if (currentBlock[y][x]) {
+                        const boardY = currentPosition.y + y;
+                        const boardX = currentPosition.x + x;
+                        
+                        if (boardY >= 0) {
+                            const cell = document.querySelector(`[data-x="${boardX}"][data-y="${boardY}"]`);
+                            if (cell) {
+                                cell.classList.add('landing');
+                                setTimeout(() => cell.classList.remove('landing'), 100);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Lock the blocks in place
             for (let y = 0; y < currentBlock.length; y++) {
                 for (let x = 0; x < currentBlock[y].length; x++) {
                     if (currentBlock[y][x]) {
@@ -352,6 +636,9 @@
             
             // Spawn next block
             spawnBlock();
+            
+            // Allow holding again
+            canHold = true;
         }
 
         // Check for completed lines and clear them
@@ -367,6 +654,28 @@
             if (linesToClear.length > 0) {
                 playSound(clearSound);
                 
+                // Add combo
+                comboCount++;
+                updateComboDisplay();
+                
+                // Calculate points with combo bonus
+                const basePoints = linesToClear.length * config.pointsPerLine * level;
+                const comboBonus = Math.floor(basePoints * (comboCount - 1) * config.comboMultiplier);
+                const totalPoints = basePoints + comboBonus;
+                
+                score += totalPoints;
+                linesCleared += linesToClear.length;
+                
+                scoreElement.textContent = score;
+                linesElement.textContent = linesCleared;
+                
+                // Reset combo timeout
+                if (comboTimeout) clearTimeout(comboTimeout);
+                comboTimeout = setTimeout(() => {
+                    comboCount = 0;
+                    comboIndicator.classList.remove('combo-active');
+                }, 3000);
+                
                 // Highlight lines being cleared
                 for (const line of linesToClear) {
                     for (let x = 0; x < config.cols; x++) {
@@ -377,6 +686,12 @@
                     }
                 }
                 
+                // Shake the board for dramatic effect
+                gameBoardElement.classList.add('shaking');
+                setTimeout(() => {
+                    gameBoardElement.classList.remove('shaking');
+                }, 300);
+                
                 // Wait for animation to complete
                 setTimeout(() => {
                     // Remove lines
@@ -385,18 +700,15 @@
                         gameBoard.unshift(Array(config.cols).fill(0));
                     }
                     
-                    // Update score
-                    const points = linesToClear.length * config.pointsPerLine * level;
-                    score += points;
-                    scoreElement.textContent = score;
-                    
                     // Show score pop effect
                     const scorePop = document.createElement('div');
                     scorePop.className = 'score-pop absolute text-yellow-300 font-bold text-xl';
-                    scorePop.textContent = `+${points}`;
+                    scorePop.textContent = `+${totalPoints}`;
+                    if (comboBonus > 0) {
+                        scorePop.textContent += ` (+${comboBonus} combo!)`;
+                    }
                     scorePop.style.left = '50%';
                     scorePop.style.top = '50%';
-                    scorePop.style.transform = 'translate(-50%, -50%)';
                     gameBoardElement.appendChild(scorePop);
                     
                     setTimeout(() => {
@@ -411,6 +723,23 @@
                     // Redraw board
                     redrawBoard();
                 }, 500);
+            } else {
+                // No lines cleared - reset combo
+                comboCount = 0;
+                comboIndicator.classList.remove('combo-active');
+            }
+        }
+
+        // Update combo display
+        function updateComboDisplay() {
+            if (comboCount > 1) {
+                comboIndicator.textContent = `COMBO x${comboCount}`;
+                comboIndicator.classList.add('combo-active');
+                
+                // Play combo sound for higher combos
+                if (comboCount >= 3) {
+                    playSound(comboSound);
+                }
             }
         }
 
@@ -431,7 +760,10 @@
         function spawnBlock() {
             currentBlock = nextBlock;
             nextBlock = getRandomBlock();
-            currentPosition = { x: Math.floor(config.cols / 2) - Math.floor(currentBlock[0].length / 2), y: -1 };
+            currentPosition = { 
+                x: Math.floor(config.cols / 2) - Math.floor(currentBlock[0].length / 2), 
+                y: -1 
+            };
             
             // Update next block preview
             updateNextBlockPreview();
@@ -459,12 +791,37 @@
                 for (let x = 0; x < nextBlock[y].length; x++) {
                     if (nextBlock[y][x]) {
                         const cell = document.createElement('div');
-                        cell.className = `absolute ${config.colors[nextBlock[y][x]]} border border-gray-800`;
+                        cell.className = `absolute ${config.colors[nextBlock[y][x]]} border border-gray-800 block`;
                         cell.style.width = `${size}px`;
                         cell.style.height = `${size}px`;
                         cell.style.left = `${offsetX + x * size}px`;
                         cell.style.top = `${offsetY + y * size}px`;
                         nextBlockElement.appendChild(cell);
+                    }
+                }
+            }
+        }
+
+        // Update the hold block preview
+        function updateHoldBlockPreview() {
+            holdBlockElement.innerHTML = '';
+            
+            if (!heldBlock) return;
+            
+            const size = 20;
+            const offsetX = (4 - heldBlock[0].length) * size / 2;
+            const offsetY = (4 - heldBlock.length) * size / 2;
+            
+            for (let y = 0; y < heldBlock.length; y++) {
+                for (let x = 0; x < heldBlock[y].length; x++) {
+                    if (heldBlock[y][x]) {
+                        const cell = document.createElement('div');
+                        cell.className = `absolute ${config.colors[heldBlock[y][x]]} border border-gray-800 block`;
+                        cell.style.width = `${size}px`;
+                        cell.style.height = `${size}px`;
+                        cell.style.left = `${offsetX + x * size}px`;
+                        cell.style.top = `${offsetY + y * size}px`;
+                        holdBlockElement.appendChild(cell);
                     }
                 }
             }
@@ -478,7 +835,6 @@
                 // Keep moving down until we can't anymore
             }
             
-            lockBlock();
             playSound(dropSound);
         }
 
@@ -507,14 +863,32 @@
             }, 1500);
         }
 
+        // Update game timer
+        function updateGameTime() {
+            const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            gameTimeElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
         // Game over
         function gameOver() {
             clearInterval(gameInterval);
+            clearInterval(gameTimeInterval);
             gameRunning = false;
+            
+            // Update high score
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                highScoreElement.textContent = highScore;
+            }
             
             playSound(gameoverSound);
             
             finalScoreElement.textContent = score;
+            finalLinesElement.textContent = linesCleared;
+            finalLevelElement.textContent = level;
             gameOverElement.classList.remove('hidden');
             
             startButton.innerHTML = '<i class="fas fa-play mr-2"></i> Start Game';
@@ -542,54 +916,6 @@
             }
         }
 
-        // Start the game
-        function startGame() {
-            if (gameRunning) return;
-            
-            initGameBoard();
-            gameBoard = Array(config.rows).fill().map(() => Array(config.cols).fill(0));
-            score = 0;
-            level = 1;
-            
-            scoreElement.textContent = score;
-            levelElement.textContent = level;
-            
-            nextBlock = getRandomBlock();
-            spawnBlock();
-            
-            gameRunning = true;
-            gamePaused = false;
-            
-            const speed = config.initialSpeed;
-            gameInterval = setInterval(gameTick, speed);
-            
-            startButton.innerHTML = '<i class="fas fa-stop mr-2"></i> Stop Game';
-            startButton.classList.remove('bg-green-600', 'hover:bg-green-500');
-            startButton.classList.add('bg-red-600', 'hover:bg-red-500');
-            
-            pauseButton.disabled = false;
-            pauseButton.classList.remove('opacity-50');
-            
-            gameOverElement.classList.add('hidden');
-        }
-
-        // Pause/resume the game
-        function togglePause() {
-            if (!gameRunning) return;
-            
-            gamePaused = !gamePaused;
-            
-            if (gamePaused) {
-                pauseButton.innerHTML = '<i class="fas fa-play mr-2"></i> Resume';
-                pauseButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-500');
-                pauseButton.classList.add('bg-green-600', 'hover:bg-green-500');
-            } else {
-                pauseButton.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
-                pauseButton.classList.remove('bg-green-600', 'hover:bg-green-500');
-                pauseButton.classList.add('bg-yellow-600', 'hover:bg-yellow-500');
-            }
-        }
-
         // Toggle sound
         function toggleSound() {
             config.soundEnabled = !config.soundEnabled;
@@ -605,24 +931,104 @@
             }
         }
 
-        // Event listeners
-        startButton.addEventListener('click', () => {
+        // Start the game
+        function startGame() {
             if (gameRunning) {
+                // If game is running, stop it first
                 clearInterval(gameInterval);
+                clearInterval(gameTimeInterval);
                 gameRunning = false;
                 startGame();
-            } else {
-                startGame();
+                return;
             }
-        });
-        
+            
+            initGameBoard();
+            gameBoard = Array(config.rows).fill().map(() => Array(config.cols).fill(0));
+            score = 0;
+            level = 1;
+            linesCleared = 0;
+            comboCount = 0;
+            heldBlock = null;
+            canHold = true;
+            
+            scoreElement.textContent = score;
+            levelElement.textContent = level;
+            linesElement.textContent = linesCleared;
+            comboElement.textContent = comboCount;
+            highScoreElement.textContent = highScore;
+            
+            nextBlock = getRandomBlock();
+            spawnBlock();
+            updateHoldBlockPreview();
+            
+            gameRunning = true;
+            gamePaused = false;
+            
+            const speed = config.initialSpeed;
+            gameInterval = setInterval(gameTick, speed);
+            
+            // Start game timer
+            gameStartTime = Date.now();
+            gameTimeInterval = setInterval(updateGameTime, 1000);
+            updateGameTime();
+            
+            startButton.innerHTML = '<i class="fas fa-stop mr-2"></i> Stop Game';
+            startButton.classList.remove('bg-green-600', 'hover:bg-green-500');
+            startButton.classList.add('bg-red-600', 'hover:bg-red-500');
+            
+            pauseButton.disabled = false;
+            pauseButton.classList.remove('opacity-50');
+            pauseButton.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
+            pauseButton.classList.remove('bg-green-600', 'hover:bg-green-500');
+            pauseButton.classList.add('bg-yellow-600', 'hover:bg-yellow-500');
+            
+            gameOverElement.classList.add('hidden');
+            comboIndicator.classList.remove('combo-active');
+        }
+
+        // Pause/resume the game
+        function togglePause() {
+            if (!gameRunning) return;
+            
+            gamePaused = !gamePaused;
+            
+            if (gamePaused) {
+                pauseButton.innerHTML = '<i class="fas fa-play mr-2"></i> Resume';
+                pauseButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-500');
+                pauseButton.classList.add('bg-green-600', 'hover:bg-green-500');
+                
+                // Add pause overlay
+                const pauseOverlay = document.createElement('div');
+                pauseOverlay.id = 'pause-overlay';
+                pauseOverlay.className = 'absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-10';
+                pauseOverlay.innerHTML = `
+                    <div class="text-white text-4xl font-bold">
+                        PAUSED
+                    </div>
+                `;
+                gameBoardElement.appendChild(pauseOverlay);
+            } else {
+                pauseButton.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
+                pauseButton.classList.remove('bg-green-600', 'hover:bg-green-500');
+                pauseButton.classList.add('bg-yellow-600', 'hover:bg-yellow-500');
+                
+                // Remove pause overlay
+                const pauseOverlay = document.getElementById('pause-overlay');
+                if (pauseOverlay) {
+                    pauseOverlay.remove();
+                }
+            }
+        }
+
+        // Event listeners
+        startButton.addEventListener('click', startGame);
         pauseButton.addEventListener('click', togglePause);
         soundButton.addEventListener('click', toggleSound);
         restartButton.addEventListener('click', startGame);
         
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
-            if (!gameRunning) return;
+            if (!gameRunning && e.key !== 'Enter') return;
             
             switch (e.key) {
                 case 'ArrowLeft':
@@ -640,9 +1046,16 @@
                 case ' ':
                     hardDrop();
                     break;
+                case 'c':
+                case 'C':
+                    holdCurrentBlock();
+                    break;
                 case 'p':
                 case 'P':
                     togglePause();
+                    break;
+                case 'Enter':
+                    if (!gameRunning) startGame();
                     break;
             }
         });
@@ -650,6 +1063,8 @@
         // Initialize the game
         initGameBoard();
         updateNextBlockPreview();
+        updateHoldBlockPreview();
+        highScoreElement.textContent = highScore;
     </script>
 </body>
 </html>
