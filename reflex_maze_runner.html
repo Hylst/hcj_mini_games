@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reflex Maze Runner | by Geoffroy Streit - Hylst</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes float-up {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+        
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .pulse { animation: pulse 1.5s infinite; }
+        .shake { animation: shake 0.5s; }
+        .flash { animation: flash 0.5s; }
+        .rotate { animation: rotate 2s linear infinite; }
+        
+        .maze-cell {
+            transition: all 0.3s ease;
+            position: relative;
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .player {
+            transition: transform 0.15s ease;
+            z-index: 10;
+        }
+        
+        .obstacle {
+            animation: pulse 2s infinite;
+        }
+        
+        .power-up {
+            animation: flash 1s infinite;
+        }
+        
+        .exit {
+            animation: rotate 5s linear infinite;
+        }
+        
+        #game-container {
+            perspective: 1000px;
+        }
+        
+        .score-popup {
+            animation: float-up 1s forwards;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .pathway {
+            background-color: rgba(255, 255, 255, 0.05);
+            transition: background-color 0.3s;
+        }
+        
+        .pathway.active {
+            background-color: rgba(74, 222, 128, 0.3);
+        }
+        
+        .control-btn {
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .control-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #mobile-controls {
+            touch-action: manipulation;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .maze-cell {
+                font-size: 0.8rem;
+            }
+            
+            #mobile-controls button {
+                padding: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden">
+    <div id="game-container" class="relative w-full max-w-2xl">
+        <!-- Game Header -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <h1 class="text-3xl font-bold text-green-400 flex items-center">
+                <i class="fas fa-running mr-2"></i>
+                Reflex Maze Runner
+            </h1>
+            <div class="flex flex-wrap justify-center gap-2">
+                <div class="bg-gray-800 px-4 py-2 rounded-lg flex items-center">
+                    <i class="fas fa-clock text-yellow-400 mr-2"></i>
+                    <span id="timer" class="font-mono">60</span>s
+                </div>
+                <div class="bg-gray-800 px-4 py-2 rounded-lg flex items-center">
+                    <i class="fas fa-star text-purple-400 mr-2"></i>
+                    <span id="score">0</span>
+                </div>
+                <div class="bg-gray-800 px-4 py-2 rounded-lg flex items-center">
+                    <i class="fas fa-bolt text-blue-400 mr-2"></i>
+                    <span id="multiplier">1x</span>
+                </div>
+                <div class="bg-gray-800 px-4 py-2 rounded-lg flex items-center">
+                    <i class="fas fa-layer-group text-green-400 mr-2"></i>
+                    <span id="level">1</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Board -->
+        <div id="maze" class="grid gap-1 bg-gray-800 p-2 rounded-lg shadow-lg mb-4 w-full"></div>
+        
+        <!-- Mobile Controls -->
+        <div id="mobile-controls" class="grid grid-cols-3 gap-2 mb-4 md:hidden w-full max-w-xs mx-auto">
+            <div></div>
+            <button class="control-btn bg-gray-700 hover:bg-gray-600 p-4 rounded-lg font-bold" data-direction="up">
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            <div></div>
+            <button class="control-btn bg-gray-700 hover:bg-gray-600 p-4 rounded-lg font-bold" data-direction="left">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <button class="control-btn bg-gray-700 hover:bg-gray-600 p-4 rounded-lg font-bold" data-direction="down">
+                <i class="fas fa-arrow-down"></i>
+            </button>
+            <button class="control-btn bg-gray-700 hover:bg-gray-600 p-4 rounded-lg font-bold" data-direction="right">
+                <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+        
+        <!-- Game Controls -->
+        <div class="flex flex-wrap justify-center gap-4">
+            <button id="start-btn" class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-bold flex items-center">
+                <i class="fas fa-play mr-2"></i> Start Game
+            </button>
+            <button id="reset-btn" class="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg font-bold flex items-center">
+                <i class="fas fa-redo mr-2"></i> Reset
+            </button>
+            <button id="help-btn" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-bold flex items-center">
+                <i class="fas fa-question mr-2"></i> Help
+            </button>
+        </div>
+        
+        <!-- Game Messages -->
+        <div id="message" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-20 hidden">
+            <div class="bg-gray-800 rounded-lg max-w-md w-full p-6 mx-4">
+                <h2 class="text-3xl font-bold mb-4 text-center"></h2>
+                <p class="text-xl mb-6 text-center"></p>
+                <div class="flex justify-center">
+                    <button class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-bold">
+                        Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Instructions Modal -->
+    <div id="instructions-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-30 p-4">
+        <div class="bg-gray-800 rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold text-green-400 mb-4 flex items-center justify-center">
+                <i class="fas fa-gamepad mr-2"></i> Reflex Maze Runner
+            </h2>
+            <p class="text-center mb-6">A fast-paced maze game that tests your reflexes and adaptability</p>
+            
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-xl font-bold text-blue-400 mb-2 flex items-center">
+                        <i class="fas fa-info-circle mr-2"></i> How to Play
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex items-start">
+                            <div class="bg-green-600 rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                                <i class="fas fa-running text-xs"></i>
+                            </div>
+                            <p>Guide your player (green square) to the exit (yellow square) before time runs out.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-red-500 rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                                <i class="fas fa-times text-xs"></i>
+                            </div>
+                            <p>Avoid red obstacles - they reset your position and reduce your multiplier.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-blue-500 rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                                <i class="fas fa-bolt text-xs"></i>
+                            </div>
+                            <p>Collect blue power-ups to increase your score multiplier.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-yellow-500 rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                                <i class="fas fa-exclamation text-xs"></i>
+                            </div>
+                            <p>The maze changes every 10 seconds - stay alert!</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-xl font-bold text-purple-400 mb-2 flex items-center">
+                        <i class="fas fa-keyboard mr-2"></i> Controls
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-700 p-3 rounded-lg">
+                            <p class="font-bold text-green-400 mb-1">Keyboard:</p>
+                            <ul class="space-y-1">
+                                <li><span class="font-mono bg-gray-600 px-2 py-1 rounded">W</span> or <span class="font-mono bg-gray-600 px-2 py-1 rounded">↑</span> - Move Up</li>
+                                <li><span class="font-mono bg-gray-600 px-2 py-1 rounded">S</span> or <span class="font-mono bg-gray-600 px-2 py-1 rounded">↓</span> - Move Down</li>
+                                <li><span class="font-mono bg-gray-600 px-2 py-1 rounded">A</span> or <span class="font-mono bg-gray-600 px-2 py-1 rounded">←</span> - Move Left</li>
+                                <li><span class="font-mono bg-gray-600 px-2 py-1 rounded">D</span> or <span class="font-mono bg-gray-600 px-2 py-1 rounded">→</span> - Move Right</li>
+                            </ul>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded-lg">
+                            <p class="font-bold text-blue-400 mb-1">Touch/Mobile:</p>
+                            <p>Use the on-screen directional buttons to move your player.</p>
+                            <div class="mt-2 grid grid-cols-3 gap-1">
+                                <div></div>
+                                <div class="bg-gray-600 p-2 rounded text-center"><i class="fas fa-arrow-up"></i></div>
+                                <div></div>
+                                <div class="bg-gray-600 p-2 rounded text-center"><i class="fas fa-arrow-left"></i></div>
+                                <div class="bg-gray-600 p-2 rounded text-center"><i class="fas fa-arrow-down"></i></div>
+                                <div class="bg-gray-600 p-2 rounded text-center"><i class="fas fa-arrow-right"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-xl font-bold text-yellow-400 mb-2 flex items-center">
+                        <i class="fas fa-star mr-2"></i> Scoring
+                    </h3>
+                    <div class="bg-gray-700 p-3 rounded-lg">
+                        <ul class="space-y-2">
+                            <li class="flex items-start">
+                                <span class="bg-green-600 text-xs rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">1</span>
+                                <span><span class="font-bold">10 points</span> × multiplier for each new cell visited</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="bg-blue-600 text-xs rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">2</span>
+                                <span><span class="font-bold">+1 multiplier</span> for each power-up collected</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="bg-purple-600 text-xs rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">3</span>
+                                <span><span class="font-bold">Time bonus</span> when completing a level (remaining seconds × 2)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="bg-red-600 text-xs rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">4</span>
+                                <span><span class="font-bold">-5 points</span> and <span class="font-bold">-1 multiplier</span> when hitting obstacles</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 flex justify-center">
+                <button id="close-instructions" class="bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg font-bold flex items-center">
+                    <i class="fas fa-play mr-2"></i> Start Playing
+                </button>
+            </div>
+            
+            <div class="mt-6 text-center text-gray-400 text-sm">
+                <p>Created by Geoffroy Streit - Hylst</p>
+                <p>© 2023 Reflex Maze Runner</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Game configuration
+        const config = {
+            rows: 10,
+            cols: 10,
+            gameDuration: 60,
+            levelDuration: 10,
+            initialMultiplier: 1,
+            scorePerStep: 10,
+            obstaclePenalty: 5,
+            powerUpBonus: 3,
+            timeBonusMultiplier: 2,
+            minObstacles: 0.15,
+            maxObstacles: 0.25,
+            minPowerUps: 0.05,
+            maxPowerUps: 0.08
+        };
+        
+        // Game state
+        let state = {
+            maze: [],
+            playerPos: { row: 0, col: 0 },
+            exitPos: { row: 0, col: 0 },
+            obstacles: [],
+            powerUps: [],
+            score: 0,
+            multiplier: config.initialMultiplier,
+            timeLeft: config.gameDuration,
+            levelTimeLeft: config.levelDuration,
+            gameInterval: null,
+            levelInterval: null,
+            isPlaying: false,
+            currentLevel: 1,
+            visitedCells: new Set(),
+            gameActive: false
+        };
+        
+        // DOM elements
+        const mazeElement = document.getElementById('maze');
+        const scoreElement = document.getElementById('score');
+        const multiplierElement = document.getElementById('multiplier');
+        const timerElement = document.getElementById('timer');
+        const levelElement = document.getElementById('level');
+        const startButton = document.getElementById('start-btn');
+        const resetButton = document.getElementById('reset-btn');
+        const helpButton = document.getElementById('help-btn');
+        const messageElement = document.getElementById('message');
+        const instructionsModal = document.getElementById('instructions-modal');
+        const closeInstructions = document.getElementById('close-instructions');
+        const mobileControls = document.getElementById('mobile-controls');
+        
+        // Calculate cell size based on container width
+        function calculateCellSize() {
+            const containerWidth = mazeElement.clientWidth;
+            const gapSize = 4; // 0.25rem = 4px
+            const padding = 16; // p-2 = 8px on each side
+            const availableWidth = containerWidth - padding - (gapSize * (config.cols - 1));
+            return Math.floor(availableWidth / config.cols);
+        }
+        
+        // Initialize the game
+        function initGame() {
+            // Set up event listeners
+            startButton.addEventListener('click', startGame);
+            resetButton.addEventListener('click', resetGame);
+            helpButton.addEventListener('click', showInstructions);
+            closeInstructions.addEventListener('click', () => {
+                instructionsModal.classList.add('hidden');
+                if (!state.gameActive) {
+                    startGame();
+                }
+            });
+            
+            // Set up keyboard controls
+            document.addEventListener('keydown', handleKeyPress);
+            
+            // Set up mobile controls
+            const controlButtons = mobileControls.querySelectorAll('button');
+            controlButtons.forEach(button => {
+                button.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handleMobileControl(button.dataset.direction);
+                    button.classList.add('bg-gray-500');
+                });
+                
+                button.addEventListener('touchend', () => {
+                    button.classList.remove('bg-gray-500');
+                });
+                
+                button.addEventListener('mousedown', () => {
+                    handleMobileControl(button.dataset.direction);
+                    button.classList.add('bg-gray-500');
+                });
+                
+                button.addEventListener('mouseup', () => {
+                    button.classList.remove('bg-gray-500');
+                });
+                
+                button.addEventListener('mouseleave', () => {
+                    button.classList.remove('bg-gray-500');
+                });
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                if (state.isPlaying) {
+                    renderMaze();
+                }
+            });
+            
+            // Initialize the maze
+            resetGame();
+            
+            // Show instructions first
+            showInstructions();
+        }
+        
+        // Show instructions modal
+        function showInstructions() {
+            instructionsModal.classList.remove('hidden');
+            state.gameActive = state.isPlaying;
+        }
+        
+        // Handle mobile controls
+        function handleMobileControl(direction) {
+            if (!state.isPlaying) return;
+            
+            let newRow = state.playerPos.row;
+            let newCol = state.playerPos.col;
+            
+            switch (direction) {
+                case 'up':
+                    if (newRow > 0) newRow--;
+                    break;
+                case 'down':
+                    if (newRow < config.rows - 1) newRow++;
+                    break;
+                case 'left':
+                    if (newCol > 0) newCol--;
+                    break;
+                case 'right':
+                    if (newCol < config.cols - 1) newCol++;
+                    break;
+            }
+            
+            movePlayer(newRow, newCol);
+        }
+        
+        // Reset the game state
+        function resetGame() {
+            clearIntervals();
+            
+            state = {
+                maze: [],
+                playerPos: { row: 0, col: 0 },
+                exitPos: { row: config.rows - 1, col: config.cols - 1 },
+                obstacles: [],
+                powerUps: [],
+                score: 0,
+                multiplier: config.initialMultiplier,
+                timeLeft: config.gameDuration,
+                levelTimeLeft: config.levelDuration,
+                gameInterval: null,
+                levelInterval: null,
+                isPlaying: false,
+                currentLevel: 1,
+                visitedCells: new Set(),
+                gameActive: false
+            };
+            
+            updateUI();
+            generateMaze();
+            renderMaze();
+            
+            messageElement.classList.add('hidden');
+            startButton.disabled = false;
+        }
+        
+        // Start the game
+        function startGame() {
+            if (state.isPlaying) return;
+            
+            state.isPlaying = true;
+            state.gameActive = true;
+            startButton.disabled = true;
+            
+            // Start game timer
+            state.gameInterval = setInterval(() => {
+                state.timeLeft--;
+                updateUI();
+                
+                if (state.timeLeft <= 0) {
+                    endGame(false);
+                }
+            }, 1000);
+            
+            // Start level timer
+            state.levelInterval = setInterval(() => {
+                state.levelTimeLeft--;
+                
+                if (state.levelTimeLeft <= 3) {
+                    // Visual warning that maze will change soon
+                    mazeElement.classList.add('shake');
+                    setTimeout(() => mazeElement.classList.remove('shake'), 500);
+                }
+                
+                if (state.levelTimeLeft <= 0) {
+                    changeMaze();
+                    state.levelTimeLeft = config.levelDuration;
+                    state.currentLevel++;
+                    updateUI();
+                }
+            }, 1000);
+            
+            // Mark starting cell as visited
+            const startKey = `${state.playerPos.row},${state.playerPos.col}`;
+            state.visitedCells.add(startKey);
+            
+            // Visual feedback
+            mazeElement.classList.add('pulse');
+            setTimeout(() => mazeElement.classList.remove('pulse'), 1000);
+        }
+        
+        // End the game
+        function endGame(win) {
+            clearIntervals();
+            state.isPlaying = false;
+            state.gameActive = false;
+            
+            // Calculate final score
+            if (win) {
+                const timeBonus = Math.floor(state.timeLeft * config.timeBonusMultiplier);
+                state.score += timeBonus;
+                updateUI();
+                
+                // Show win message
+                messageElement.classList.remove('hidden');
+                messageElement.querySelector('h2').textContent = 'Level Complete!';
+                messageElement.querySelector('p').textContent = `Time Bonus: +${timeBonus} points!`;
+                messageElement.querySelector('button').textContent = 'Next Level';
+                messageElement.querySelector('button').onclick = () => {
+                    messageElement.classList.add('hidden');
+                    nextLevel();
+                };
+            } else {
+                // Show game over message
+                messageElement.classList.remove('hidden');
+                messageElement.querySelector('h2').textContent = 'Game Over';
+                messageElement.querySelector('p').textContent = `Your final score: ${state.score}`;
+                messageElement.querySelector('button').textContent = 'Play Again';
+                messageElement.querySelector('button').onclick = () => {
+                    messageElement.classList.add('hidden');
+                    resetGame();
+                };
+            }
+        }
+        
+        // Advance to next level
+        function nextLevel() {
+            state.currentLevel++;
+            state.levelTimeLeft = config.levelDuration;
+            generateMaze();
+            renderMaze();
+            startGame();
+        }
+        
+        // Clear game intervals
+        function clearIntervals() {
+            if (state.gameInterval) clearInterval(state.gameInterval);
+            if (state.levelInterval) clearInterval(state.levelInterval);
+        }
+        
+        // Generate a new maze
+        function generateMaze() {
+            state.maze = [];
+            state.obstacles = [];
+            state.powerUps = [];
+            state.visitedCells = new Set();
+            
+            // Create empty maze
+            for (let row = 0; row < config.rows; row++) {
+                state.maze[row] = [];
+                for (let col = 0; col < config.cols; col++) {
+                    state.maze[row][col] = { type: 'path' };
+                }
+            }
+            
+            // Set player and exit positions
+            state.playerPos = { row: 0, col: 0 };
+            state.exitPos = { row: config.rows - 1, col: config.cols - 1 };
+            
+            // Generate random obstacles (15-25% of cells)
+            const obstacleCount = Math.floor((config.rows * config.cols) * (config.minObstacles + Math.random() * (config.maxObstacles - config.minObstacles)));
+            for (let i = 0; i < obstacleCount; i++) {
+                const row = Math.floor(Math.random() * config.rows);
+                const col = Math.floor(Math.random() * config.cols);
+                
+                // Don't place obstacles on player, exit, or existing obstacles
+                if ((row !== state.playerPos.row || col !== state.playerPos.col) &&
+                    (row !== state.exitPos.row || col !== state.exitPos.col) &&
+                    state.maze[row][col].type !== 'obstacle') {
+                    state.maze[row][col].type = 'obstacle';
+                    state.obstacles.push({ row, col });
+                }
+            }
+            
+            // Generate power-ups (5-8% of cells)
+            const powerUpCount = Math.floor((config.rows * config.cols) * (config.minPowerUps + Math.random() * (config.maxPowerUps - config.minPowerUps)));
+            for (let i = 0; i < powerUpCount; i++) {
+                const row = Math.floor(Math.random() * config.rows);
+                const col = Math.floor(Math.random() * config.cols);
+                
+                // Don't place power-ups on player, exit, obstacles, or existing power-ups
+                if ((row !== state.playerPos.row || col !== state.playerPos.col) &&
+                    (row !== state.exitPos.row || col !== state.exitPos.col) &&
+                    state.maze[row][col].type === 'path') {
+                    state.maze[row][col].type = 'power-up';
+                    state.powerUps.push({ row, col });
+                }
+            }
+            
+            // Ensure there's at least one path to the exit (simple DFS)
+            if (!pathExists(state.maze, state.playerPos, state.exitPos)) {
+                // If no path, regenerate the maze
+                generateMaze();
+            }
+        }
+        
+        // Change the maze (keep player position)
+        function changeMaze() {
+            const oldPlayerPos = { ...state.playerPos };
+            const oldVisitedCells = new Set(state.visitedCells);
+            
+            generateMaze();
+            
+            // Restore player position and visited cells
+            state.playerPos = oldPlayerPos;
+            state.visitedCells = oldVisitedCells;
+            
+            // Make sure player position is valid
+            if (state.playerPos.row >= config.rows) state.playerPos.row = config.rows - 1;
+            if (state.playerPos.col >= config.cols) state.playerPos.col = config.cols - 1;
+            
+            renderMaze();
+            
+            // Visual feedback that maze has changed
+            mazeElement.classList.add('flash');
+            setTimeout(() => mazeElement.classList.remove('flash'), 500);
+        }
+        
+        // Check if path exists between two points
+        function pathExists(maze, start, end) {
+            const visited = new Set();
+            const stack = [start];
+            
+            while (stack.length > 0) {
+                const current = stack.pop();
+                const key = `${current.row},${current.col}`;
+                
+                if (current.row === end.row && current.col === end.col) {
+                    return true;
+                }
+                
+                if (!visited.has(key)) {
+                    visited.add(key);
+                    
+                    // Check adjacent cells
+                    const directions = [
+                        { row: current.row - 1, col: current.col }, // up
+                        { row: current.row + 1, col: current.col }, // down
+                        { row: current.row, col: current.col - 1 }, // left
+                        { row: current.row, col: current.col + 1 }  // right
+                    ];
+                    
+                    for (const dir of directions) {
+                        if (dir.row >= 0 && dir.row < config.rows &&
+                            dir.col >= 0 && dir.col < config.cols &&
+                            maze[dir.row][dir.col].type !== 'obstacle') {
+                            stack.push(dir);
+                        }
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
+        // Render the maze
+        function renderMaze() {
+            mazeElement.innerHTML = '';
+            const cellSize = calculateCellSize();
+            mazeElement.style.gridTemplateColumns = `repeat(${config.cols}, minmax(0, 1fr))`;
+            
+            for (let row = 0; row < config.rows; row++) {
+                for (let col = 0; col < config.cols; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = `maze-cell rounded-sm`;
+                    
+                    const cellKey = `${row},${col}`;
+                    const isVisited = state.visitedCells.has(cellKey);
+                    
+                    if (row === state.playerPos.row && col === state.playerPos.col) {
+                        cell.className += ' player bg-green-500 shadow-lg';
+                        cell.innerHTML = '<i class="fas fa-running"></i>';
+                    } else if (row === state.exitPos.row && col === state.exitPos.col) {
+                        cell.className += ' exit bg-yellow-500 shadow-lg';
+                        cell.innerHTML = '<i class="fas fa-flag-checkered"></i>';
+                    } else {
+                        switch (state.maze[row][col].type) {
+                            case 'obstacle':
+                                cell.className += ' obstacle bg-red-500 shadow-inner';
+                                cell.innerHTML = '<i class="fas fa-times"></i>';
+                                break;
+                            case 'power-up':
+                                cell.className += ' power-up bg-blue-500 shadow-lg';
+                                cell.innerHTML = '<i class="fas fa-bolt"></i>';
+                                break;
+                            default:
+                                if (isVisited) {
+                                    cell.className += ' pathway active';
+                                } else {
+                                    cell.className += ' pathway';
+                                }
+                                break;
+                        }
+                    }
+                    
+                    mazeElement.appendChild(cell);
+                }
+            }
+        }
+        
+        // Update UI elements
+        function updateUI() {
+            scoreElement.textContent = state.score;
+            multiplierElement.textContent = `${state.multiplier}x`;
+            timerElement.textContent = state.timeLeft;
+            levelElement.textContent = state.currentLevel;
+            
+            // Visual feedback for score changes
+            if (state.score > 0) {
+                scoreElement.classList.add('pulse');
+                setTimeout(() => scoreElement.classList.remove('pulse'), 500);
+            }
+            
+            // Color code timer based on remaining time
+            timerElement.className = '';
+            if (state.timeLeft <= 10) {
+                timerElement.classList.add('text-red-400');
+            } else if (state.timeLeft <= 20) {
+                timerElement.classList.add('text-yellow-400');
+            } else {
+                timerElement.classList.add('text-green-400');
+            }
+        }
+        
+        // Handle keyboard input
+        function handleKeyPress(e) {
+            if (!state.isPlaying) return;
+            
+            let newRow = state.playerPos.row;
+            let newCol = state.playerPos.col;
+            let moved = false;
+            
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    if (newRow > 0) newRow--;
+                    moved = true;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    if (newRow < config.rows - 1) newRow++;
+                    moved = true;
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    if (newCol > 0) newCol--;
+                    moved = true;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    if (newCol < config.cols - 1) newCol++;
+                    moved = true;
+                    break;
+            }
+            
+            if (moved) {
+                movePlayer(newRow, newCol);
+                e.preventDefault(); // Prevent page scrolling with arrow keys
+            }
+        }
+        
+        // Move the player
+        function movePlayer(newRow, newCol) {
+            // Check if move is valid
+            if (newRow < 0 || newRow >= config.rows || newCol < 0 || newCol >= config.cols) {
+                return;
+            }
+            
+            const cellType = state.maze[newRow][newCol].type;
+            
+            // Handle different cell types
+            switch (cellType) {
+                case 'obstacle':
+                    // Hit an obstacle - penalty and reset position
+                    state.score = Math.max(0, state.score - config.obstaclePenalty * state.multiplier);
+                    state.multiplier = Math.max(1, state.multiplier - 1);
+                    
+                    // Visual feedback
+                    mazeElement.classList.add('shake');
+                    setTimeout(() => mazeElement.classList.remove('shake'), 500);
+                    
+                    // Reset to start position
+                    state.playerPos = { row: 0, col: 0 };
+                    break;
+                    
+                case 'power-up':
+                    // Collect power-up - increase multiplier
+                    state.multiplier++;
+                    state.maze[newRow][newCol].type = 'path'; // Remove power-up
+                    
+                    // Update power-ups array
+                    state.powerUps = state.powerUps.filter(p => !(p.row === newRow && p.col === newCol));
+                    
+                    // Visual feedback
+                    const powerUpCell = document.querySelector(`.maze-cell:nth-child(${newRow * config.cols + newCol + 1})`);
+                    if (powerUpCell) {
+                        powerUpCell.classList.add('flash');
+                        setTimeout(() => powerUpCell.classList.remove('flash'), 500);
+                    }
+                    
+                    // Fall through to move player
+                    
+                case 'path':
+                    // Normal move - update position and score
+                    state.playerPos = { row: newRow, col: newCol };
+                    
+                    // Add score for new cells
+                    const cellKey = `${newRow},${newCol}`;
+                    if (!state.visitedCells.has(cellKey)) {
+                        state.visitedCells.add(cellKey);
+                        state.score += config.scorePerStep * state.multiplier;
+                        
+                        // Show score popup
+                        showScorePopup(newRow, newCol, config.scorePerStep * state.multiplier);
+                    }
+                    break;
+            }
+            
+            // Check if player reached exit
+            if (state.playerPos.row === state.exitPos.row && state.playerPos.col === state.exitPos.col) {
+                endGame(true);
+            }
+            
+            updateUI();
+            renderMaze();
+        }
+        
+        // Show floating score popup
+        function showScorePopup(row, col, points) {
+            const cell = document.querySelector(`.maze-cell:nth-child(${row * config.cols + col + 1})`);
+            if (!cell) return;
+            
+            const popup = document.createElement('div');
+            popup.className = 'score-popup absolute text-green-400 font-bold text-sm';
+            popup.textContent = `+${points}`;
+            
+            cell.appendChild(popup);
+            
+            setTimeout(() => {
+                popup.remove();
+            }, 1000);
+        }
+        
+        // Initialize the game when the page loads
+        window.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
