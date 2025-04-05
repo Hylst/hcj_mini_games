@@ -169,6 +169,55 @@
             -webkit-background-clip: text;
             color: transparent;
         }
+        
+        /* New enhancements */
+        .game-container {
+            min-height: calc(100vh - 200px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .target-hit-feedback {
+            position: absolute;
+            font-weight: bold;
+            font-size: 1.25rem;
+            z-index: 20;
+            pointer-events: none;
+        }
+        
+        .target-hit-success {
+            color: #4ade80;
+            animation: hitFeedback 1s ease-out forwards;
+        }
+        
+        .target-hit-fail {
+            color: #f87171;
+            animation: hitFeedback 1s ease-out forwards;
+        }
+        
+        @keyframes hitFeedback {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -100px) scale(1.5);
+                opacity: 0;
+            }
+        }
+        
+        .floating-target {
+            transition: transform 0.1s ease-out;
+        }
+        
+        .floating-target:hover {
+            transform: scale(1.1);
+        }
+        
+        .floating-target:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex flex-col">
@@ -191,7 +240,7 @@
         </div>
     </header>
 
-    <main class="flex-grow container mx-auto px-4 py-8 flex flex-col items-center justify-center">
+    <main class="flex-grow container mx-auto px-4 py-8 game-container">
         <!-- Game Selection Screen -->
         <div id="gameSelection" class="w-full max-w-4xl fade-in">
             <div class="text-center mb-10">
@@ -739,6 +788,11 @@
             color: { bestAccuracy: 0, history: [] }
         };
         
+        // Initialize the game
+        document.addEventListener('DOMContentLoaded', function() {
+            init();
+        });
+
         // Load stats from localStorage
         function loadStats() {
             const savedStats = localStorage.getItem('reflexStats');
@@ -856,6 +910,7 @@
             notificationIcon.className = isSuccess ? 'fas fa-check-circle mr-2 text-green-400' : 'fas fa-exclamation-circle mr-2 text-red-400';
             notificationText.textContent = message;
             notification.className = `fixed top-4 right-4 bg-gray-800 rounded-lg shadow-lg px-4 py-3 flex items-center z-50 fade-in ${isSuccess ? 'border-l-4 border-green-500' : 'border-l-4 border-red-500'}`;
+            notification.classList.remove('hidden');
             
             setTimeout(() => {
                 notification.classList.add('hidden');
@@ -889,6 +944,15 @@
         function hideLevelUpModal() {
             levelUpModal.classList.add('hidden');
             clearConfetti();
+            
+            // Continue the game after level up
+            if (currentGameMode === 'classic') {
+                nextClassicRound();
+            } else if (currentGameMode === 'moving') {
+                nextMovingRound();
+            } else if (currentGameMode === 'color') {
+                nextColorRound();
+            }
         }
         
         function createConfetti() {
@@ -1484,20 +1548,23 @@
                 clearInterval(clickedTarget.moveInterval);
                 clickedTarget.element.remove();
                 
-                // Visual feedback
+                // Create hit feedback
                 const feedback = document.createElement('div');
-                feedback.className = 'absolute text-green-400 font-bold text-xl';
+                feedback.className = 'target-hit-feedback target-hit-success';
                 feedback.textContent = `${reactionTime.toFixed(0)}ms`;
-                feedback.style.left = `${e.clientX - movingTargetArea.getBoundingClientRect().left}px`;
-                feedback.style.top = `${e.clientY - movingTargetArea.getBoundingClientRect().top}px`;
+                
+                const rect = clickedTarget.element.getBoundingClientRect();
+                const areaRect = movingTargetArea.getBoundingClientRect();
+                
+                feedback.style.left = `${rect.left - areaRect.left + rect.width/2}px`;
+                feedback.style.top = `${rect.top - areaRect.top + rect.height/2}px`;
+                
                 movingTargetArea.appendChild(feedback);
                 
-                // Animate feedback
+                // Remove feedback after animation
                 setTimeout(() => {
-                    feedback.style.transform = 'translateY(-30px)';
-                    feedback.style.opacity = '0';
-                    setTimeout(() => feedback.remove(), 500);
-                }, 50);
+                    feedback.remove();
+                }, 1000);
                 
                 playSound(clickSound);
                 
@@ -1559,40 +1626,5 @@
             // Calculate consistency (standard deviation)
             let consistency = 0;
             if (movingReactionTimes.length > 1) {
-                const squaredDifferences = movingReactionTimes.map(t => Math.pow(t - avg, 2));
-                const variance = squaredDifferences.reduce((a, b) => a + b, 0) / movingReactionTimes.length;
-                consistency = Math.sqrt(variance);
-            }
-            
-            // Update stats
-            if (movingReactionTimes.length > 0 && (stats.moving.bestAverage === 0 || avg < stats.moving.bestAverage)) {
-                stats.moving.bestAverage = avg;
-                stats.moving.history.push({
-                    date: new Date().toISOString(),
-                    average: avg,
-                    level: movingLevel
-                });
-                saveStats();
-            }
-            
-            // Update results panel
-            resultBest.textContent = `${best.toFixed(0)}ms`;
-            resultWorst.textContent = `${worst.toFixed(0)}ms`;
-            resultAverage.textContent = `${avg.toFixed(0)}ms`;
-            resultConsistency.textContent = `${consistency.toFixed(0)}ms`;
-            testCount.textContent = `${movingReactionTimes.length} hits`;
-            
-            // Update time distribution (scaled to 600ms max)
-            const distributionPercent = Math.min(100, (avg / 600) * 100);
-            timeDistribution.style.width = `${distributionPercent}%`;
-            
-            // Populate time list
-            timeList.innerHTML = '';
-            movingReactionTimes.forEach((time, index) => {
-                const timeItem = document.createElement('div');
-                timeItem.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-lg';
-                
-                const roundText = document.createElement('span');
-                roundText.className = 'font-medium';
-                roundText.textContent = `Hit
+                const squaredDifferences = moving
 </html>
