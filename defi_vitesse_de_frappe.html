@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Défi de Vitesse de Frappe Pro | Geoffroy Streit - Hylst</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
+        }
+        @keyframes typewriter {
+            from { width: 0 }
+            to { width: 100% }
+        }
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: white }
+        }
+        
+        .floating { animation: float 3s ease-in-out infinite; }
+        .pulse { animation: pulse 2s ease-in-out infinite; }
+        .shake { animation: shake 0.5s ease-in-out; }
+        .glow { animation: glow 2s ease-in-out infinite; }
+        .typewriter {
+            overflow: hidden;
+            border-right: .15em solid white;
+            white-space: nowrap;
+            animation: 
+                typewriter 1s steps(40, end),
+                blink-caret .75s step-end infinite;
+        }
+        
+        .word-box { 
+            width: 100px; 
+            height: 100px;
+            perspective: 1000px;
+        }
+        .word-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .word-front, .word-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.125rem;
+        }
+        .word-back {
+            transform: rotateY(180deg);
+        }
+        
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        
+        .bg-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+        
+        .difficulty-indicator {
+            height: 0.5rem;
+            border-radius: 0.25rem;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899);
+        }
+        
+        .tooltip {
+            position: relative;
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.875rem;
+            font-weight: normal;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-mono overflow-x-hidden">
+    <div class="bg-particles" id="particles"></div>
+    <div id="confetti-container" class="fixed inset-0 pointer-events-none z-50 overflow-hidden"></div>
+    
+    <div class="max-w-4xl w-full bg-gray-800 bg-opacity-90 rounded-xl shadow-2xl p-8 backdrop-blur-sm border border-gray-700">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
+                Défi de Vitesse de Frappe Pro
+            </h1>
+            <p class="text-gray-300">Par Geoffroy Streit - Hylst</p>
+            
+            <div class="mt-4 flex justify-center items-center space-x-4">
+                <div class="flex items-center">
+                    <span class="text-sm text-gray-400 mr-2">Difficulté:</span>
+                    <div id="difficulty-level" class="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div class="difficulty-indicator h-full" style="width: 25%"></div>
+                    </div>
+                </div>
+                <div class="tooltip">
+                    <i class="fas fa-info-circle text-blue-400"></i>
+                    <span class="tooltip-text">Les mots deviennent plus difficiles à chaque ligne complétée. Score multiplié par le niveau de difficulté!</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 space-y-4 md:space-y-0">
+            <div class="flex items-center space-x-4">
+                <div class="relative w-16 h-16">
+                    <svg class="w-full h-full" viewBox="0 0 36 36">
+                        <path
+                            class="text-gray-700"
+                            d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke-width="3"
+                            stroke="currentColor"
+                        />
+                        <path
+                            class="progress-ring__circle text-blue-500"
+                            stroke-linecap="round"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            fill="none"
+                            d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                            stroke-dasharray="100, 100"
+                            id="progress-ring"
+                        />
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span id="time-display" class="text-lg font-bold">60</span>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-400">Temps restant</p>
+                    <p id="wpm-display" class="text-xl font-bold">0 MPM</p>
+                </div>
+            </div>
+
+            <div class="text-center bg-gray-700 px-6 py-3 rounded-lg border border-gray-600">
+                <p class="text-sm text-gray-400">Score</p>
+                <p id="score-display" class="text-3xl font-bold text-yellow-400">0</p>
+                <p id="multiplier-display" class="text-xs text-blue-400">Multiplicateur: 1x</p>
+            </div>
+
+            <div class="text-right">
+                <p class="text-sm text-gray-400">Précision</p>
+                <p id="accuracy-display" class="text-xl font-bold">100%</p>
+                <div class="flex items-center justify-end space-x-2">
+                    <i class="fas fa-bolt text-yellow-400"></i>
+                    <p id="streak-display" class="text-sm text-blue-400">Série: 0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-8" id="word-grid">
+            <!-- Words will be inserted here by JavaScript -->
+        </div>
+
+        <div class="flex flex-col items-center mb-8 space-y-4">
+            <input
+                type="text"
+                id="word-input"
+                class="w-full max-w-md bg-gray-700 border-2 border-blue-500 rounded-lg text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent py-3 px-4 transition-all"
+                placeholder="Commencez à taper..."
+                autocomplete="off"
+                spellcheck="false"
+                disabled
+            >
+            <div class="flex space-x-2" id="hint-container"></div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <button id="start-btn" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-all transform hover:scale-105 flex items-center justify-center space-x-2">
+                <i class="fas fa-play"></i>
+                <span>Commencer</span>
+            </button>
+            <button id="reset-btn" class="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold transition-all transform hover:scale-105 flex items-center justify-center space-x-2">
+                <i class="fas fa-redo"></i>
+                <span>Réinitialiser</span>
+            </button>
+            <button id="sound-btn" class="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-bold transition-all transform hover:scale-105 flex items-center justify-center space-x-2">
+                <i class="fas fa-volume-up"></i>
+                <span>Son</span>
+            </button>
+            <button id="hint-btn" class="px-6 py-3 bg-pink-600 hover:bg-pink-700 rounded-lg font-bold transition-all transform hover:scale-105 flex items-center justify-center space-x-2">
+                <i class="fas fa-lightbulb"></i>
+                <span>Indice</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="mt-8 bg-gray-800 bg-opacity-90 rounded-xl p-6 w-full max-w-4xl backdrop-blur-sm border border-gray-700">
+        <h2 class="text-xl font-bold mb-4 text-center flex items-center justify-center">
+            <i class="fas fa-chart-line mr-2 text-blue-400"></i>
+            Statistiques
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div class="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                <p class="text-sm text-gray-400 flex items-center justify-center">
+                    <i class="fas fa-trophy mr-1 text-yellow-400"></i>
+                    Meilleur score
+                </p>
+                <p id="high-score" class="text-2xl font-bold">0</p>
+            </div>
+            <div class="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                <p class="text-sm text-gray-400 flex items-center justify-center">
+                    <i class="fas fa-tachometer-alt mr-1 text-blue-400"></i>
+                    Meilleur MPM
+                </p>
+                <p id="high-wpm" class="text-2xl font-bold">0</p>
+            </div>
+            <div class="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                <p class="text-sm text-gray-400 flex items-center justify-center">
+                    <i class="fas fa-keyboard mr-1 text-green-400"></i>
+                    Mots tapés
+                </p>
+                <p id="total-words" class="text-2xl font-bold">0</p>
+            </div>
+            <div class="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                <p class="text-sm text-gray-400 flex items-center justify-center">
+                    <i class="fas fa-bullseye mr-1 text-purple-400"></i>
+                    Précision
+                </p>
+                <p id="total-accuracy" class="text-2xl font-bold">100%</p>
+            </div>
+        </div>
+        
+        <div class="mt-6 grid grid-cols-2 gap-4">
+            <div class="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                <p class="text-sm text-gray-400 flex items-center justify-center">
+                    <i class="fas fa-fire mr-1 text-orange-400"></i>
+                    Meilleure série
+                </p>
+                <p id="best-streak" class="text-2xl font-bold">0</p>
+            </div>
+            <div class="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                <p class="text-sm text-gray-400 flex items-center justify-center">
+                    <i class="fas fa-layer-group mr-1 text-pink-400"></i>
+                    Niveau max
+                </p>
+                <p id="max-level" class="text-2xl font-bold">1</p>
+            </div>
+        </div>
+    </div>
+
+    <audio id="correctSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
+    <audio id="wrongSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
+    <audio id="levelUpSound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3"></audio>
+    <audio id="countdownSound" src="https://assets.mixkit.co/sfx/preview/mixkit-fast-countdown-bleeps-918.mp3"></audio>
+    <audio id="hintSound" src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3"></audio>
+    <audio id="gameOverSound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-game-over-470.mp3"></audio>
+
+    <script>
+        // Enhanced game state
+        const state = {
+            words: [],
+            currentWordIndex: 0,
+            score: 0,
+            timeLeft: 60,
+            timer: null,
+            isPlaying: false,
+            correctChars: 0,
+            totalChars: 0,
+            streak: 0,
+            bestStreak: 0,
+            highScore: 0,
+            highWPM: 0,
+            totalWordsTyped: 0,
+            totalCorrectWords: 0,
+            soundEnabled: true,
+            difficulty: 1,
+            maxDifficulty: 1,
+            lastWordTime: null,
+            multiplier: 1,
+            hintsUsed: 0,
+            hintActive: false
+        };
+
+        // DOM elements
+        const elements = {
+            wordGrid: document.getElementById('word-grid'),
+            wordInput: document.getElementById('word-input'),
+            timeDisplay: document.getElementById('time-display'),
+            scoreDisplay: document.getElementById('score-display'),
+            wpmDisplay: document.getElementById('wpm-display'),
+            accuracyDisplay: document.getElementById('accuracy-display'),
+            streakDisplay: document.getElementById('streak-display'),
+            multiplierDisplay: document.getElementById('multiplier-display'),
+            startBtn: document.getElementById('start-btn'),
+            resetBtn: document.getElementById('reset-btn'),
+            soundBtn: document.getElementById('sound-btn'),
+            hintBtn: document.getElementById('hint-btn'),
+            hintContainer: document.getElementById('hint-container'),
+            highScore: document.getElementById('high-score'),
+            highWpm: document.getElementById('high-wpm'),
+            totalWords: document.getElementById('total-words'),
+            totalAccuracy: document.getElementById('total-accuracy'),
+            bestStreak: document.getElementById('best-streak'),
+            maxLevel: document.getElementById('max-level'),
+            progressRing: document.getElementById('progress-ring'),
+            difficultyLevel: document.querySelector('.difficulty-indicator'),
+            correctSound: document.getElementById('correctSound'),
+            wrongSound: document.getElementById('wrongSound'),
+            levelUpSound: document.getElementById('levelUpSound'),
+            countdownSound: document.getElementById('countdownSound'),
+            hintSound: document.getElementById('hintSound'),
+            gameOverSound: document.getElementById('gameOverSound'),
+            confettiContainer: document.getElementById('confetti-container')
+        };
+
+        // Enhanced French words dictionary with categories
+        const wordDictionary = {
+            1: {
+                name: "Basique",
+                words: ["chat", "arbre", "fleur", "maison", "soleil", "lune", "ciel", "eau", "terre", "vent", 
+                        "pied", "main", "tête", "nez", "bouche", "oeil", "oreille", "doigt", "jambe", "bras"]
+            },
+            2: {
+                name: "Intermédiaire",
+                words: ["ordinateur", "bouteille", "fenêtre", "montagne", "océan", "plage", "forêt", "animal", 
+                        "vélo", "livre", "musique", "tableau", "crayon", "papier", "lampe", "téléphone", 
+                        "horloge", "miroir", "chaise", "table"]
+            },
+            3: {
+                name: "Avancé",
+                words: ["philosophie", "architecture", "gouvernement", "révolution", "technologie", 
+                        "environnement", "éducation", "civilisation", "communication", "développement",
+                        "économie", "politique", "scientifique", "recherche", "organisation", 
+                        "responsabilité", "possibilité", "caractéristique", "conséquence", "opportunité"]
+            },
+            4: {
+                name: "Expert",
+                words: ["anticonstitutionnellement", "incompréhensibilité", "internationalisation", 
+                        "responsabilisation", "transsubstantiation", "contemporanéité", 
+                        "extraordinairement", "institutionnalisation", "interdisciplinarité", 
+                        "méticulosité", "inconstitutionnalité", "incontestablement", 
+                        "inconsciemment", "inconvenablement", "inconcevablement"]
+            }
+        };
+
+        // Initialize game
+        function initGame() {
+            // Load saved stats
+            const savedStats = JSON.parse(localStorage.getItem('typingStats')) || {};
+            state.highScore = savedStats.highScore || 0;
+            state.highWPM = savedStats.highWPM || 0;
+            state.totalWordsTyped = savedStats.totalWordsTyped || 0;
+            state.totalCorrectWords = savedStats.totalCorrectWords || 0;
+            state.bestStreak = savedStats.bestStreak || 0;
+            state.maxDifficulty = savedStats.maxDifficulty || 1;
+            
+            updateStatsDisplay();
+            generateWords();
+            createParticles();
+            
+            // Set initial sound state from localStorage if available
+            if (localStorage.getItem('soundEnabled') !== null) {
+                state.soundEnabled = localStorage.getItem('soundEnabled') === 'true';
+                updateSoundButton();
+            }
+        }
+
+        // Generate words based on difficulty
+        function generateWords() {
+            state.words = [];
+            const wordCount = 15; // 3x5 grid for better mobile experience
+            
+            for (let i = 0; i < wordCount; i++) {
+                const difficultyLevel = Math.min(Math.floor(i / 3) + 1, 4);
+                const wordList = wordDictionary[difficultyLevel].words;
+                const randomIndex = Math.floor(Math.random() * wordList.length);
+                state.words.push({
+                    text: wordList[randomIndex],
+                    difficulty: difficultyLevel
+                });
+            }
+            
+            renderWordGrid();
+        }
+
+        // Render word grid with 3D flip effect
+        function renderWordGrid() {
+            elements.wordGrid.innerHTML = '';
+            
+            state.words.forEach((wordObj, index) => {
+                const wordBox = document.createElement('div');
+                wordBox.className = `word-box`;
+                
+                const wordInner = document.createElement('div');
+                wordInner.className = `word-inner ${index === state.currentWordIndex ? 'pulse' : ''}`;
+                
+                const wordFront = document.createElement('div');
+                wordFront.className = `word-front bg-gray-700 border ${index === state.currentWordIndex ? 'border-blue-500' : 'border-gray-600'}`;
+                wordFront.textContent = wordObj.text;
+                
+                const wordBack = document.createElement('div');
+                wordBack.className = `word-back ${getDifficultyColor(wordObj.difficulty)}`;
+                wordBack.textContent = wordDictionary[wordObj.difficulty].name;
+                
+                wordInner.appendChild(wordFront);
+                wordInner.appendChild(wordBack);
+                wordBox.appendChild(wordInner);
+                wordBox.id = `word-${index}`;
+                elements.wordGrid.appendChild(wordBox);
+                
+                // Add hover effect to flip the card
+                wordBox.addEventListener('mouseenter', () => {
+                    if (!state.isPlaying) return;
+                    wordInner.style.transform = 'rotateY(180deg)';
+                });
+                
+                wordBox.addEventListener('mouseleave', () => {
+                    wordInner.style.transform = 'rotateY(0deg)';
+                });
+            });
+        }
+
+        // Get color based on difficulty
+        function getDifficultyColor(level) {
+            const colors = [
+                'bg-blue-600',    // Level 1
+                'bg-green-600',   // Level 2
+                'bg-yellow-600',  // Level 3
+                'bg-red-600'      // Level 4
+            ];
+            return colors[level - 1] || 'bg-gray-600';
+        }
+
+        // Start game with countdown
+        function startGame() {
+            if (state.isPlaying) return;
+            
+            // Show countdown animation
+            elements.wordInput.placeholder = "Prêt...";
+            elements.startBtn.disabled = true;
+            
+            let countdown = 3;
+            const countdownInterval = setInterval(() => {
+                if (countdown > 0) {
+                    elements.wordInput.placeholder = countdown.toString();
+                    countdown--;
+                    
+                    // Play countdown sound
+                    if (state.soundEnabled) {
+                        elements.countdownSound.currentTime = 0;
+                        elements.countdownSound.play();
+                    }
+                } else {
+                    clearInterval(countdownInterval);
+                    elements.wordInput.placeholder = "Allez-y!";
+                    actuallyStartGame();
+                }
+            }, 1000);
+        }
+
+        // Actual game start after countdown
+        function actuallyStartGame() {
+            state.isPlaying = true;
+            state.currentWordIndex = 0;
+            state.score = 0;
+            state.timeLeft = 60;
+            state.correctChars = 0;
+            state.totalChars = 0;
+            state.streak = 0;
+            state.difficulty = 1;
+            state.multiplier = 1;
+            state.hintsUsed = 0;
+            state.hintActive = false;
+            state.lastWordTime = Date.now();
+            
+            elements.wordInput.disabled = false;
+            elements.wordInput.value = '';
+            elements.wordInput.focus();
+            
+            updateStatsDisplay();
+            renderWordGrid();
+            
+            // Start timer
+            state.timer = setInterval(updateTimer, 1000);
+        }
+
+        // Update timer with enhanced visual feedback
+        function updateTimer() {
+            state.timeLeft--;
+            elements.timeDisplay.textContent = state.timeLeft;
+            
+            // Update progress ring
+            const circumference = 2 * Math.PI * 15.9155;
+            const offset = circumference - (state.timeLeft / 60) * circumference;
+            elements.progressRing.style.strokeDashoffset = offset;
+            
+            // Visual feedback based on remaining time
+            if (state.timeLeft <= 10) {
+                elements.timeDisplay.classList.add('text-red-500', 'shake');
+                elements.progressRing.classList.add('text-red-500');
+                elements.progressRing.classList.remove('text-blue-500');
+                
+                // Play countdown sound
+                if (state.soundEnabled && state.timeLeft <= 5) {
+                    elements.countdownSound.currentTime = 0;
+                    elements.countdownSound.play();
+                }
+            } else if (state.timeLeft <= 30) {
+                elements.timeDisplay.classList.add('text-yellow-400');
+                elements.timeDisplay.classList.remove('text-red-500', 'shake');
+                elements.progressRing.classList.add('text-yellow-400');
+                elements.progressRing.classList.remove('text-blue-500', 'text-red-500');
+            } else {
+                elements.timeDisplay.classList.remove('text-red-500', 'text-yellow-400', 'shake');
+                elements.progressRing.classList.add('text-blue-500');
+                elements.progressRing.classList.remove('text-yellow-400', 'text-red-500');
+            }
+            
+            if (state.timeLeft <= 0) {
+                endGame();
+            }
+        }
+
+        // Handle word input with improved feedback
+        elements.wordInput.addEventListener('input', function(e) {
+            const currentWordObj = state.words[state.currentWordIndex];
+            const currentWord = currentWordObj.text;
+            const inputWord = e.target.value.trim();
+            
+            // Update character stats
+            state.totalChars += 1;
+            
+            // Check if current character is correct
+            if (inputWord === currentWord.slice(0, inputWord.length)) {
+                state.correctChars += 1;
+                
+                // Highlight correct letters
+                const wordElement = document.getElementById(`word-${state.currentWordIndex}`);
+                const wordFront = wordElement.querySelector('.word-front');
+                wordFront.innerHTML = '';
+                
+                for (let i = 0; i < currentWord.length; i++) {
+                    const charSpan = document.createElement('span');
+                    charSpan.textContent = currentWord[i];
+                    charSpan.className = i < inputWord.length ? 'text-green-400' : '';
+                    wordFront.appendChild(charSpan);
+                }
+                
+                // Clear any previous wrong state
+                wordElement.classList.remove('shake');
+            }
+            
+            // Check if word is completed
+            if (inputWord === currentWord) {
+                handleCorrectWord();
+            } else if (inputWord.length >= currentWord.length && inputWord !== currentWord) {
+                handleWrongWord();
+            }
+            
+            updateStatsDisplay();
+        });
+
+        // Handle correct word with enhanced effects
+        function handleCorrectWord() {
+            // Calculate time taken for this word (for WPM calculation)
+            const now = Date.now();
+            const timeTaken = (now - state.lastWordTime) / 1000; // in seconds
+            state.lastWordTime = now;
+            
+            // Calculate score with multiplier
+            const baseScore = 10 * state.difficulty;
+            const streakBonus = Math.min(Math.floor(state.streak / 5) * 2, 10); // Max 10 bonus points
+            const score = baseScore + streakBonus;
+            
+            // Update stats
+            state.score += score;
+            state.streak += 1;
+            state.bestStreak = Math.max(state.bestStreak, state.streak);
+            state.totalWordsTyped += 1;
+            state.totalCorrectWords += 1;
+            
+            // Play correct sound
+            if (state.soundEnabled) {
+                elements.correctSound.currentTime = 0;
+                elements.correctSound.play();
+            }
+            
+            // Add visual feedback
+            const wordElement = document.getElementById(`word-${state.currentWordIndex}`);
+            wordElement.querySelector('.word-inner').classList.remove('pulse');
+            wordElement.querySelector('.word-front').classList.remove('border-blue-500');
+            wordElement.querySelector('.word-front').classList.add('bg-green-900', 'border-green-500', 'floating');
+            
+            // Show score popup
+            showScorePopup(wordElement, score);
+            
+            // Move to next word
+            state.currentWordIndex++;
+            elements.wordInput.value = '';
+            state.hintActive = false;
+            updateHintDisplay();
+            
+            // Check if level complete
+            if (state.currentWordIndex % 3 === 0 && state.currentWordIndex < state.words.length) {
+                increaseDifficulty();
+            }
+            
+            // Check if game complete
+            if (state.currentWordIndex >= state.words.length) {
+                // Add bonus for completing all words
+                const completionBonus = 100 * state.difficulty;
+                state.score += completionBonus;
+                
+                // Show completion bonus
+                const bonusElement = document.createElement('div');
+                bonusElement.className = 'absolute top-0 left-1/2 transform -translate-x-1/2 bg-yellow-600 text-white px-3 py-1 rounded-full text-xs font-bold';
+                bonusElement.textContent = `+${completionBonus}`;
+                elements.wordGrid.appendChild(bonusElement);
+                
+                // Animate bonus
+                setTimeout(() => {
+                    bonusElement.classList.add('opacity-0', 'translate-y-[-20px]', 'transition-all', 'duration-500');
+                    setTimeout(() => bonusElement.remove(), 500);
+                }, 1000);
+                
+                generateWords();
+                state.currentWordIndex = 0;
+            }
+            
+            // Highlight next word
+            const nextWordElement = document.getElementById(`word-${state.currentWordIndex}`);
+            if (nextWordElement) {
+                nextWordElement.querySelector('.word-inner').classList.add('pulse');
+                nextWordElement.querySelector('.word-front').classList.add('border-blue-500');
+            }
+            
+            updateStatsDisplay();
+        }
+
+        // Show score popup animation
+        function showScorePopup(element, score) {
+            const rect = element.getBoundingClientRect();
+            const popup = document.createElement('div');
+            popup.className = 'absolute bg-yellow-500 text-black font-bold rounded-full w-8 h-8 flex items-center justify-center text-sm';
+            popup.textContent = `+${score}`;
+            popup.style.left = `${rect.left + rect.width / 2 - 16}px`;
+            popup.style.top = `${rect.top - 20}px`;
+            document.body.appendChild(popup);
+            
+            // Animate popup
+            setTimeout(() => {
+                popup.style.transform = 'translateY(-30px) scale(1.2)';
+                popup.style.opacity = '0';
+                popup.style.transition = 'all 0.5s ease-out';
+                
+                setTimeout(() => {
+                    popup.remove();
+                }, 500);
+            }, 100);
+        }
+
+        // Handle wrong word with enhanced feedback
+        function handleWrongWord() {
+            // Update stats
+            state.streak = 0;
+            state.totalWordsTyped += 1;
+            
+            // Play wrong sound
+            if (state.soundEnabled) {
+                elements.wrongSound.currentTime = 0;
+                elements.wrongSound.play();
+            }
+            
+            // Add visual feedback
+            const wordElement = document.getElementById(`word-${state.currentWordIndex}`);
+            wordElement.querySelector('.word-inner').classList.remove('pulse');
+            wordElement.querySelector('.word-front').classList.remove('border-blue-500');
+            wordElement.querySelector('.word-front').classList.add('bg-red-900', 'border-red-500', 'shake');
+            
+            // Reset input
+            elements.wordInput.value = '';
+            state.hintActive = false;
+            updateHintDisplay();
+            
+            updateStatsDisplay();
+            
+            // Reset animation after shake
+            setTimeout(() => {
+                wordElement.querySelector('.word-front').classList.remove('shake');
+            }, 500);
+        }
+
+        // Increase difficulty with enhanced effects
+        function increaseDifficulty() {
+            state.difficulty++;
+            state.maxDifficulty = Math.max(state.maxDifficulty, state.difficulty);
+            state.multiplier = state.difficulty;
+            
+            // Play level up sound
+            if (state.soundEnabled) {
+                elements.levelUpSound.currentTime = 0;
+                elements.levelUpSound.play();
+            }
+            
+            // Update difficulty indicator
+            elements.difficultyLevel.style.width = `${state.difficulty * 25}%`;
+            
+            // Show notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce flex items-center';
+            
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-level-up-alt mr-2 text-xl';
+            notification.appendChild(icon);
+            
+            const text = document.createElement('span');
+            text.textContent = `Niveau ${state.difficulty} atteint! Score x${state.multiplier}`;
+            notification.appendChild(text);
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('opacity-0', 'translate-y-[-20px]', 'transition-all', 'duration-300');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 1500);
+        }
+
+        // Show hint for current word
+        function showHint() {
+            if (!state.isPlaying || state.hintActive) return;
+            
+            const currentWord = state.words[state.currentWordIndex].text;
+            const hintLength = Math.ceil(currentWord.length / 2);
+            const hint = currentWord.substring(0, hintLength) + '_'.repeat(currentWord.length - hintLength);
+            
+            // Update hint display
+            elements.hintContainer.innerHTML = '';
+            
+            for (let i = 0; i < currentWord.length; i++) {
+                const hintChar = document.createElement('span');
+                hintChar.className = 'inline-block w-6 h-8 flex items-center justify-center border-b-2 border-blue-400 mx-1';
+                
+                if (i < hintLength) {
+                    hintChar.textContent = currentWord[i];
+                    hintChar.classList.add('text-blue-400');
+                } else {
+                    hintChar.textContent = '_';
+                    hintChar.classList.add('text-gray-400');
+                }
+                
+                elements.hintContainer.appendChild(hintChar);
+            }
+            
+            state.hintActive = true;
+            state.hintsUsed++;
+            
+            // Play hint sound
+            if (state.soundEnabled) {
+                elements.hintSound.currentTime = 0;
+                elements.hintSound.play();
+            }
+            
+            // Disable hint button temporarily
+            elements.hintBtn.disabled = true;
+            setTimeout(() => {
+                elements.hintBtn.disabled = false;
+            }, 3000);
+        }
+
+        // Update hint display
+        function updateHintDisplay() {
+            elements.hintContainer.innerHTML = '';
+        }
+
+        // Update stats display with enhanced visuals
+        function updateStatsDisplay() {
+            // Score and time
+            elements.scoreDisplay.textContent = state.score;
+            elements.timeDisplay.textContent = state.timeLeft;
+            elements.multiplierDisplay.textContent = `Multiplicateur: ${state.multiplier}x`;
+            
+            // Calculate WPM (Words Per Minute)
+            const minutes = (60 - state.timeLeft) / 60 || 1;
+            const wpm = Math.floor((state.totalCorrectWords / minutes) * 10) / 10;
+            elements.wpmDisplay.textContent = `${wpm} MPM`;
+            
+            // Calculate accuracy
+            const accuracy = state.totalChars > 0 ? Math.floor((state.correctChars / state.totalChars) * 100) : 100;
+            elements.accuracyDisplay.textContent = `${accuracy}%`;
+            elements.accuracyDisplay.className = `text-xl font-bold ${accuracy >= 90 ? 'text-green-400' : accuracy >= 70 ? 'text-yellow-400' : 'text-red-400'}`;
+            
+            // Streak
+            elements.streakDisplay.textContent = `Série: ${state.streak}`;
+            elements.streakDisplay.className = `text-sm ${state.streak >= 5 ? 'text-yellow-400 font-bold' : 'text-blue-400'}`;
+            
+            // High scores
+            if (state.score > state.highScore) {
+                state.highScore = state.score;
+            }
+            if (wpm > state.highWPM) {
+                state.highWPM = wpm;
+            }
+            
+            elements.highScore.textContent = state.highScore;
+            elements.highWpm.textContent = state.highWPM;
+            elements.totalWords.textContent = state.totalWordsTyped;
+            elements.bestStreak.textContent = state.bestStreak;
+            elements.maxLevel.textContent = state.maxDifficulty;
+            
+            const totalAccuracy = state.totalWordsTyped > 0 
+                ? Math.floor((state.totalCorrectWords / state.totalWordsTyped) * 100) 
+                : 100;
+            elements.totalAccuracy.textContent = `${totalAccuracy}%`;
+        }
+
+        // End game with enhanced effects
+        function endGame() {
+            clearInterval(state.timer);
+            state.isPlaying = false;
+            
+            elements.startBtn.disabled = false;
+            elements.wordInput.disabled = true;
+            elements.wordInput.value = '';
+            
+            elements.timeDisplay.classList.remove('text-red-500', 'text-yellow-400', 'shake');
+            elements.progressRing.classList.add('text-blue-500');
+            elements.progressRing.classList.remove('text-yellow-400', 'text-red-500');
+            
+            // Save stats to localStorage
+            const stats = {
+                highScore: state.highScore,
+                highWPM: state.highWPM,
+                totalWordsTyped: state.totalWordsTyped,
+                totalCorrectWords: state.totalCorrectWords,
+                bestStreak: state.bestStreak,
+                maxDifficulty: state.maxDifficulty
+            };
+            localStorage.setItem('typingStats', JSON.stringify(stats));
+            localStorage.setItem('soundEnabled', state.soundEnabled);
+            
+            // Play game over sound
+            if (state.soundEnabled) {
+                elements.gameOverSound.currentTime = 0;
+                elements.gameOverSound.play();
+            }
+            
+            // Create confetti effect
+            createConfetti();
+            
+            // Show enhanced game over message
+            const gameOver = document.createElement('div');
+            gameOver.className = 'fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50';
+            gameOver.innerHTML = `
+                <div class="bg-gray-800 rounded-xl p-8 max-w-md w-full text-center border-2 border-purple-500 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 z-0"></div>
+                    <div class="relative z-10">
+                        <h2 class="text-3xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+                            Temps écoulé!
+                        </h2>
+                        <div class="space-y-4 mb-6">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-300">Score final:</span>
+                                <span class="text-2xl font-bold text-yellow-400">${state.score}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-300">Vitesse:</span>
+                                <span class="text-xl font-bold text-blue-400">${elements.wpmDisplay.textContent}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-300">Précision:</span>
+                                <span class="text-xl font-bold text-green-400">${elements.accuracyDisplay.textContent}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-300">Meilleure série:</span>
+                                <span class="text-xl font-bold text-pink-400">${state.bestStreak}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-300">Niveau atteint:</span>
+                                <span class="text-xl font-bold text-purple-400">${state.maxDifficulty}</span>
+                            </div>
+                        </div>
+                        <button id="close-modal" class="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg font-bold transition-all transform hover:scale-105">
+                            <i class="fas fa-check mr-2"></i>Fermer
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(gameOver);
+            
+            document.getElementById('close-modal').addEventListener('click', () => {
+                gameOver.remove();
+                elements.confettiContainer.innerHTML = '';
+            });
+        }
+
+        // Create confetti effect
+        function createConfetti() {
+            elements.confettiContainer.innerHTML = '';
+            
+            const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+            
+            for (let i = 0; i < 150; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                
+                // Random properties
+                const size = Math.random() * 8 + 4;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const posX = Math.random() * window.innerWidth;
+                const posY = Math.random() * -window.innerHeight;
+                const rotation = Math.random() * 360;
+                const animationDuration = Math.random() * 3 + 2;
+                
+                // Apply styles
+                confetti.style.width = `${size}px`;
+                confetti.style.height = `${size}px`;
+                confetti.style.backgroundColor = color;
+                confetti.style.left = `${posX}px`;
+                confetti.style.top = `${posY}px`;
+                confetti.style.transform = `rotate(${rotation}deg)`;
+                confetti.style.animation = `fall ${animationDuration}s linear forwards`;
+                
+                // Create custom fall animation
+                const keyframes = `
+                    @keyframes fall {
+                        to {
+                            transform: translateY(${window.innerHeight + 100}px) rotate(${rotation + 360}deg);
+                        }
+                    }
+                `;
+                
+                const style = document.createElement('style');
+                style.innerHTML = keyframes;
+                document.head.appendChild(style);
+                
+                elements.confettiContainer.appendChild(confetti);
+            }
+        }
+
+        // Reset game
+        function resetGame() {
+            clearInterval(state.timer);
+            state.isPlaying = false;
+            
+            state.currentWordIndex = 0;
+            state.score = 0;
+            state.timeLeft = 60;
+            state.correctChars = 0;
+            state.totalChars = 0;
+            state.streak = 0;
+            state.difficulty = 1;
+            state.multiplier = 1;
+            state.hintsUsed = 0;
+            state.hintActive = false;
+            
+            elements.startBtn.disabled = false;
+            elements.wordInput.disabled = true;
+            elements.wordInput.value = '';
+            elements.wordInput.placeholder = "Commencez à taper...";
+            elements.timeDisplay.textContent = state.timeLeft;
+            elements.timeDisplay.classList.remove('text-red-500', 'text-yellow-400', 'shake');
+            elements.progressRing.classList.add('text-blue-500');
+            elements.progressRing.classList.remove('text-yellow-400', 'text-red-500');
+            
+            // Reset difficulty indicator
+            elements.difficultyLevel.style.width = '25%';
+            
+            // Reset progress ring
+            elements.progressRing.style.strokeDashoffset = 0;
+            
+            // Clear hints
+            updateHintDisplay();
+            
+            generateWords();
+            updateStatsDisplay();
+        }
+
+        // Toggle sound and update button
+        function toggleSound() {
+            state.soundEnabled = !state.soundEnabled;
+            updateSoundButton();
+            localStorage.setItem('soundEnabled', state.soundEnabled);
+        }
+
+        // Update sound button appearance
+        function updateSoundButton() {
+            if (state.soundEnabled) {
+                elements.soundBtn.innerHTML = '<i class="fas fa-volume-up"></i><span>Son</span>';
+                elements.soundBtn.classList.remove('bg-gray-600');
+                elements.soundBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+            } else {
+                elements.soundBtn.innerHTML = '<i class="fas fa-volume-mute"></i><span>Son</span>';
+                elements.soundBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                elements.soundBtn.classList.add('bg-gray-600');
+            }
+        }
+
+        // Create background particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                // Random size between 2px and 5px
+                const size = Math.random() * 3 + 2;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                // Random position
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.top = `${Math.random() * 100}%`;
+                
+                // Random animation duration and delay
+                const duration = Math.random() * 20 + 10;
+                const delay = Math.random() * 5;
+                particle.style.animation = `float ${duration}s ease-in-out ${delay}s infinite`;
+                
+                // Random opacity
+                particle.style.opacity = Math.random() * 0.5 + 0.1;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Event listeners
+        elements.startBtn.addEventListener('click', startGame);
+        elements.resetBtn.addEventListener('click', resetGame);
+        elements.soundBtn.addEventListener('click', toggleSound);
+        elements.hintBtn.addEventListener('click', showHint);
+
+        // Initialize game
+        initGame();
+    </script>
+</body>
+</html>
