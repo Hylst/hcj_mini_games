@@ -3,45 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Constructeur de Mots Français</title>
+    <title>Constructeur de Mots Français | Geoffroy Streit - Hylst</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+        
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #10b981;
+            --secondary-dark: #059669;
+            --accent: #f59e0b;
+            --accent-dark: #d97706;
+        }
         
         body {
-            font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             min-height: 100vh;
+            color: #1e293b;
+        }
+        
+        h1, h2, h3, h4 {
+            font-family: 'Montserrat', sans-serif;
         }
         
         .letter {
             transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            background: white;
+            border-radius: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
         }
         
         .letter:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
         }
         
         .letter.dragging {
-            transform: scale(1.1);
+            transform: scale(1.15) rotate(5deg);
             z-index: 10;
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            opacity: 0.9;
         }
         
         .word-slot {
             transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            position: relative;
         }
         
         .word-slot.highlight {
             background: rgba(220, 252, 231, 0.7);
             transform: scale(1.05);
+            box-shadow: 0 0 0 2px var(--secondary);
+        }
+        
+        .word-slot.filled {
+            background: rgba(239, 246, 255, 0.8);
+            border-color: var(--primary);
         }
         
         .correct {
-            animation: correct 0.5s ease;
+            animation: correct 0.6s ease;
         }
         
         .incorrect {
@@ -52,10 +84,40 @@
             animation: pulse 0.5s ease;
         }
         
+        .combo-badge {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .combo-badge::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to bottom right, 
+                rgba(255, 255, 255, 0.3) 0%, 
+                rgba(255, 255, 255, 0) 50%
+            );
+            transform: rotate(30deg);
+            animation: shine 3s infinite;
+        }
+        
         @keyframes correct {
-            0% { background-color: rgba(220, 252, 231, 0.7); }
-            50% { background-color: rgba(167, 243, 208, 0.7); }
-            100% { background-color: rgba(220, 252, 231, 0.7); }
+            0%, 100% { 
+                background-color: rgba(220, 252, 231, 0.7); 
+                transform: scale(1);
+            }
+            25% { 
+                background-color: rgba(167, 243, 208, 0.9);
+                transform: scale(1.05);
+            }
+            50% { 
+                background-color: rgba(110, 231, 183, 0.9);
+                transform: scale(1.1);
+            }
         }
         
         @keyframes shake {
@@ -70,30 +132,296 @@
             100% { transform: scale(1); }
         }
         
+        @keyframes shine {
+            0% { transform: rotate(30deg) translate(-10%, -10%); }
+            100% { transform: rotate(30deg) translate(100%, 100%); }
+        }
+        
         .hint-letter {
             animation: hintGlow 1.5s infinite alternate;
+            position: relative;
         }
         
         @keyframes hintGlow {
-            from { box-shadow: 0 0 5px rgba(251, 191, 36, 0.5); }
-            to { box-shadow: 0 0 15px rgba(251, 191, 36, 0.8); }
+            from { 
+                box-shadow: 0 0 5px rgba(245, 158, 11, 0.5); 
+                transform: translateY(0);
+            }
+            to { 
+                box-shadow: 0 0 15px rgba(245, 158, 11, 0.8); 
+                transform: translateY(-3px);
+            }
+        }
+        
+        .progress-bar {
+            height: 6px;
+            border-radius: 3px;
+            background-color: #e2e8f0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.5s ease;
+        }
+        
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .tooltip-text {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background-color: #334155;
+            color: white;
+            text-align: center;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            z-index: 1;
+            margin-bottom: 10px;
+        }
+        
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #334155 transparent transparent transparent;
+        }
+        
+        .btn {
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background-color: var(--secondary);
+        }
+        
+        .btn-success:hover {
+            background-color: var(--secondary-dark);
+            transform: translateY(-2px);
+        }
+        
+        .btn-warning {
+            background-color: var(--accent);
+        }
+        
+        .btn-warning:hover {
+            background-color: var(--accent-dark);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background-color: #64748b;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #475569;
+            transform: translateY(-2px);
+        }
+        
+        .level-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-weight: 600;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+        }
+        
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+            z-index: 9999;
+            animation: confetti-fall 5s linear forwards;
+        }
+        
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            max-width: 90%;
+            width: 400px;
+            overflow: hidden;
+        }
+        
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+        
+        .trophy {
+            font-size: 48px;
+            color: #f59e0b;
+            margin-bottom: 16px;
+        }
+        
+        .achievement-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #f8fafc;
+            border-radius: 20px;
+            padding: 8px 16px;
+            margin: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .achievement-icon {
+            font-size: 20px;
+            color: var(--accent);
+        }
+        
+        .difficulty-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .difficulty-btn {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+        
+        .difficulty-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .difficulty-btn.active {
+            border-color: var(--primary);
+            background-color: rgba(59, 130, 246, 0.1);
+            font-weight: 600;
+        }
+        
+        .difficulty-easy {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: #065f46;
+        }
+        
+        .difficulty-medium {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: #92400e;
+        }
+        
+        .difficulty-hard {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #991b1b;
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center p-4">
-    <div class="w-full max-w-2xl bg-white rounded-xl shadow-xl overflow-hidden">
-        <!-- Header -->
-        <div class="bg-blue-600 text-white p-6 text-center">
-            <h1 class="text-3xl font-bold">Constructeur de Mots Français</h1>
-            <div class="flex justify-between items-center mt-4">
-                <div class="text-xl">
-                    Score: <span id="score" class="font-bold">0</span>
+<body class="flex flex-col items-center justify-start p-4 md:p-8">
+    <!-- Main Game Container -->
+    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden">
+        <!-- Header with Game Info -->
+        <div class="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 text-center relative">
+            <div class="absolute top-4 left-4">
+                <button id="settings-btn" class="text-white hover:text-blue-200 transition">
+                    <i class="fas fa-cog text-xl"></i>
+                </button>
+            </div>
+            
+            <h1 class="text-3xl font-bold mb-2">Constructeur de Mots Français</h1>
+            <p class="text-blue-100">Créez par Geoffroy Streit - Hylst</p>
+            
+            <div class="flex justify-between items-center mt-6 px-4">
+                <div class="text-xl bg-white/20 rounded-lg px-4 py-2">
+                    <span class="font-medium">Score:</span> 
+                    <span id="score" class="font-bold">0</span>
                 </div>
-                <div class="text-xl">
-                    Combo: <span id="combo" class="font-bold">x1</span>
+                
+                <div class="flex items-center gap-2 bg-white/20 rounded-lg px-4 py-2">
+                    <span class="font-medium">Niveau:</span>
+                    <div id="level" class="level-badge">1</div>
                 </div>
-                <div class="text-xl">
-                    <span id="hint-count" class="font-bold">3</span> <span class="text-sm">indices</span>
+                
+                <div id="combo-container" class="text-xl bg-white/20 rounded-lg px-4 py-2 combo-badge hidden">
+                    <span class="font-medium">Combo:</span> 
+                    <span id="combo" class="font-bold">x1</span>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-sm text-blue-100 mt-1">
+                    <span id="current-xp">0 XP</span>
+                    <span id="next-level-xp">100 XP</span>
                 </div>
             </div>
         </div>
@@ -102,60 +430,189 @@
         <div class="p-6">
             <!-- Word to find -->
             <div class="mb-8 text-center">
-                <h2 class="text-xl font-semibold mb-2">Trouvez ce mot:</h2>
-                <div id="word-definition" class="text-lg italic mb-4"></div>
-                <div id="word-image" class="h-32 flex items-center justify-center mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Trouvez ce mot:</h2>
+                    <div class="flex items-center gap-2">
+                        <span id="hint-count" class="font-bold">3</span>
+                        <i class="fas fa-lightbulb text-yellow-500"></i>
+                    </div>
+                </div>
+                
+                <div id="word-definition" class="text-lg italic mb-4 bg-gray-50 p-4 rounded-lg"></div>
+                
+                <div id="word-image" class="h-40 flex items-center justify-center mb-6 bg-gray-50 rounded-lg">
                     <div class="text-gray-400">Image apparaîtra ici</div>
                 </div>
-                <div id="word-slots" class="flex justify-center gap-2 mb-4 flex-wrap"></div>
+                
+                <div id="word-slots" class="flex justify-center gap-3 mb-6 flex-wrap"></div>
             </div>
             
             <!-- Available letters -->
             <div class="mb-6">
-                <h2 class="text-xl font-semibold mb-4 text-center">Lettres disponibles:</h2>
-                <div id="letter-pool" class="flex justify-center gap-2 flex-wrap"></div>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Lettres disponibles:</h2>
+                    <button id="shuffle-letters" class="btn btn-secondary py-1 px-3 text-sm">
+                        <i class="fas fa-random mr-1"></i> Mélanger
+                    </button>
+                </div>
+                <div id="letter-pool" class="flex justify-center gap-3 flex-wrap"></div>
             </div>
             
             <!-- Controls -->
-            <div class="flex justify-center gap-4 mt-8">
-                <button id="check-word" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full transition">
-                    Vérifier
+            <div class="flex flex-wrap justify-center gap-3 mt-8">
+                <button id="check-word" class="btn btn-success py-3 px-6 rounded-full">
+                    <i class="fas fa-check mr-1"></i> Vérifier
                 </button>
-                <button id="hint-button" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-full transition">
-                    Indice
+                <button id="hint-button" class="btn btn-warning py-3 px-6 rounded-full">
+                    <i class="fas fa-lightbulb mr-1"></i> Indice
                 </button>
-                <button id="shuffle-letters" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full transition">
-                    Mélanger
-                </button>
-                <button id="new-word" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-full transition">
-                    Nouveau Mot
+                <button id="new-word" class="btn btn-primary py-3 px-6 rounded-full">
+                    <i class="fas fa-redo mr-1"></i> Nouveau Mot
                 </button>
             </div>
         </div>
     </div>
     
-    <!-- Word validation feedback -->
-    <div id="feedback" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-xl shadow-2xl text-center hidden">
-        <h2 class="text-2xl font-bold mb-4"></h2>
-        <p class="text-lg mb-4"></p>
-        <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full transition">
-            Continuer
-        </button>
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Paramètres</h2>
+                    <button id="close-settings" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="font-semibold mb-3">Difficulté</h3>
+                    <div class="difficulty-selector">
+                        <div class="difficulty-btn difficulty-easy active" data-difficulty="easy">Facile</div>
+                        <div class="difficulty-btn difficulty-medium" data-difficulty="medium">Moyen</div>
+                        <div class="difficulty-btn difficulty-hard" data-difficulty="hard">Difficile</div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="font-semibold mb-3">Options</h3>
+                    <div class="flex items-center justify-between mb-3">
+                        <span>Effets sonores</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="sound-toggle" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Animations</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="animations-toggle" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="font-semibold mb-3">Récompenses</h3>
+                    <div id="achievements-container" class="flex flex-wrap justify-center gap-2">
+                        <!-- Achievements will be added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+    
+    <!-- Word validation feedback -->
+    <div id="feedback-modal" class="modal-overlay">
+        <div class="modal-content text-center p-6">
+            <div id="feedback-icon" class="text-5xl mb-4"></div>
+            <h2 id="feedback-title" class="text-2xl font-bold mb-2"></h2>
+            <p id="feedback-message" class="text-lg mb-6"></p>
+            <div id="reward-display" class="mb-4 hidden">
+                <div class="flex justify-center items-center gap-2">
+                    <span>+</span>
+                    <span id="reward-points" class="font-bold text-xl text-green-600"></span>
+                    <span>points</span>
+                </div>
+                <div id="xp-earned" class="text-sm text-gray-600 mt-1"></div>
+            </div>
+            <button id="continue-btn" class="btn btn-primary py-3 px-8 rounded-full w-full">
+                Continuer
+            </button>
+        </div>
+    </div>
+    
+    <!-- Level Up Modal -->
+    <div id="levelup-modal" class="modal-overlay">
+        <div class="modal-content text-center p-8">
+            <div class="trophy">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <h2 class="text-3xl font-bold mb-2">Niveau Supérieur!</h2>
+            <p class="text-xl mb-4">Vous avez atteint le niveau <span id="new-level" class="font-bold">2</span></p>
+            <div class="bg-yellow-50 text-yellow-800 rounded-lg py-2 px-4 mb-6 inline-block">
+                <i class="fas fa-gift mr-2"></i>
+                <span>Nouveaux indices: +3</span>
+            </div>
+            <button id="levelup-continue" class="btn btn-primary py-3 px-8 rounded-full w-full">
+                Super!
+            </button>
+        </div>
+    </div>
+    
+    <audio id="correct-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" preload="auto"></audio>
+    <audio id="wrong-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3" preload="auto"></audio>
+    <audio id="hint-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3" preload="auto"></audio>
+    <audio id="levelup-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" preload="auto"></audio>
+    <audio id="click-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3" preload="auto"></audio>
     
     <script>
         // Game data
-        const frenchWords = [
-            { word: "maison", definition: "Un bâtiment où les gens vivent", image: "🏠" },
-            { word: "soleil", definition: "L'étoile au centre de notre système solaire", image: "☀️" },
-            { word: "ordinateur", definition: "Machine électronique pour traiter des données", image: "💻" },
-            { word: "bibliothèque", definition: "Lieu où sont conservés des livres", image: "📚" },
-            { word: "chocolat", definition: "Aliment sucré fait à partir de cacao", image: "🍫" },
-            { word: "éléphant", definition: "Grand mammifère avec une trompe", image: "🐘" },
-            { word: "montagne", definition: "Grande élévation naturelle du terrain", image: "⛰️" },
-            { word: "parapluie", definition: "Objet pour se protéger de la pluie", image: "☂️" },
-            { word: "téléphone", definition: "Appareil pour communiquer à distance", image: "📱" },
-            { word: "aventure", definition: "Expérience excitante ou inhabituelle", image: "🗺️" }
+        const frenchWords = {
+            easy: [
+                { word: "chat", definition: "Animal domestique qui miaule", image: "🐱", difficulty: "easy" },
+                { word: "soleil", definition: "L'étoile au centre de notre système solaire", image: "☀️", difficulty: "easy" },
+                { word: "fleur", definition: "Partie colorée d'une plante", image: "🌸", difficulty: "easy" },
+                { word: "arbre", definition: "Plante ligneuse avec un tronc", image: "🌳", difficulty: "easy" },
+                { word: "livre", definition: "Collection de pages imprimées", image: "📖", difficulty: "easy" },
+                { word: "eau", definition: "Liquide transparent essentiel à la vie", image: "💧", difficulty: "easy" },
+                { word: "porte", definition: "Ouverture dans un mur pour entrer ou sortir", image: "🚪", difficulty: "easy" },
+                { word: "main", definition: "Partie du corps à l'extrémité du bras", image: "✋", difficulty: "easy" },
+                { word: "voiture", definition: "Véhicule à moteur avec quatre roues", image: "🚗", difficulty: "easy" },
+                { word: "école", definition: "Lieu où les enfants apprennent", image: "🏫", difficulty: "easy" }
+            ],
+            medium: [
+                { word: "ordinateur", definition: "Machine électronique pour traiter des données", image: "💻", difficulty: "medium" },
+                { word: "bibliothèque", definition: "Lieu où sont conservés des livres", image: "📚", difficulty: "medium" },
+                { word: "chocolat", definition: "Aliment sucré fait à partir de cacao", image: "🍫", difficulty: "medium" },
+                { word: "montagne", definition: "Grande élévation naturelle du terrain", image: "⛰️", difficulty: "medium" },
+                { word: "parapluie", definition: "Objet pour se protéger de la pluie", image: "☂️", difficulty: "medium" },
+                { word: "téléphone", definition: "Appareil pour communiquer à distance", image: "📱", difficulty: "medium" },
+                { word: "aventure", definition: "Expérience excitante ou inhabituelle", image: "🗺️", difficulty: "medium" },
+                { word: "restaurant", definition: "Établissement où l'on sert des repas", image: "🍽️", difficulty: "medium" },
+                { word: "musique", definition: "Art qui combine sons et silences", image: "🎵", difficulty: "medium" },
+                { word: "voyage", definition: "Déplacement d'un lieu à un autre", image: "✈️", difficulty: "medium" }
+            ],
+            hard: [
+                { word: "phénoménologie", definition: "Étude des structures de l'expérience", image: "🔍", difficulty: "hard" },
+                { word: "constitutionnel", definition: "Relatif à la constitution d'un pays", image: "⚖️", difficulty: "hard" },
+                { word: "psychologie", definition: "Science étudiant les comportements", image: "🧠", difficulty: "hard" },
+                { word: "archéologie", definition: "Étude des civilisations anciennes", image: "🏺", difficulty: "hard" },
+                { word: "philosophie", definition: "Réflexion sur les grands problèmes", image: "🤔", difficulty: "hard" },
+                { word: "métamorphose", definition: "Transformation complète", image: "🦋", difficulty: "hard" },
+                { word: "extraterrestre", definition: "Venant d'au-delà de la Terre", image: "👽", difficulty: "hard" },
+                { word: "incompréhensible", definition: "Difficile ou impossible à comprendre", image: "❓", difficulty: "hard" },
+                { word: "responsabilité", definition: "Devoir de répondre de ses actes", image: "⚡", difficulty: "hard" },
+                { word: "technologique", definition: "Relatif aux applications scientifiques", image: "🔬", difficulty: "hard" }
+            ]
+        };
+        
+        // Achievements data
+        const achievements = [
+            { id: "first_win", title: "Première victoire", description: "Trouvez votre premier mot", icon: "fa-star", earned: false },
+            { id: "combo_5", title: "Combo x5", description: "Atteignez un combo de 5", icon: "fa-bolt", earned: false },
+            { id: "hint_master", title: "Maître des indices", description: "Utilisez tous vos indices", icon: "fa-lightbulb", earned: false },
+            { id: "level_5", title: "Niveau 5", description: "Atteignez le niveau 5", icon: "fa-arrow-up", earned: false },
+            { id: "hard_mode", title: "Mode difficile", description: "Complétez un mot difficile", icon: "fa-trophy", earned: false }
         ];
         
         // Game state
@@ -165,6 +622,14 @@
         let hints = 3;
         let placedLetters = {};
         let shuffledLetters = [];
+        let currentLevel = 1;
+        let currentXP = 0;
+        let xpToNextLevel = 100;
+        let gameDifficulty = "easy";
+        let soundsEnabled = true;
+        let animationsEnabled = true;
+        let wordsCompleted = 0;
+        let maxComboReached = 1;
         
         // DOM elements
         const wordDefinitionEl = document.getElementById('word-definition');
@@ -173,42 +638,126 @@
         const letterPoolEl = document.getElementById('letter-pool');
         const scoreEl = document.getElementById('score');
         const comboEl = document.getElementById('combo');
+        const comboContainerEl = document.getElementById('combo-container');
         const hintCountEl = document.getElementById('hint-count');
         const checkWordBtn = document.getElementById('check-word');
         const hintButton = document.getElementById('hint-button');
         const shuffleLettersBtn = document.getElementById('shuffle-letters');
         const newWordBtn = document.getElementById('new-word');
-        const feedbackEl = document.getElementById('feedback');
+        const levelEl = document.getElementById('level');
+        const progressFillEl = document.getElementById('progress-fill');
+        const currentXpEl = document.getElementById('current-xp');
+        const nextLevelXpEl = document.getElementById('next-level-xp');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeSettingsBtn = document.getElementById('close-settings');
+        const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+        const soundToggle = document.getElementById('sound-toggle');
+        const animationsToggle = document.getElementById('animations-toggle');
+        const achievementsContainer = document.getElementById('achievements-container');
+        const feedbackModal = document.getElementById('feedback-modal');
+        const feedbackIcon = document.getElementById('feedback-icon');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const rewardDisplay = document.getElementById('reward-display');
+        const rewardPoints = document.getElementById('reward-points');
+        const xpEarned = document.getElementById('xp-earned');
+        const continueBtn = document.getElementById('continue-btn');
+        const levelupModal = document.getElementById('levelup-modal');
+        const newLevelEl = document.getElementById('new-level');
+        const levelupContinueBtn = document.getElementById('levelup-continue');
+        const correctSound = document.getElementById('correct-sound');
+        const wrongSound = document.getElementById('wrong-sound');
+        const hintSound = document.getElementById('hint-sound');
+        const levelupSound = document.getElementById('levelup-sound');
+        const clickSound = document.getElementById('click-sound');
         
         // Initialize game
         function initGame() {
-            // Reset game state
-            score = 0;
-            combo = 1;
-            hints = 3;
-            updateUI();
+            // Load saved game state
+            loadGame();
+            
+            // Set up event listeners
+            setupEventListeners();
             
             // Start with a new word
             newWord();
+            
+            // Render achievements
+            renderAchievements();
+        }
+        
+        // Set up event listeners
+        function setupEventListeners() {
+            checkWordBtn.addEventListener('click', checkWord);
+            hintButton.addEventListener('click', useHint);
+            shuffleLettersBtn.addEventListener('click', shuffleLetters);
+            newWordBtn.addEventListener('click', newWord);
+            
+            // Settings
+            settingsBtn.addEventListener('click', () => {
+                playSound('click');
+                settingsModal.classList.add('active');
+            });
+            
+            closeSettingsBtn.addEventListener('click', () => {
+                playSound('click');
+                settingsModal.classList.remove('active');
+            });
+            
+            difficultyBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    playSound('click');
+                    difficultyBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    gameDifficulty = btn.dataset.difficulty;
+                    saveGame();
+                    newWord();
+                });
+            });
+            
+            soundToggle.addEventListener('change', () => {
+                soundsEnabled = soundToggle.checked;
+                saveGame();
+            });
+            
+            animationsToggle.addEventListener('change', () => {
+                animationsEnabled = animationsToggle.checked;
+                saveGame();
+            });
+            
+            // Feedback modal
+            continueBtn.addEventListener('click', () => {
+                playSound('click');
+                feedbackModal.classList.remove('active');
+            });
+            
+            // Level up modal
+            levelupContinueBtn.addEventListener('click', () => {
+                playSound('click');
+                levelupModal.classList.remove('active');
+            });
         }
         
         // Select a new random word
         function newWord() {
-            // Reset combo on new word
-            combo = 1;
-            updateUI();
+            // Reset combo on new word if not continuing a streak
+            if (combo === 1) {
+                comboContainerEl.classList.add('hidden');
+            }
             
             // Clear previous word
             wordSlotsEl.innerHTML = '';
             letterPoolEl.innerHTML = '';
             placedLetters = {};
             
-            // Select random word
-            currentWord = frenchWords[Math.floor(Math.random() * frenchWords.length)];
+            // Select random word based on difficulty
+            const words = frenchWords[gameDifficulty];
+            currentWord = words[Math.floor(Math.random() * words.length)];
             
             // Display word info
             wordDefinitionEl.textContent = currentWord.definition;
-            wordImageEl.innerHTML = `<div class="text-6xl">${currentWord.image}</div>`;
+            wordImageEl.innerHTML = `<div class="text-8xl">${currentWord.image}</div>`;
             
             // Create word slots
             for (let i = 0; i < currentWord.word.length; i++) {
@@ -223,7 +772,7 @@
             
             // Prepare letters (add some extra random letters)
             const letters = currentWord.word.split('');
-            const extraLetters = 5;
+            const extraLetters = Math.max(3, Math.floor(currentWord.word.length * 0.6)); // 60% extra letters
             const frenchLetters = 'abcdefghijklmnopqrstuvwxyzéèêëàâùûîïôöœç';
             
             for (let i = 0; i < extraLetters; i++) {
@@ -259,13 +808,14 @@
         
         // Handle drag start
         function handleDragStart(e) {
-            this.classList.add('dragging', 'opacity-50');
+            this.classList.add('dragging');
             e.dataTransfer.setData('text/plain', this.dataset.index);
+            playSound('click');
         }
         
         // Handle drag end
         function handleDragEnd() {
-            this.classList.remove('dragging', 'opacity-50');
+            this.classList.remove('dragging');
         }
         
         // Handle drag over
@@ -293,6 +843,7 @@
             const emptySlot = document.querySelector('.word-slot:empty');
             if (emptySlot) {
                 placeLetter(letterEl, emptySlot);
+                playSound('click');
             }
         }
         
@@ -304,7 +855,9 @@
                     if (pos === parseInt(this.dataset.position)) {
                         delete placedLetters[index];
                         this.textContent = '';
+                        this.classList.remove('filled');
                         renderLetters();
+                        playSound('click');
                         break;
                     }
                 }
@@ -319,12 +872,16 @@
             if (placedLetters[letterIndex] !== undefined) {
                 // Remove from previous position
                 const prevSlot = document.querySelector(`.word-slot[data-position="${placedLetters[letterIndex]}"]`);
-                if (prevSlot) prevSlot.textContent = '';
+                if (prevSlot) {
+                    prevSlot.textContent = '';
+                    prevSlot.classList.remove('filled');
+                }
             }
             
             // Place in new position
             placedLetters[letterIndex] = parseInt(slot.dataset.position);
             slot.textContent = letterEl.dataset.letter.toUpperCase();
+            slot.classList.add('filled');
             
             renderLetters();
         }
@@ -333,31 +890,68 @@
         function checkWord() {
             const slots = document.querySelectorAll('.word-slot');
             let attemptedWord = '';
+            let allFilled = true;
             
             slots.forEach(slot => {
                 attemptedWord += slot.textContent ? slot.textContent.toLowerCase() : '_';
+                if (!slot.textContent) allFilled = false;
             });
+            
+            if (!allFilled) {
+                showFeedback('Incomplet', 'Remplissez tous les emplacements avant de vérifier!');
+                playSound('wrong');
+                return;
+            }
             
             if (attemptedWord === currentWord.word) {
                 // Correct word
-                slots.forEach(slot => {
-                    slot.classList.add('correct');
-                });
+                if (animationsEnabled) {
+                    slots.forEach(slot => {
+                        slot.classList.add('correct');
+                    });
+                }
+                
+                playSound('correct');
                 
                 // Calculate points (base 100 + 50 per letter + combo bonus)
-                const points = 100 + (currentWord.word.length * 50) * combo;
+                const basePoints = 100 + (currentWord.word.length * 50);
+                const points = Math.floor(basePoints * combo);
+                
+                // Calculate XP earned (based on word difficulty)
+                let xpEarnedValue = 0;
+                switch(currentWord.difficulty) {
+                    case 'easy': xpEarnedValue = 20; break;
+                    case 'medium': xpEarnedValue = 40; break;
+                    case 'hard': xpEarnedValue = 80; break;
+                }
+                
+                // Apply combo bonus to XP
+                xpEarnedValue = Math.floor(xpEarnedValue * (1 + (combo - 1) * 0.2));
+                
                 score += points;
+                wordsCompleted++;
+                
+                // Check achievements
+                checkAchievements();
+                
+                // Show feedback with reward
+                showFeedback('Bravo!', `Vous avez trouvé "${currentWord.word.toUpperCase()}"!`, points, xpEarnedValue);
                 
                 // Increase combo
                 combo++;
+                if (combo > maxComboReached) maxComboReached = combo;
                 
-                // Show feedback
-                showFeedback('Bravo!', `Vous avez trouvé "${currentWord.word}" et gagné ${points} points!`);
+                // Add XP and check for level up
+                addXP(xpEarnedValue);
             } else {
                 // Incorrect word
-                slots.forEach(slot => {
-                    slot.classList.add('incorrect');
-                });
+                if (animationsEnabled) {
+                    slots.forEach(slot => {
+                        slot.classList.add('incorrect');
+                    });
+                }
+                
+                playSound('wrong');
                 
                 // Reset combo
                 combo = 1;
@@ -366,47 +960,56 @@
                 showFeedback('Essaie encore', `Ce n'est pas le bon mot. Essayez encore!`);
                 
                 // Remove incorrect class after animation
-                setTimeout(() => {
-                    slots.forEach(slot => {
-                        slot.classList.remove('incorrect');
-                    });
-                }, 1000);
+                if (animationsEnabled) {
+                    setTimeout(() => {
+                        slots.forEach(slot => {
+                            slot.classList.remove('incorrect');
+                        });
+                    }, 1000);
+                }
             }
             
             updateUI();
         }
         
         // Show feedback modal
-        function showFeedback(title, message) {
-            const titleEl = feedbackEl.querySelector('h2');
-            const messageEl = feedbackEl.querySelector('p');
-            const buttonEl = feedbackEl.querySelector('button');
+        function showFeedback(title, message, points = 0, xp = 0) {
+            feedbackTitle.textContent = title;
+            feedbackMessage.textContent = message;
             
-            titleEl.textContent = title;
-            messageEl.textContent = message;
-            buttonEl.textContent = title === 'Bravo!' ? 'Mot suivant' : 'OK';
+            if (title === 'Bravo!') {
+                feedbackIcon.innerHTML = '<i class="fas fa-check-circle text-green-500"></i>';
+                rewardDisplay.classList.remove('hidden');
+                rewardPoints.textContent = points;
+                xpEarned.textContent = `+${xp} XP`;
+            } else {
+                feedbackIcon.innerHTML = '<i class="fas fa-times-circle text-red-500"></i>';
+                rewardDisplay.classList.add('hidden');
+            }
             
-            feedbackEl.classList.remove('hidden');
+            continueBtn.textContent = title === 'Bravo!' ? 'Mot suivant' : 'OK';
             
-            // Handle button click
-            buttonEl.onclick = () => {
-                feedbackEl.classList.add('hidden');
-                if (title === 'Bravo!') {
-                    newWord();
-                }
-            };
+            feedbackModal.classList.add('active');
         }
         
         // Use a hint
         function useHint() {
-            if (hints <= 0) return;
+            if (hints <= 0) {
+                showFeedback('Plus d\'indices', 'Vous avez utilisé tous vos indices!');
+                return;
+            }
             
             hints--;
             updateUI();
+            playSound('hint');
             
             // Find first empty slot
             const emptySlot = document.querySelector('.word-slot:empty');
-            if (!emptySlot) return;
+            if (!emptySlot) {
+                showFeedback('Aucun emplacement vide', 'Tous les emplacements sont déjà remplis!');
+                hints++; // Give the hint back
+                return;
+            }
             
             const position = parseInt(emptySlot.dataset.position);
             const correctLetter = currentWord.word[position];
@@ -431,6 +1034,14 @@
                     hintLetterEl.classList.remove('hint-letter');
                     placeLetter(hintLetterEl, emptySlot);
                 }, 2000);
+                
+                // Check for hint master achievement
+                if (hints === 0) {
+                    checkAchievements();
+                }
+            } else {
+                showFeedback('Indice indisponible', 'La lettre nécessaire n\'est pas disponible!');
+                hints++; // Give the hint back
             }
         }
         
@@ -454,6 +1065,65 @@
             });
             
             renderLetters();
+            playSound('click');
+        }
+        
+        // Add XP and check for level up
+        function addXP(amount) {
+            currentXP += amount;
+            
+            // Check for level up
+            if (currentXP >= xpToNextLevel) {
+                levelUp();
+            }
+            
+            updateXPDisplay();
+            saveGame();
+        }
+        
+        // Level up the player
+        function levelUp() {
+            currentLevel++;
+            currentXP = currentXP - xpToNextLevel;
+            xpToNextLevel = Math.floor(xpToNextLevel * 1.5); // Increase XP needed for next level
+            
+            // Give rewards for level up
+            hints += 3;
+            
+            // Show level up modal
+            newLevelEl.textContent = currentLevel;
+            levelupModal.classList.add('active');
+            playSound('levelup');
+            
+            // Check for achievements
+            checkAchievements();
+            
+            // Create confetti effect
+            if (animationsEnabled) {
+                createConfetti();
+            }
+            
+            updateUI();
+        }
+        
+        // Create confetti effect
+        function createConfetti() {
+            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.width = Math.random() * 10 + 5 + 'px';
+                confetti.style.height = Math.random() * 10 + 5 + 'px';
+                confetti.style.animationDuration = Math.random() * 3 + 2 + 's';
+                document.body.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
         }
         
         // Update UI elements
@@ -461,15 +1131,199 @@
             scoreEl.textContent = score;
             comboEl.textContent = `x${combo}`;
             hintCountEl.textContent = hints;
+            levelEl.textContent = currentLevel;
             
-            // Style combo based on value
+            // Show/hide combo container
             if (combo > 1) {
-                comboEl.classList.add('combo');
-                comboEl.classList.add('text-green-600');
+                comboContainerEl.classList.remove('hidden');
+                if (animationsEnabled) {
+                    comboEl.classList.add('combo');
+                }
             } else {
+                comboContainerEl.classList.add('hidden');
                 comboEl.classList.remove('combo');
-                comboEl.classList.remove('text-green-600');
             }
+            
+            // Update XP display
+            updateXPDisplay();
+        }
+        
+        // Update XP progress bar
+        function updateXPDisplay() {
+            const progressPercent = (currentXP / xpToNextLevel) * 100;
+            progressFillEl.style.width = `${progressPercent}%`;
+            currentXpEl.textContent = `${currentXP} XP`;
+            nextLevelXpEl.textContent = `${xpToNextLevel} XP`;
+        }
+        
+        // Check and unlock achievements
+        function checkAchievements() {
+            let newAchievements = false;
+            
+            // First win
+            if (wordsCompleted >= 1 && !achievements[0].earned) {
+                achievements[0].earned = true;
+                newAchievements = true;
+            }
+            
+            // Combo 5
+            if (maxComboReached >= 5 && !achievements[1].earned) {
+                achievements[1].earned = true;
+                newAchievements = true;
+            }
+            
+            // Hint master
+            if (hints === 0 && !achievements[2].earned) {
+                achievements[2].earned = true;
+                newAchievements = true;
+            }
+            
+            // Level 5
+            if (currentLevel >= 5 && !achievements[3].earned) {
+                achievements[3].earned = true;
+                newAchievements = true;
+            }
+            
+            // Hard mode
+            if (currentWord.difficulty === "hard" && !achievements[4].earned) {
+                achievements[4].earned = true;
+                newAchievements = true;
+            }
+            
+            if (newAchievements) {
+                renderAchievements();
+                saveGame();
+                
+                if (animationsEnabled) {
+                    createConfetti();
+                }
+            }
+        }
+        
+        // Render achievements
+        function renderAchievements() {
+            achievementsContainer.innerHTML = '';
+            
+            achievements.forEach(achievement => {
+                const badge = document.createElement('div');
+                badge.className = 'achievement-badge';
+                if (achievement.earned) {
+                    badge.innerHTML = `
+                        <i class="achievement-icon fas ${achievement.icon}"></i>
+                        <div>
+                            <div class="font-semibold">${achievement.title}</div>
+                            <div class="text-sm text-gray-600">${achievement.description}</div>
+                        </div>
+                    `;
+                } else {
+                    badge.innerHTML = `
+                        <i class="achievement-icon fas fa-lock"></i>
+                        <div>
+                            <div class="font-semibold">Achievement verrouillé</div>
+                            <div class="text-sm text-gray-600">${achievement.description}</div>
+                        </div>
+                    `;
+                    badge.style.opacity = '0.7';
+                }
+                
+                achievementsContainer.appendChild(badge);
+            });
+        }
+        
+        // Play sound effect
+        function playSound(type) {
+            if (!soundsEnabled) return;
+            
+            try {
+                switch(type) {
+                    case 'correct':
+                        correctSound.currentTime = 0;
+                        correctSound.play();
+                        break;
+                    case 'wrong':
+                        wrongSound.currentTime = 0;
+                        wrongSound.play();
+                        break;
+                    case 'hint':
+                        hintSound.currentTime = 0;
+                        hintSound.play();
+                        break;
+                    case 'levelup':
+                        levelupSound.currentTime = 0;
+                        levelupSound.play();
+                        break;
+                    case 'click':
+                        clickSound.currentTime = 0;
+                        clickSound.play();
+                        break;
+                }
+            } catch (e) {
+                console.log("Error playing sound:", e);
+            }
+        }
+        
+        // Save game state to localStorage
+        function saveGame() {
+            const gameState = {
+                score,
+                combo,
+                hints,
+                currentLevel,
+                currentXP,
+                xpToNextLevel,
+                gameDifficulty,
+                soundsEnabled,
+                animationsEnabled,
+                wordsCompleted,
+                maxComboReached,
+                achievements
+            };
+            
+            localStorage.setItem('frenchWordBuilder', JSON.stringify(gameState));
+        }
+        
+        // Load game state from localStorage
+        function loadGame() {
+            const savedGame = localStorage.getItem('frenchWordBuilder');
+            
+            if (savedGame) {
+                const gameState = JSON.parse(savedGame);
+                
+                score = gameState.score || 0;
+                combo = gameState.combo || 1;
+                hints = gameState.hints || 3;
+                currentLevel = gameState.currentLevel || 1;
+                currentXP = gameState.currentXP || 0;
+                xpToNextLevel = gameState.xpToNextLevel || 100;
+                gameDifficulty = gameState.gameDifficulty || "easy";
+                soundsEnabled = gameState.soundsEnabled !== undefined ? gameState.soundsEnabled : true;
+                animationsEnabled = gameState.animationsEnabled !== undefined ? gameState.animationsEnabled : true;
+                wordsCompleted = gameState.wordsCompleted || 0;
+                maxComboReached = gameState.maxComboReached || 1;
+                
+                // Merge achievements to preserve any new ones added in updates
+                if (gameState.achievements) {
+                    gameState.achievements.forEach((savedAchievement, index) => {
+                        if (achievements[index] && achievements[index].id === savedAchievement.id) {
+                            achievements[index].earned = savedAchievement.earned;
+                        }
+                    });
+                }
+            }
+            
+            // Update UI elements
+            soundToggle.checked = soundsEnabled;
+            animationsToggle.checked = animationsEnabled;
+            
+            // Set active difficulty button
+            difficultyBtns.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.difficulty === gameDifficulty) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            updateUI();
         }
         
         // Utility function to shuffle array
@@ -481,12 +1335,6 @@
             }
             return newArray;
         }
-        
-        // Event listeners
-        checkWordBtn.addEventListener('click', checkWord);
-        hintButton.addEventListener('click', useHint);
-        shuffleLettersBtn.addEventListener('click', shuffleLetters);
-        newWordBtn.addEventListener('click', newWord);
         
         // Start the game
         initGame();
