@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Sequence Memory | Geoffroy Streit - Hylst</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes flash {
+            0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 20px currentColor; }
+            50% { opacity: 0.7; transform: scale(0.95); box-shadow: 0 0 40px currentColor; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(124, 58, 237, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(124, 58, 237, 0.9); }
+        }
+        
+        @keyframes levelUp {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; text-shadow: 0 0 15px #fff; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes neonGlow {
+            0%, 100% { text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #ff00de, 0 0 20px #ff00de; }
+            50% { text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #ff00de, 0 0 40px #ff00de; }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .flash-animation {
+            animation: flash 0.5s ease-in-out;
+        }
+        
+        .pulse-animation {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .level-up-animation {
+            animation: levelUp 0.5s ease-out;
+        }
+        
+        .neon-text {
+            animation: neonGlow 2s infinite alternate;
+        }
+        
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .game-container {
+            perspective: 1000px;
+        }
+        
+        .tile {
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+            box-shadow: 0 0 15px currentColor;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tile::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+            transform: rotate(45deg);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .tile:hover::before {
+            opacity: 0.3;
+        }
+        
+        .tile:hover {
+            transform: translateY(-5px) rotateX(10deg);
+            box-shadow: 0 15px 30px currentColor;
+        }
+        
+        .active-tile {
+            transform: translateY(0) scale(0.95);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) inset;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            border-radius: 5px;
+            background: linear-gradient(90deg, #4f46e5 0%, #ec4899 100%);
+            transition: width 0.3s ease;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-mono">
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none" id="confetti-container"></div>
+    
+    <div class="game-container w-full max-w-md relative">
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-bold mb-2 neon-text float-animation">
+                NEON SEQUENCE
+            </h1>
+            <p class="text-gray-300 text-sm">by Geoffroy Streit - Hylst</p>
+            <div class="mt-4 h-2 w-full bg-gray-800 rounded-full overflow-hidden">
+                <div id="progressBar" class="progress-bar h-full" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <div id="tile1" class="tile bg-red-500 text-red-500 rounded-xl h-40 flex items-center justify-center cursor-pointer" 
+                 data-sound="sound1" onclick="handleTileClick(0)">
+                <span class="text-white text-4xl opacity-0"><i class="fas fa-bolt"></i></span>
+            </div>
+            <div id="tile2" class="tile bg-blue-500 text-blue-500 rounded-xl h-40 flex items-center justify-center cursor-pointer" 
+                 data-sound="sound2" onclick="handleTileClick(1)">
+                <span class="text-white text-4xl opacity-0"><i class="fas fa-star"></i></span>
+            </div>
+            <div id="tile3" class="tile bg-yellow-500 text-yellow-500 rounded-xl h-40 flex items-center justify-center cursor-pointer" 
+                 data-sound="sound3" onclick="handleTileClick(2)">
+                <span class="text-white text-4xl opacity-0"><i class="fas fa-fire"></i></span>
+            </div>
+            <div id="tile4" class="tile bg-green-500 text-green-500 rounded-xl h-40 flex items-center justify-center cursor-pointer" 
+                 data-sound="sound4" onclick="handleTileClick(3)">
+                <span class="text-white text-4xl opacity-0"><i class="fas fa-music"></i></span>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center mb-6">
+            <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 text-center flex-1 mr-2 border border-gray-700">
+                <p class="text-gray-400 text-sm">LEVEL</p>
+                <p id="level" class="text-3xl font-bold level-display text-purple-400">1</p>
+            </div>
+            <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 text-center flex-1 mx-2 border border-gray-700">
+                <p class="text-gray-400 text-sm">SCORE</p>
+                <p id="score" class="text-3xl font-bold text-pink-400">0</p>
+            </div>
+            <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 text-center flex-1 ml-2 border border-gray-700">
+                <p class="text-gray-400 text-sm">BEST</p>
+                <p id="best" class="text-3xl font-bold text-blue-400">0</p>
+            </div>
+        </div>
+        
+        <div class="flex flex-col space-y-4">
+            <button id="startBtn" onclick="startGame()" 
+                    class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-lg transition-all pulse-animation border border-purple-400/30">
+                <i class="fas fa-play mr-2"></i> START GAME
+            </button>
+            <div class="flex space-x-4">
+                <button id="strictBtn" onclick="toggleStrictMode()" 
+                        class="bg-gray-700/50 hover:bg-gray-600/70 text-white font-bold py-3 px-4 rounded-lg transition-all border border-gray-600 flex-1">
+                    <i class="fas fa-lock-open mr-2"></i> STRICT: OFF
+                </button>
+                <button id="soundBtn" onclick="toggleSound()" 
+                        class="bg-gray-700/50 hover:bg-gray-600/70 text-white font-bold py-3 px-4 rounded-lg transition-all border border-gray-600 flex-1">
+                    <i class="fas fa-volume-up mr-2"></i> SOUND: ON
+                </button>
+            </div>
+        </div>
+        
+        <div id="message" class="mt-6 text-center text-lg font-semibold min-h-8 text-purple-200"></div>
+        
+        <div class="mt-8 text-center text-xs text-gray-500">
+            <p>Created by Geoffroy Streit - Hylst</p>
+            <p class="mt-1">© 2023 All rights reserved</p>
+        </div>
+    </div>
+    
+    <audio id="sound1" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3"></audio>
+    <audio id="sound2" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3"></audio>
+    <audio id="sound3" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-casino-notification-211.mp3"></audio>
+    <audio id="sound4" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
+    <audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3"></audio>
+    <audio id="failSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-retro-game-over-213.mp3"></audio>
+    <audio id="levelUpSound" src="https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3"></audio>
+    
+    <script>
+        // Game state
+        let sequence = [];
+        let playerSequence = [];
+        let level = 1;
+        let score = 0;
+        let bestScore = localStorage.getItem('bestScore') || 0;
+        let isPlaying = false;
+        let isStrictMode = false;
+        let isSoundOn = true;
+        let isSequencePlaying = false;
+        let speedFactor = 1.0;
+        
+        // DOM elements
+        const tiles = document.querySelectorAll('.tile');
+        const levelDisplay = document.getElementById('level');
+        const scoreDisplay = document.getElementById('score');
+        const bestDisplay = document.getElementById('best');
+        const startBtn = document.getElementById('startBtn');
+        const strictBtn = document.getElementById('strictBtn');
+        const soundBtn = document.getElementById('soundBtn');
+        const messageDisplay = document.getElementById('message');
+        const progressBar = document.getElementById('progressBar');
+        const confettiContainer = document.getElementById('confetti-container');
+        
+        // Initialize game
+        function initGame() {
+            sequence = [];
+            playerSequence = [];
+            level = 1;
+            score = 0;
+            speedFactor = 1.0;
+            updateDisplays();
+            enableTiles(false);
+            updateProgressBar();
+        }
+        
+        // Start game
+        function startGame() {
+            if (isPlaying) {
+                // Reset animation
+                startBtn.classList.remove('pulse-animation');
+                void startBtn.offsetWidth; // Trigger reflow
+                startBtn.classList.add('pulse-animation');
+                
+                // Show reset message
+                messageDisplay.textContent = 'Game reset!';
+                setTimeout(() => {
+                    messageDisplay.textContent = 'Watch the sequence...';
+                }, 1000);
+            }
+            
+            initGame();
+            isPlaying = true;
+            startBtn.innerHTML = '<i class="fas fa-redo mr-2"></i> RESTART';
+            messageDisplay.textContent = 'Watch the sequence...';
+            
+            // Add first step to sequence
+            addToSequence();
+            playSequence();
+        }
+        
+        // Add random step to sequence
+        function addToSequence() {
+            const randomTile = Math.floor(Math.random() * 4);
+            sequence.push(randomTile);
+            speedFactor = Math.max(0.5, 1.0 - (sequence.length * 0.03)); // Increase speed as level progresses
+        }
+        
+        // Play the current sequence
+        function playSequence() {
+            isSequencePlaying = true;
+            enableTiles(false);
+            
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i >= sequence.length) {
+                    clearInterval(interval);
+                    isSequencePlaying = false;
+                    enableTiles(true);
+                    messageDisplay.textContent = 'Your turn! Repeat the sequence...';
+                    return;
+                }
+                
+                const tileIndex = sequence[i];
+                flashTile(tileIndex);
+                i++;
+            }, 800 * speedFactor);
+        }
+        
+        // Flash a tile with animation and sound
+        function flashTile(index) {
+            const tile = tiles[index];
+            const soundId = tile.getAttribute('data-sound');
+            const sound = document.getElementById(soundId);
+            
+            tile.classList.add('flash-animation');
+            if (isSoundOn) {
+                sound.currentTime = 0;
+                sound.play();
+            }
+            
+            // Remove animation class after it completes
+            setTimeout(() => {
+                tile.classList.remove('flash-animation');
+            }, 500 * speedFactor);
+        }
+        
+        // Handle tile click
+        function handleTileClick(index) {
+            if (!isPlaying || isSequencePlaying) return;
+            
+            flashTile(index);
+            playerSequence.push(index);
+            
+            // Check if the player's move is correct
+            if (playerSequence[playerSequence.length - 1] !== sequence[playerSequence.length - 1]) {
+                // Wrong sequence
+                handleWrongSequence();
+                return;
+            }
+            
+            // Correct move so far
+            if (playerSequence.length === sequence.length) {
+                // Completed the sequence correctly
+                handleCorrectSequence();
+            }
+            
+            updateProgressBar();
+        }
+        
+        // Update progress bar
+        function updateProgressBar() {
+            const progress = playerSequence.length / sequence.length * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+        
+        // Handle correct sequence
+        function handleCorrectSequence() {
+            score += level * 10;
+            level++;
+            playerSequence = [];
+            
+            // Play success sound
+            if (isSoundOn) {
+                document.getElementById('successSound').play();
+            }
+            
+            // Level up animation
+            levelDisplay.classList.add('level-up-animation');
+            setTimeout(() => {
+                levelDisplay.classList.remove('level-up-animation');
+            }, 500);
+            
+            // Play level up sound
+            if (isSoundOn) {
+                document.getElementById('levelUpSound').play();
+            }
+            
+            // Create confetti effect
+            if (level > 5) {
+                createConfetti();
+            }
+            
+            updateDisplays();
+            messageDisplay.textContent = 'Great! Next level...';
+            
+            // Add new step and play sequence
+            setTimeout(() => {
+                addToSequence();
+                playSequence();
+            }, 1000);
+        }
+        
+        // Handle wrong sequence
+        function handleWrongSequence() {
+            if (isSoundOn) {
+                document.getElementById('failSound').play();
+            }
+            messageDisplay.textContent = 'Wrong! Try again...';
+            
+            // In strict mode, reset the game
+            if (isStrictMode) {
+                setTimeout(() => {
+                    initGame();
+                    messageDisplay.textContent = 'Game over! Strict mode enabled.';
+                    isPlaying = false;
+                    startBtn.innerHTML = '<i class="fas fa-play mr-2"></i> START GAME';
+                }, 1000);
+                return;
+            }
+            
+            // In normal mode, replay the sequence
+            playerSequence = [];
+            setTimeout(() => {
+                messageDisplay.textContent = 'Watch the sequence again...';
+                playSequence();
+            }, 1000);
+            
+            updateProgressBar();
+        }
+        
+        // Toggle strict mode
+        function toggleStrictMode() {
+            isStrictMode = !isStrictMode;
+            strictBtn.innerHTML = isStrictMode 
+                ? '<i class="fas fa-lock mr-2"></i> STRICT: ON' 
+                : '<i class="fas fa-lock-open mr-2"></i> STRICT: OFF';
+            
+            strictBtn.classList.toggle('bg-red-600/50', isStrictMode);
+            strictBtn.classList.toggle('hover:bg-red-700/50', isStrictMode);
+            strictBtn.classList.toggle('bg-gray-700/50', !isStrictMode);
+            strictBtn.classList.toggle('hover:bg-gray-600/70', !isStrictMode);
+        }
+        
+        // Toggle sound
+        function toggleSound() {
+            isSoundOn = !isSoundOn;
+            soundBtn.innerHTML = isSoundOn 
+                ? '<i class="fas fa-volume-up mr-2"></i> SOUND: ON' 
+                : '<i class="fas fa-volume-mute mr-2"></i> SOUND: OFF';
+            
+            soundBtn.classList.toggle('bg-green-600/50', isSoundOn);
+            soundBtn.classList.toggle('hover:bg-green-700/50', isSoundOn);
+            soundBtn.classList.toggle('bg-gray-700/50', !isSoundOn);
+            soundBtn.classList.toggle('hover:bg-gray-600/70', !isSoundOn);
+        }
+        
+        // Enable or disable tiles
+        function enableTiles(enable) {
+            tiles.forEach(tile => {
+                tile.style.cursor = enable ? 'pointer' : 'default';
+                tile.style.opacity = enable ? '1' : '0.6';
+            });
+        }
+        
+        // Update displays
+        function updateDisplays() {
+            levelDisplay.textContent = level;
+            scoreDisplay.textContent = score;
+            
+            if (score > bestScore) {
+                bestScore = score;
+                bestDisplay.textContent = bestScore;
+                localStorage.setItem('bestScore', bestScore);
+            }
+        }
+        
+        // Create confetti effect
+        function createConfetti() {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.top = -10 + 'px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                confetti.style.width = Math.random() * 10 + 5 + 'px';
+                confetti.style.height = Math.random() * 5 + 3 + 'px';
+                confettiContainer.appendChild(confetti);
+                
+                // Animate confetti
+                const animation = confetti.animate([
+                    { top: '-10px', opacity: 1 },
+                    { top: '100vh', opacity: 0 }
+                ], {
+                    duration: Math.random() * 3000 + 2000,
+                    easing: 'cubic-bezier(0.1, 0.8, 0.9, 1)'
+                });
+                
+                // Remove confetti after animation
+                animation.onfinish = () => {
+                    confetti.remove();
+                };
+            }
+        }
+        
+        // Initialize
+        enableTiles(false);
+        bestDisplay.textContent = bestScore;
+    </script>
+</body>
+</html>
