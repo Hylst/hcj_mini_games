@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stellar Defender - Space Shooter</title>
+    <title>Stellar Defender - Ultimate Space Shooter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -16,6 +16,8 @@
             font-family: 'Press Start 2P', cursive;
             background-color: #000;
             color: #fff;
+            touch-action: none;
+            user-select: none;
         }
         
         #game-container {
@@ -30,6 +32,7 @@
             top: 0;
             left: 0;
             z-index: 1;
+            image-rendering: pixelated;
         }
         
         .parallax-layer {
@@ -107,7 +110,7 @@
             pointer-events: none;
         }
         
-        #score-display, #health-display, #level-display, #sound-toggle {
+        #score-display, #health-display, #level-display, #sound-toggle, #fps-display {
             position: absolute;
             background-color: rgba(0, 0, 0, 0.7);
             padding: 10px 15px;
@@ -137,7 +140,14 @@
             cursor: pointer;
         }
         
-        #start-screen, #game-over-screen {
+        #fps-display {
+            bottom: 20px;
+            left: 20px;
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        #start-screen, #game-over-screen, #pause-screen {
             position: absolute;
             top: 0;
             left: 0;
@@ -183,12 +193,17 @@
             transform: scale(1.05);
         }
         
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
         .instructions {
             margin-top: 20px;
             text-align: center;
             max-width: 500px;
             line-height: 1.6;
             color: #aaa;
+            font-size: 0.8rem;
         }
         
         .hidden {
@@ -246,7 +261,6 @@
             text-shadow: 0 0 5px #000;
         }
 
-        /* Sound wave animation for sound toggle */
         .sound-wave {
             display: inline-block;
             width: 6px;
@@ -264,6 +278,157 @@
             0%, 40%, 100% { transform: scaleY(0.4); }
             20% { transform: scaleY(1); }
         }
+        
+        /* Mobile controls */
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: none;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 25;
+            pointer-events: auto;
+        }
+        
+        .mobile-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        
+        .mobile-btn:active {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        #mobile-shoot {
+            position: absolute;
+            right: 20px;
+            bottom: 100px;
+            width: 80px;
+            height: 80px;
+            background-color: rgba(255, 102, 0, 0.5);
+        }
+        
+        /* Combo counter */
+        #combo-display {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            color: #FF9900;
+            text-shadow: 0 0 10px #FF6600;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 25;
+        }
+        
+        /* Damage text */
+        .damage-text {
+            position: absolute;
+            color: #FF0000;
+            font-size: 16px;
+            text-shadow: 0 0 3px #000;
+            animation: damageFloat 1s forwards;
+            z-index: 15;
+        }
+        
+        @keyframes damageFloat {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-30px); opacity: 0; }
+        }
+        
+        /* Shield effect */
+        .shield {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px dashed rgba(0, 170, 255, 0.7);
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        /* Screen shake */
+        .screen-shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        
+        /* Particle effects */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 15;
+        }
+        
+        /* Upgrade notification */
+        .upgrade-notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #FF9900;
+            text-align: center;
+            z-index: 40;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        /* High score display */
+        #high-score-display {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        /* Game stats */
+        .stat-item {
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+        
+        /* Pause menu */
+        #pause-screen {
+            display: none;
+        }
+        
+        /* Gamepad indicator */
+        #gamepad-indicator {
+            position: absolute;
+            bottom: 60px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -279,17 +444,21 @@
         <!-- UI Elements -->
         <div id="ui-container">
             <div id="score-display">SCORE: 0</div>
+            <div id="high-score-display">HIGH SCORE: 0</div>
             <div id="health-display">
                 <i class="fas fa-heart text-red-500"></i> 
                 <span id="health-value">100</span>%
             </div>
             <div id="level-display">LEVEL: 1</div>
+            <div id="combo-display"></div>
             <div id="sound-toggle" title="Toggle Sound">
                 <i class="fas fa-volume-up"></i>
                 <div class="sound-wave"></div>
                 <div class="sound-wave"></div>
                 <div class="sound-wave"></div>
             </div>
+            <div id="fps-display">FPS: 0</div>
+            <div id="gamepad-indicator">GAMEPAD: DISCONNECTED</div>
             <div id="upgrade-display">
                 <div class="upgrade-item">
                     <i class="fas fa-bolt" style="color: #FF9900;"></i>
@@ -303,6 +472,10 @@
                     <i class="fas fa-tachometer-alt" style="color: #00AAFF;"></i>
                     <span id="speed-level">1</span>
                 </div>
+                <div class="upgrade-item">
+                    <i class="fas fa-shield-alt" style="color: #00AAFF;"></i>
+                    <span id="shield-level">0</span>
+                </div>
             </div>
             <div class="boss-health-bar">
                 <div class="boss-health-fill"></div>
@@ -310,16 +483,37 @@
             </div>
         </div>
         
+        <!-- Mobile Controls (hidden by default) -->
+        <div id="mobile-controls">
+            <div class="mobile-btn" id="mobile-left"><i class="fas fa-arrow-left"></i></div>
+            <div class="mobile-btn" id="mobile-right"><i class="fas fa-arrow-right"></i></div>
+            <div class="mobile-btn" id="mobile-up"><i class="fas fa-arrow-up"></i></div>
+            <div class="mobile-btn" id="mobile-down"><i class="fas fa-arrow-down"></i></div>
+            <div class="mobile-btn" id="mobile-shoot"><i class="fas fa-space-shuttle"></i></div>
+        </div>
+        
         <!-- Start Screen -->
         <div id="start-screen">
             <h1 class="title">STELLAR DEFENDER</h1>
             <button id="start-btn" class="btn">START GAME</button>
-            <div class="instructions">
-                <p>Use <i class="fas fa-arrow-up"></i> <i class="fas fa-arrow-down"></i> <i class="fas fa-arrow-left"></i> <i class="fas fa-arrow-right"></i> to move</p>
-                <p>Press <i class="fas fa-space-shuttle"></i> SPACE to shoot</p>
-                <p>Collect power-ups for special abilities</p>
-                <p>Defeat the boss every 5 levels!</p>
-                <p>Survive as long as you can!</p>
+            <button id="controls-btn" class="btn">CONTROLS</button>
+            <div class="instructions hidden" id="controls-instructions">
+                <p><strong>Keyboard Controls:</strong></p>
+                <p><i class="fas fa-arrow-up"></i> <i class="fas fa-arrow-down"></i> <i class="fas fa-arrow-left"></i> <i class="fas fa-arrow-right"></i> - Move</p>
+                <p><i class="fas fa-space-shuttle"></i> SPACE - Shoot</p>
+                <p>P - Pause Game</p>
+                <p>M - Toggle Sound</p>
+                <p><strong>Gamepad Controls:</strong></p>
+                <p>Left Stick/D-Pad - Move</p>
+                <p>A Button - Shoot</p>
+                <p>Start Button - Pause</p>
+                <button id="back-btn" class="btn mt-4">BACK</button>
+            </div>
+            <div class="instructions" id="main-instructions">
+                <p>Survive as long as possible!</p>
+                <p>Collect power-ups for upgrades</p>
+                <p>Defeat the boss every 5 levels</p>
+                <p>Chain kills for combo bonuses!</p>
             </div>
             <div class="mt-8 text-xs text-gray-500">
                 <p>Created by Geoffroy Streit - Hylst</p>
@@ -329,9 +523,27 @@
         <!-- Game Over Screen -->
         <div id="game-over-screen" class="hidden">
             <h1 class="title">GAME OVER</h1>
-            <div id="final-score" class="text-2xl mb-8">SCORE: 0</div>
-            <div id="final-level" class="text-xl mb-8">LEVEL: 0</div>
+            <div id="final-score" class="text-2xl mb-4">SCORE: 0</div>
+            <div id="final-high-score" class="text-xl mb-4">HIGH SCORE: 0</div>
+            <div id="final-level" class="text-xl mb-4">LEVEL: 0</div>
+            <div id="max-combo" class="text-xl mb-4">MAX COMBO: 0</div>
+            <div id="enemies-defeated" class="text-xl mb-4">ENEMIES DEFEATED: 0</div>
+            <div id="powerups-collected" class="text-xl mb-8">POWERUPS COLLECTED: 0</div>
             <button id="restart-btn" class="btn">PLAY AGAIN</button>
+        </div>
+        
+        <!-- Pause Screen -->
+        <div id="pause-screen" class="hidden">
+            <h1 class="title">GAME PAUSED</h1>
+            <div class="text-xl mb-8">Press P or Start to continue</div>
+            <button id="resume-btn" class="btn">RESUME</button>
+            <button id="quit-btn" class="btn mt-4">QUIT TO MENU</button>
+        </div>
+        
+        <!-- Upgrade Notification -->
+        <div id="upgrade-notification" class="upgrade-notification hidden">
+            <h2 class="text-xl mb-2">UPGRADE UNLOCKED!</h2>
+            <p id="upgrade-message"></p>
         </div>
     </div>
 
@@ -346,6 +558,11 @@
     <audio id="boss-spawn-sound"></audio>
     <audio id="boss-death-sound"></audio>
     <audio id="engine-sound" loop></audio>
+    <audio id="combo-sound"></audio>
+    <audio id="shield-sound"></audio>
+    <audio id="shield-break-sound"></audio>
+    <audio id="pause-sound"></audio>
+    <audio id="resume-sound"></audio>
 
     <script>
         // Game Constants
@@ -358,14 +575,17 @@
         
         // Game Variables
         let score = 0;
+        let highScore = localStorage.getItem('stellarDefenderHighScore') || 0;
         let health = 100;
         let level = 1;
         let gameRunning = false;
+        let gamePaused = false;
         let animationFrameId;
         let enemies = [];
         let bullets = [];
         let powerups = [];
         let explosions = [];
+        let particles = [];
         let keys = {};
         let lastShotTime = 0;
         let shotDelay = 300; // ms between shots
@@ -377,30 +597,68 @@
         let soundEnabled = true;
         let bossSpawned = false;
         let engineSoundPlaying = false;
+        let lastFrameTime = 0;
+        let fps = 0;
+        let comboCount = 0;
+        let comboTimeout = null;
+        let maxCombo = 0;
+        let shieldActive = false;
+        let shieldHealth = 0;
+        let lastDamageTime = 0;
+        let screenShakeEndTime = 0;
+        let enemiesDefeated = 0;
+        let powerupsCollected = 0;
+        let gamepadConnected = false;
         
         // Player upgrades
         let playerUpgrades = {
             fireRate: 1,
             damage: 1,
-            speed: 1
+            speed: 1,
+            shield: 0
         };
         
         // DOM Elements
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
         const scoreDisplay = document.getElementById('score-display');
+        const highScoreDisplay = document.getElementById('high-score-display');
         const healthDisplay = document.getElementById('health-value');
         const levelDisplay = document.getElementById('level-display');
         const startScreen = document.getElementById('start-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
+        const pauseScreen = document.getElementById('pause-screen');
         const finalScoreDisplay = document.getElementById('final-score');
+        const finalHighScoreDisplay = document.getElementById('final-high-score');
         const finalLevelDisplay = document.getElementById('final-level');
+        const maxComboDisplay = document.getElementById('max-combo');
+        const enemiesDefeatedDisplay = document.getElementById('enemies-defeated');
+        const powerupsCollectedDisplay = document.getElementById('powerups-collected');
         const startBtn = document.getElementById('start-btn');
         const restartBtn = document.getElementById('restart-btn');
+        const resumeBtn = document.getElementById('resume-btn');
+        const quitBtn = document.getElementById('quit-btn');
+        const controlsBtn = document.getElementById('controls-btn');
+        const backBtn = document.getElementById('back-btn');
         const soundToggle = document.getElementById('sound-toggle');
         const bossHealthBar = document.querySelector('.boss-health-bar');
         const bossHealthFill = document.querySelector('.boss-health-fill');
         const bossNameDisplay = document.querySelector('.boss-name');
+        const comboDisplay = document.getElementById('combo-display');
+        const fpsDisplay = document.getElementById('fps-display');
+        const gamepadIndicator = document.getElementById('gamepad-indicator');
+        const mobileControls = document.getElementById('mobile-controls');
+        const controlsInstructions = document.getElementById('controls-instructions');
+        const mainInstructions = document.getElementById('main-instructions');
+        const upgradeNotification = document.getElementById('upgrade-notification');
+        const upgradeMessage = document.getElementById('upgrade-message');
+        
+        // Mobile control buttons
+        const mobileLeft = document.getElementById('mobile-left');
+        const mobileRight = document.getElementById('mobile-right');
+        const mobileUp = document.getElementById('mobile-up');
+        const mobileDown = document.getElementById('mobile-down');
+        const mobileShoot = document.getElementById('mobile-shoot');
         
         // Audio Elements
         const shootSound = document.getElementById('shoot-sound');
@@ -413,10 +671,20 @@
         const bossSpawnSound = document.getElementById('boss-spawn-sound');
         const bossDeathSound = document.getElementById('boss-death-sound');
         const engineSound = document.getElementById('engine-sound');
+        const comboSound = document.getElementById('combo-sound');
+        const shieldSound = document.getElementById('shield-sound');
+        const shieldBreakSound = document.getElementById('shield-break-sound');
+        const pauseSound = document.getElementById('pause-sound');
+        const resumeSound = document.getElementById('resume-sound');
         
-        // Set canvas size
+        // Initialize canvas
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
+        
+        // Check if mobile device
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
         
         // Load sound effects from external sources
         function loadSoundEffects() {
@@ -464,6 +732,26 @@
             bossMusic.volume = 0.5;
             bossMusic.loop = true;
             bossMusic.load();
+            
+            // Combo sound
+            comboSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-extra-bonus-in-a-video-game-2045.mp3';
+            comboSound.load();
+            
+            // Shield sound
+            shieldSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-magic-spell-shine-1688.mp3';
+            shieldSound.load();
+            
+            // Shield break sound
+            shieldBreakSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-glass-break-with-huge-reverb-2065.mp3';
+            shieldBreakSound.load();
+            
+            // Pause sound
+            pauseSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3';
+            pauseSound.load();
+            
+            // Resume sound
+            resumeSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3';
+            resumeSound.load();
         }
         
         // Play sound with volume control
@@ -481,7 +769,8 @@
         
         // Update engine sound based on player movement
         function updateEngineSound() {
-            const isMoving = keys['ArrowUp'] || keys['ArrowDown'] || keys['ArrowLeft'] || keys['ArrowRight'];
+            const isMoving = keys['ArrowUp'] || keys['ArrowDown'] || keys['ArrowLeft'] || keys['ArrowRight'] || 
+                            gamepadConnected && (Math.abs(gamepad.axes[1]) > 0.1 || Math.abs(gamepad.axes[0]) > 0.1);
             
             if (isMoving) {
                 if (!engineSoundPlaying) {
@@ -535,10 +824,40 @@
                 ctx.closePath();
                 ctx.fill();
                 
+                // Draw shield if active
+                if (shieldActive) {
+                    const shieldSize = Math.max(this.width, this.height) + 20;
+                    const shieldX = this.x + this.width/2 - shieldSize/2;
+                    const shieldY = this.y + this.height/2 - shieldSize/2;
+                    
+                    // Create shield element if it doesn't exist
+                    let shield = document.querySelector('.shield');
+                    if (!shield) {
+                        shield = document.createElement('div');
+                        shield.className = 'shield';
+                        document.getElementById('game-container').appendChild(shield);
+                    }
+                    
+                    // Update shield position and size
+                    shield.style.width = `${shieldSize}px`;
+                    shield.style.height = `${shieldSize}px`;
+                    shield.style.left = `${shieldX}px`;
+                    shield.style.top = `${shieldY}px`;
+                    
+                    // Pulsing effect
+                    const pulseSize = 1 + Math.sin(now * 0.005) * 0.1;
+                    shield.style.transform = `scale(${pulseSize})`;
+                    shield.style.opacity = shieldHealth / (playerUpgrades.shield * 50);
+                } else {
+                    // Remove shield if inactive
+                    const shield = document.querySelector('.shield');
+                    if (shield) shield.remove();
+                }
+                
                 ctx.restore();
             },
             update: function() {
-                // Movement
+                // Movement with keyboard
                 if (keys['ArrowUp'] && this.y > 0) {
                     this.y -= this.speed * playerUpgrades.speed;
                 }
@@ -552,6 +871,28 @@
                     this.x += this.speed * playerUpgrades.speed;
                 }
                 
+                // Movement with gamepad
+                if (gamepadConnected) {
+                    const gamepad = navigator.getGamepads()[0];
+                    if (Math.abs(gamepad.axes[1]) > 0.1) {
+                        this.y += gamepad.axes[1] * this.speed * playerUpgrades.speed;
+                    }
+                    if (Math.abs(gamepad.axes[0]) > 0.1) {
+                        this.x += gamepad.axes[0] * this.speed * playerUpgrades.speed;
+                    }
+                    
+                    // Keep player within bounds
+                    this.x = Math.max(0, Math.min(CANVAS_WIDTH - this.width, this.x));
+                    this.y = Math.max(0, Math.min(CANVAS_HEIGHT - this.height, this.y));
+                    
+                    // Gamepad shooting
+                    if (gamepad.buttons[0].pressed && Date.now() - lastShotTime > shotDelay) {
+                        bullets.push(new Bullet(this.x + this.width, this.y + this.height/2 - 2));
+                        lastShotTime = Date.now();
+                        playSound(shootSound, 0.3);
+                    }
+                }
+                
                 // Update engine sound
                 updateEngineSound();
             }
@@ -561,21 +902,36 @@
         function Bullet(x, y, isPlayerBullet = true) {
             this.x = x;
             this.y = y;
-            this.width = 15;
-            this.height = 5;
+            this.width = isPlayerBullet ? 20 : 10;
+            this.height = isPlayerBullet ? 8 : 5;
             this.speed = BULLET_SPEED;
             this.isPlayerBullet = isPlayerBullet;
             this.color = isPlayerBullet ? '#FF6600' : '#00FF00';
+            this.damage = isPlayerBullet ? playerUpgrades.damage : 10;
             
             this.draw = function() {
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.save();
                 
-                // Add glow effect for player bullets
                 if (this.isPlayerBullet) {
-                    ctx.fillStyle = 'rgba(255, 200, 0, 0.5)';
-                    ctx.fillRect(this.x - 2, this.y - 1, this.width + 4, this.height + 2);
+                    // Player bullet with glow effect
+                    const gradient = ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y + this.height);
+                    gradient.addColorStop(0, '#FF6600');
+                    gradient.addColorStop(0.5, '#FF9900');
+                    gradient.addColorStop(1, '#FFCC00');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    
+                    // Add trail effect
+                    ctx.fillStyle = 'rgba(255, 200, 0, 0.3)';
+                    ctx.fillRect(this.x - 5, this.y - 2, 5, this.height + 4);
+                } else {
+                    // Enemy bullet
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
                 }
+                
+                ctx.restore();
             };
             
             this.update = function() {
@@ -597,7 +953,7 @@
             this.x = CANVAS_WIDTH + (type === 'boss' ? 0 : Math.random() * 200);
             this.y = type === 'boss' ? CANVAS_HEIGHT/2 - 40 : Math.random() * (CANVAS_HEIGHT - this.height);
             this.speed = type === 'boss' ? 1 : ENEMY_BASE_SPEED + Math.random() * 2;
-            this.health = type === 'basic' ? 1 : type === 'tank' ? 3 : type === 'shooter' ? 2 : type === 'boss' ? 30 : 1;
+            this.health = type === 'basic' ? 1 : type === 'tank' ? 3 : type === 'shooter' ? 2 : type === 'boss' ? 30 + level * 5 : 1;
             this.maxHealth = this.health;
             this.color = type === 'basic' ? '#FF0000' : 
                          type === 'tank' ? '#AA0000' : 
@@ -607,6 +963,10 @@
             this.lastShotTime = 0;
             this.bulletCount = type === 'boss' ? 5 : 1;
             this.bulletSpread = type === 'boss' ? Math.PI/6 : 0;
+            this.scoreValue = type === 'basic' ? 100 : 
+                             type === 'tank' ? 300 : 
+                             type === 'shooter' ? 200 : 
+                             type === 'boss' ? 5000 + level * 500 : 100;
             
             this.draw = function() {
                 ctx.save();
@@ -690,7 +1050,7 @@
                 ctx.restore();
             };
             
-            this.update: function() {
+            this.update = function() {
                 if (this.type === 'boss') {
                     // Boss movement pattern
                     const amplitude = 100;
@@ -723,7 +1083,7 @@
         
         // Powerup Object
         function Powerup(type) {
-            this.type = type || ['fireRate', 'health', 'damage', 'speed'][Math.floor(Math.random() * 4)];
+            this.type = type || ['fireRate', 'health', 'damage', 'speed', 'shield'][Math.floor(Math.random() * 5)];
             this.x = CANVAS_WIDTH;
             this.y = Math.random() * (CANVAS_HEIGHT - 30);
             this.width = 30;
@@ -735,14 +1095,16 @@
                 fireRate: '#FF9900',
                 health: '#00FF00',
                 damage: '#FF0000',
-                speed: '#00AAFF'
+                speed: '#00AAFF',
+                shield: '#00AAFF'
             }[this.type];
             
             this.icon = {
                 fireRate: '⚡',
                 health: '❤️',
                 damage: '💥',
-                speed: '🚀'
+                speed: '🚀',
+                shield: '🛡️'
             }[this.type];
             
             this.draw = function() {
@@ -787,7 +1149,37 @@
             };
         }
         
-        // Explosion Effect
+        // Particle Object
+        function Particle(x, y, color, velocity, size, lifetime) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.velocity = velocity;
+            this.size = size;
+            this.lifetime = lifetime;
+            this.opacity = 1;
+            
+            this.draw = function() {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            };
+            
+            this.update = function() {
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.lifetime--;
+                this.opacity = this.lifetime / 60;
+                
+                return this.lifetime <= 0;
+            };
+        }
+        
+        // Create explosion effect
         function createExplosion(x, y, size = 1) {
             const explosion = document.createElement('div');
             explosion.className = 'explosion';
@@ -796,6 +1188,24 @@
             explosion.style.transform = `scale(${size})`;
             document.getElementById('game-container').appendChild(explosion);
             
+            // Create particles
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 3 + 1;
+                const velocity = {
+                    x: Math.cos(angle) * speed,
+                    y: Math.sin(angle) * speed
+                };
+                const color = `hsl(${Math.random() * 30 + 20}, 100%, 50%)`;
+                particles.push(new Particle(
+                    x, y, 
+                    color, 
+                    velocity, 
+                    Math.random() * 3 + 1, 
+                    Math.random() * 30 + 30
+                ));
+            }
+            
             // Play explosion sound
             playSound(explosionSound, size > 1 ? 0.7 : 0.4);
             
@@ -803,6 +1213,31 @@
             setTimeout(() => {
                 explosion.remove();
             }, 500);
+        }
+        
+        // Show damage text
+        function showDamageText(x, y, amount) {
+            const damageText = document.createElement('div');
+            damageText.className = 'damage-text';
+            damageText.textContent = `-${amount}`;
+            damageText.style.left = `${x}px`;
+            damageText.style.top = `${y}px`;
+            document.getElementById('game-container').appendChild(damageText);
+            
+            // Remove after animation
+            setTimeout(() => {
+                damageText.remove();
+            }, 1000);
+        }
+        
+        // Show upgrade notification
+        function showUpgradeNotification(message) {
+            upgradeMessage.textContent = message;
+            upgradeNotification.style.opacity = '1';
+            
+            setTimeout(() => {
+                upgradeNotification.style.opacity = '0';
+            }, 2000);
         }
         
         // Collision Detection
@@ -846,6 +1281,7 @@
             // Show boss health bar
             bossHealthBar.style.display = 'block';
             bossNameDisplay.textContent = `BOSS LEVEL ${level}`;
+            bossHealthFill.style.width = '100%';
             
             // Play boss sounds
             playSound(bossSpawnSound, 0.7);
@@ -858,25 +1294,131 @@
             powerups.push(new Powerup());
         }
         
+        // Update Combo Counter
+        function updateCombo() {
+            comboCount++;
+            maxCombo = Math.max(maxCombo, comboCount);
+            
+            // Show combo display
+            comboDisplay.textContent = `COMBO x${comboCount}`;
+            comboDisplay.style.opacity = '1';
+            
+            // Play combo sound for higher combos
+            if (comboCount % 5 === 0) {
+                playSound(comboSound, 0.5);
+            }
+            
+            // Reset combo after delay
+            if (comboTimeout) clearTimeout(comboTimeout);
+            comboTimeout = setTimeout(() => {
+                comboCount = 0;
+                comboDisplay.style.opacity = '0';
+            }, 2000);
+        }
+        
+        // Apply Shield
+        function applyShield() {
+            if (playerUpgrades.shield <= 0) return;
+            
+            shieldActive = true;
+            shieldHealth = playerUpgrades.shield * 50; // 50 health per shield level
+            playSound(shieldSound, 0.6);
+        }
+        
+        // Take Damage
+        function takeDamage(amount) {
+            // Screen shake for significant damage
+            if (amount >= 15) {
+                document.getElementById('game-container').classList.add('screen-shake');
+                setTimeout(() => {
+                    document.getElementById('game-container').classList.remove('screen-shake');
+                }, 500);
+            }
+            
+            // Shield takes damage first
+            if (shieldActive) {
+                shieldHealth -= amount;
+                showDamageText(player.x + player.width/2, player.y, amount);
+                
+                if (shieldHealth <= 0) {
+                    shieldActive = false;
+                    playSound(shieldBreakSound, 0.7);
+                    createExplosion(player.x + player.width/2, player.y + player.height/2, 1.5);
+                } else {
+                    playSound(playerHitSound, 0.3);
+                }
+                return;
+            }
+            
+            // Apply damage to player
+            health -= amount;
+            lastDamageTime = Date.now();
+            showDamageText(player.x + player.width/2, player.y, amount);
+            playSound(playerHitSound, 0.5);
+            
+            if (health <= 0) {
+                gameOver();
+            }
+        }
+        
+        // Pause Game
+        function pauseGame() {
+            if (!gameRunning) return;
+            
+            gamePaused = true;
+            pauseScreen.classList.remove('hidden');
+            bgMusic.pause();
+            bossMusic.pause();
+            engineSound.pause();
+            playSound(pauseSound, 0.5);
+        }
+        
+        // Resume Game
+        function resumeGame() {
+            gamePaused = false;
+            pauseScreen.classList.add('hidden');
+            
+            if (bossActive) {
+                bossMusic.play().catch(e => console.log("Music play error:", e));
+            } else {
+                bgMusic.play().catch(e => console.log("Music play error:", e));
+            }
+            
+            if (engineSoundPlaying) {
+                engineSound.play().catch(e => console.log("Engine sound error:", e));
+            }
+            
+            playSound(resumeSound, 0.5);
+            lastFrameTime = performance.now(); // Reset frame time to avoid large delta
+        }
+        
         // Update Game State
         function update() {
+            const now = Date.now();
+            const deltaTime = now - lastFrameTime;
+            lastFrameTime = now;
+            
+            // Calculate FPS
+            fps = Math.round(1000 / deltaTime);
+            fpsDisplay.textContent = `FPS: ${fps}`;
+            
             // Update player
             player.update();
             
             // Spawn enemies
-            if (!bossActive && Date.now() - lastEnemySpawnTime > enemySpawnRate) {
+            if (!bossActive && now - lastEnemySpawnTime > enemySpawnRate) {
                 spawnEnemy();
-                lastEnemySpawnTime = Date.now();
+                lastEnemySpawnTime = now;
             }
             
             // Spawn powerups
-            if (Date.now() - lastPowerupSpawnTime > powerupSpawnRate) {
+            if (now - lastPowerupSpawnTime > powerupSpawnRate) {
                 spawnPowerup();
-                lastPowerupSpawnTime = Date.now();
+                lastPowerupSpawnTime = now;
             }
             
             // Check for boss spawn
-            if (level % 5 === 0 && !bossSpawned) {
+            if (level % 5 === 0 && !bossSpawned && enemies.length === 0) {
                 spawnBoss();
             }
             
@@ -893,11 +1435,14 @@
                     for (let j = enemies.length - 1; j >= 0; j--) {
                         const enemy = enemies[j];
                         if (checkCollision(bullet, enemy) && enemy.health > 0) {
-                            enemy.health -= playerUpgrades.damage;
+                            enemy.health -= bullet.damage;
                             bullets.splice(i, 1);
                             
                             // Create explosion
                             createExplosion(bullet.x, bullet.y + bullet.height/2, 0.5);
+                            
+                            // Show damage text
+                            showDamageText(enemy.x + enemy.width/2, enemy.y, bullet.damage);
                             
                             // Update boss health bar
                             if (enemy.type === 'boss') {
@@ -914,16 +1459,17 @@
                                 );
                                 
                                 enemies.splice(j, 1);
+                                enemiesDefeated++;
                                 
-                                // Add score based on enemy type
-                                if (enemy.type === 'basic') {
-                                    score += 100;
-                                } else if (enemy.type === 'tank') {
-                                    score += 300;
-                                } else if (enemy.type === 'shooter') {
-                                    score += 200;
-                                } else if (enemy.type === 'boss') {
-                                    score += 5000;
+                                // Add score with combo multiplier
+                                const comboMultiplier = 1 + comboCount * 0.1;
+                                const scoreToAdd = Math.floor(enemy.scoreValue * comboMultiplier);
+                                score += scoreToAdd;
+                                
+                                // Update combo
+                                updateCombo();
+                                
+                                if (enemy.type === 'boss') {
                                     bossActive = false;
                                     bossHealthBar.style.display = 'none';
                                     playSound(bossDeathSound, 0.8);
@@ -944,13 +1490,8 @@
                 else {
                     if (checkCollision(bullet, player)) {
                         bullets.splice(i, 1);
-                        health -= 10;
+                        takeDamage(bullet.damage);
                         createExplosion(bullet.x, bullet.y + bullet.height/2, 0.7);
-                        playSound(playerHitSound, 0.5);
-                        
-                        if (health <= 0) {
-                            gameOver();
-                        }
                     }
                 }
             }
@@ -961,23 +1502,21 @@
                     enemies.splice(i, 1);
                 } else if (checkCollision(enemies[i], player)) {
                     // Player collides with enemy
-                    health -= enemies[i].type === 'boss' ? 20 : 15;
+                    const damage = enemies[i].type === 'boss' ? 20 : 15;
+                    takeDamage(damage);
+                    
                     createExplosion(
                         enemies[i].x + enemies[i].width/2, 
                         enemies[i].y + enemies[i].height/2, 
                         enemies[i].type === 'boss' ? 2 : 1.5
                     );
-                    playSound(playerHitSound, 0.7);
                     
                     if (enemies[i].type !== 'boss') {
                         enemies.splice(i, 1);
+                        enemiesDefeated++;
                     } else {
                         // Update boss health bar
                         bossHealthFill.style.width = `${(enemies[i].health / enemies[i].maxHealth) * 100}%`;
-                    }
-                    
-                    if (health <= 0) {
-                        gameOver();
                     }
                 }
             }
@@ -990,6 +1529,16 @@
                     // Apply powerup effect
                     applyPowerup(powerups[i].type);
                     powerups.splice(i, 1);
+                    powerupsCollected++;
+                }
+            }
+            
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                if (particles[i].update()) {
+                    particles.splice(i, 1);
+                } else {
+                    particles[i].draw();
                 }
             }
             
@@ -997,7 +1546,7 @@
             updateUI();
             
             // Level progression
-            if (score >= level * 2000 && !bossActive) {
+            if (score >= level * 2000 && !bossActive && enemies.length === 0) {
                 levelUp();
             }
         }
@@ -1007,50 +1556,40 @@
             createExplosion(player.x + player.width/2, player.y + player.height/2, 1);
             playSound(powerupSound, 0.6);
             
+            let message = '';
+            
             switch(type) {
                 case 'fireRate':
                     playerUpgrades.fireRate += 0.2;
                     shotDelay = Math.max(100, 300 / playerUpgrades.fireRate);
-                    showPowerupMessage('Fire Rate Increased!');
+                    message = 'Fire Rate Increased!';
                     break;
                 case 'health':
                     health = Math.min(100, health + 30);
-                    showPowerupMessage('Health Restored!');
+                    message = 'Health Restored!';
                     break;
                 case 'damage':
                     playerUpgrades.damage += 0.5;
-                    showPowerupMessage('Damage Increased!');
+                    message = 'Damage Increased!';
                     break;
                 case 'speed':
                     playerUpgrades.speed += 0.2;
-                    showPowerupMessage('Speed Increased!');
+                    message = 'Speed Increased!';
+                    break;
+                case 'shield':
+                    playerUpgrades.shield += 1;
+                    applyShield();
+                    message = 'Shield Upgraded!';
                     break;
             }
+            
+            showUpgradeNotification(message);
             
             // Update upgrade display
             document.getElementById('fire-rate-level').textContent = playerUpgrades.fireRate.toFixed(1);
             document.getElementById('damage-level').textContent = playerUpgrades.damage.toFixed(1);
             document.getElementById('speed-level').textContent = playerUpgrades.speed.toFixed(1);
-        }
-        
-        // Show Powerup Message
-        function showPowerupMessage(message) {
-            const msg = document.createElement('div');
-            msg.textContent = message;
-            msg.style.position = 'absolute';
-            msg.style.left = (player.x + player.width + 10) + 'px';
-            msg.style.top = player.y + 'px';
-            msg.style.color = '#00FF00';
-            msg.style.fontSize = '16px';
-            msg.style.textShadow = '0 0 5px #000';
-            msg.style.zIndex = '100';
-            msg.style.animation = 'fadeOut 2s forwards';
-            
-            document.getElementById('game-container').appendChild(msg);
-            
-            setTimeout(() => {
-                msg.remove();
-            }, 2000);
+            document.getElementById('shield-level').textContent = playerUpgrades.shield;
         }
         
         // Level Up
@@ -1059,17 +1598,23 @@
             bossSpawned = false;
             enemySpawnRate = Math.max(200, enemySpawnRate - 100);
             playSound(levelUpSound, 0.6);
-            showPowerupMessage(`LEVEL ${level} REACHED!`);
+            showUpgradeNotification(`LEVEL ${level} REACHED!`);
             
             // Every 5 levels, reset spawn rate to prevent it from getting too fast
             if (level % 5 === 0) {
                 enemySpawnRate = 1000;
+            }
+            
+            // Apply shield on level up if player has shield upgrade
+            if (playerUpgrades.shield > 0) {
+                applyShield();
             }
         }
         
         // Update UI
         function updateUI() {
             scoreDisplay.textContent = `SCORE: ${score}`;
+            highScoreDisplay.textContent = `HIGH SCORE: ${highScore}`;
             healthDisplay.textContent = `${health}%`;
             levelDisplay.textContent = `LEVEL: ${level}`;
             
@@ -1103,7 +1648,7 @@
         
         // Game Loop
         function gameLoop() {
-            if (gameRunning) {
+            if (gameRunning && !gamePaused) {
                 update();
                 draw();
                 animationFrameId = requestAnimationFrame(gameLoop);
@@ -1119,12 +1664,19 @@
             enemies = [];
             bullets = [];
             powerups = [];
+            particles = [];
             bossActive = false;
             bossSpawned = false;
+            comboCount = 0;
+            maxCombo = 0;
+            shieldActive = false;
+            enemiesDefeated = 0;
+            powerupsCollected = 0;
             playerUpgrades = {
                 fireRate: 1,
                 damage: 1,
-                speed: 1
+                speed: 1,
+                shield: 0
             };
             enemySpawnRate = 1000;
             shotDelay = 300;
@@ -1132,7 +1684,13 @@
             // Hide start screen and boss health bar
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
+            pauseScreen.classList.add('hidden');
             bossHealthBar.style.display = 'none';
+            comboDisplay.style.opacity = '0';
+            
+            // Reset shield
+            const shield = document.querySelector('.shield');
+            if (shield) shield.remove();
             
             // Reset player position
             player.x = 100;
@@ -1143,9 +1701,19 @@
             document.getElementById('fire-rate-level').textContent = '1';
             document.getElementById('damage-level').textContent = '1';
             document.getElementById('speed-level').textContent = '1';
+            document.getElementById('shield-level').textContent = '0';
+            
+            // Show mobile controls if on mobile
+            if (isMobileDevice()) {
+                mobileControls.style.display = 'flex';
+            } else {
+                mobileControls.style.display = 'none';
+            }
             
             // Start game loop
             gameRunning = true;
+            gamePaused = false;
+            lastFrameTime = performance.now();
             
             // Play background music
             bgMusic.currentTime = 0;
@@ -1159,6 +1727,12 @@
             gameRunning = false;
             cancelAnimationFrame(animationFrameId);
             
+            // Update high score
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('stellarDefenderHighScore', highScore);
+            }
+            
             // Stop all sounds
             bgMusic.pause();
             bossMusic.pause();
@@ -1167,7 +1741,11 @@
             
             // Show game over screen
             finalScoreDisplay.textContent = `SCORE: ${score}`;
+            finalHighScoreDisplay.textContent = `HIGH SCORE: ${highScore}`;
             finalLevelDisplay.textContent = `LEVEL: ${level}`;
+            maxComboDisplay.textContent = `MAX COMBO: ${maxCombo}`;
+            enemiesDefeatedDisplay.textContent = `ENEMIES DEFEATED: ${enemiesDefeated}`;
+            powerupsCollectedDisplay.textContent = `POWERUPS COLLECTED: ${powerupsCollected}`;
             gameOverScreen.classList.remove('hidden');
             
             // Create big explosion
@@ -1180,7 +1758,7 @@
             
             if (soundEnabled) {
                 soundToggle.innerHTML = '<i class="fas fa-volume-up"></i><div class="sound-wave"></div><div class="sound-wave"></div><div class="sound-wave"></div>';
-                if (gameRunning) {
+                if (gameRunning && !gamePaused) {
                     if (bossActive) {
                         bossMusic.play().catch(e => console.log("Music play error:", e));
                     } else {
@@ -1194,50 +1772,62 @@
             }
         }
         
+        // Toggle Controls Screen
+        function toggleControlsScreen() {
+            controlsInstructions.classList.toggle('hidden');
+            mainInstructions.classList.toggle('hidden');
+        }
+        
+        // Gamepad Support
+        function checkGamepad() {
+            const gamepads = navigator.getGamepads();
+            if (gamepads[0]) {
+                gamepadConnected = true;
+                gamepadIndicator.textContent = 'GAMEPAD: CONNECTED';
+                gamepadIndicator.style.display = 'block';
+            } else {
+                gamepadConnected = false;
+                gamepadIndicator.style.display = 'none';
+            }
+        }
+        
         // Event Listeners
         startBtn.addEventListener('click', startGame);
         restartBtn.addEventListener('click', startGame);
+        resumeBtn.addEventListener('click', resumeGame);
+        quitBtn.addEventListener('click', () => {
+            gameRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            pauseScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            bgMusic.pause();
+            bossMusic.pause();
+            engineSound.pause();
+            engineSoundPlaying = false;
+        });
         soundToggle.addEventListener('click', toggleSound);
+        controlsBtn.addEventListener('click', toggleControlsScreen);
+        backBtn.addEventListener('click', toggleControlsScreen);
         
-        // Keyboard Controls
-        window.addEventListener('keydown', (e) => {
-            keys[e.key] = true;
-            
-            // Space to shoot
-            if (e.key === ' ' && gameRunning && Date.now() - lastShotTime > shotDelay) {
+        // Mobile control event listeners
+        mobileLeft.addEventListener('touchstart', () => keys['ArrowLeft'] = true);
+        mobileLeft.addEventListener('touchend', () => keys['ArrowLeft'] = false);
+        mobileRight.addEventListener('touchstart', () => keys['ArrowRight'] = true);
+        mobileRight.addEventListener('touchend', () => keys['ArrowRight'] = false);
+        mobileUp.addEventListener('touchstart', () => keys['ArrowUp'] = true);
+        mobileUp.addEventListener('touchend', () => keys['ArrowUp'] = false);
+        mobileDown.addEventListener('touchstart', () => keys['ArrowDown'] = true);
+        mobileDown.addEventListener('touchend', () => keys['ArrowDown'] = false);
+        mobileShoot.addEventListener('touchstart', () => {
+            if (gameRunning && !gamePaused && Date.now() - lastShotTime > shotDelay) {
                 bullets.push(new Bullet(player.x + player.width, player.y + player.height/2 - 2));
                 lastShotTime = Date.now();
                 playSound(shootSound, 0.3);
             }
-            
-            // M to toggle sound
-            if (e.key === 'm' || e.key === 'M') {
-                toggleSound();
-            }
         });
         
-        window.addEventListener('keyup', (e) => {
-            keys[e.key] = false;
-        });
-        
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
-        
-        // Add custom animation for fadeOut
-        const style = document.createElement('style');
-        style.innerHTML = `
-            @keyframes fadeOut {
-                0% { opacity: 1; transform: translateY(0); }
-                100% { opacity: 0; transform: translateY(-20px); }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // Load sound effects when the page loads
-        window.addEventListener('load', loadSoundEffects);
-    </script>
-</body>
+        // Keyboard Controls
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'p' || e.key === 'P') {
+                if (gameRunning
 </html>
