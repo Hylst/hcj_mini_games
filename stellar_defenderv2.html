@@ -245,6 +245,25 @@
             font-size: 14px;
             text-shadow: 0 0 5px #000;
         }
+
+        /* Sound wave animation for sound toggle */
+        .sound-wave {
+            display: inline-block;
+            width: 6px;
+            height: 4px;
+            background: #fff;
+            margin: 0 2px;
+            animation: soundWave 1.2s infinite ease-in-out;
+        }
+
+        .sound-wave:nth-child(1) { animation-delay: 0.1s; }
+        .sound-wave:nth-child(2) { animation-delay: 0.2s; }
+        .sound-wave:nth-child(3) { animation-delay: 0.3s; }
+
+        @keyframes soundWave {
+            0%, 40%, 100% { transform: scaleY(0.4); }
+            20% { transform: scaleY(1); }
+        }
     </style>
 </head>
 <body>
@@ -267,6 +286,9 @@
             <div id="level-display">LEVEL: 1</div>
             <div id="sound-toggle" title="Toggle Sound">
                 <i class="fas fa-volume-up"></i>
+                <div class="sound-wave"></div>
+                <div class="sound-wave"></div>
+                <div class="sound-wave"></div>
             </div>
             <div id="upgrade-display">
                 <div class="upgrade-item">
@@ -314,12 +336,16 @@
     </div>
 
     <!-- Audio Elements -->
-    <audio id="shoot-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
-    <audio id="explosion-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
-    <audio id="powerup-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
-    <audio id="player-hit-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."></audio>
-    <audio id="boss-music" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..." loop></audio>
-    <audio id="bg-music" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..." loop></audio>
+    <audio id="shoot-sound"></audio>
+    <audio id="explosion-sound"></audio>
+    <audio id="powerup-sound"></audio>
+    <audio id="player-hit-sound"></audio>
+    <audio id="boss-music"></audio>
+    <audio id="bg-music"></audio>
+    <audio id="level-up-sound"></audio>
+    <audio id="boss-spawn-sound"></audio>
+    <audio id="boss-death-sound"></audio>
+    <audio id="engine-sound" loop></audio>
 
     <script>
         // Game Constants
@@ -350,6 +376,7 @@
         let bossActive = false;
         let soundEnabled = true;
         let bossSpawned = false;
+        let engineSoundPlaying = false;
         
         // Player upgrades
         let playerUpgrades = {
@@ -382,54 +409,61 @@
         const playerHitSound = document.getElementById('player-hit-sound');
         const bossMusic = document.getElementById('boss-music');
         const bgMusic = document.getElementById('bg-music');
+        const levelUpSound = document.getElementById('level-up-sound');
+        const bossSpawnSound = document.getElementById('boss-spawn-sound');
+        const bossDeathSound = document.getElementById('boss-death-sound');
+        const engineSound = document.getElementById('engine-sound');
         
         // Set canvas size
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
         
-        // Generate sound effects (base64 encoded)
-        function generateSoundEffects() {
-            // Shoot sound (laser)
-            shootSound.src = generateLaserSound();
+        // Load sound effects from external sources
+        function loadSoundEffects() {
+            // Laser shoot sound
+            shootSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-laser-weapon-shot-1681.mp3';
+            shootSound.load();
             
             // Explosion sound
-            explosionSound.src = generateExplosionSound();
+            explosionSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-explosion-impact-1684.mp3';
+            explosionSound.load();
             
             // Powerup sound
-            powerupSound.src = generatePowerupSound();
+            powerupSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3';
+            powerupSound.load();
             
             // Player hit sound
-            playerHitSound.src = generateHitSound();
+            playerHitSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3';
+            playerHitSound.load();
             
-            // Background music (simplified for this example)
-            bgMusic.src = generateBackgroundMusic();
-            bossMusic.src = generateBossMusic();
-        }
-        
-        // Simple sound generators (in a real game, use pre-recorded sounds)
-        function generateLaserSound() {
-            // This is a simplified version - in reality, use proper audio files
-            return "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
-        }
-        
-        function generateExplosionSound() {
-            return "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
-        }
-        
-        function generatePowerupSound() {
-            return "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
-        }
-        
-        function generateHitSound() {
-            return "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
-        }
-        
-        function generateBackgroundMusic() {
-            return "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
-        }
-        
-        function generateBossMusic() {
-            return "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
+            // Level up sound
+            levelUpSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3';
+            levelUpSound.load();
+            
+            // Boss spawn sound
+            bossSpawnSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3';
+            bossSpawnSound.load();
+            
+            // Boss death sound
+            bossDeathSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-big-explosion-2810.mp3';
+            bossDeathSound.load();
+            
+            // Engine sound
+            engineSound.src = 'https://assets.mixkit.co/sfx/preview/mixkit-spaceship-engines-1710.mp3';
+            engineSound.volume = 0.3;
+            engineSound.load();
+            
+            // Background music
+            bgMusic.src = 'https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-668.mp3';
+            bgMusic.volume = 0.4;
+            bgMusic.loop = true;
+            bgMusic.load();
+            
+            // Boss music
+            bossMusic.src = 'https://assets.mixkit.co/music/preview/mixkit-the-dark-ambience-49.mp3';
+            bossMusic.volume = 0.5;
+            bossMusic.loop = true;
+            bossMusic.load();
         }
         
         // Play sound with volume control
@@ -442,6 +476,24 @@
                 sound.play().catch(e => console.log("Audio play error:", e));
             } catch (e) {
                 console.log("Sound error:", e);
+            }
+        }
+        
+        // Update engine sound based on player movement
+        function updateEngineSound() {
+            const isMoving = keys['ArrowUp'] || keys['ArrowDown'] || keys['ArrowLeft'] || keys['ArrowRight'];
+            
+            if (isMoving) {
+                if (!engineSoundPlaying) {
+                    engineSound.play().catch(e => console.log("Engine sound error:", e));
+                    engineSoundPlaying = true;
+                }
+                // Increase pitch slightly when moving
+                engineSound.playbackRate = 1.1;
+            } else {
+                if (engineSoundPlaying) {
+                    engineSound.playbackRate = 1.0;
+                }
             }
         }
         
@@ -499,6 +551,9 @@
                 if (keys['ArrowRight'] && this.x < CANVAS_WIDTH - this.width) {
                     this.x += this.speed * playerUpgrades.speed;
                 }
+                
+                // Update engine sound
+                updateEngineSound();
             }
         };
         
@@ -635,7 +690,7 @@
                 ctx.restore();
             };
             
-            this.update = function() {
+            this.update: function() {
                 if (this.type === 'boss') {
                     // Boss movement pattern
                     const amplitude = 100;
@@ -792,7 +847,8 @@
             bossHealthBar.style.display = 'block';
             bossNameDisplay.textContent = `BOSS LEVEL ${level}`;
             
-            // Play boss music
+            // Play boss sounds
+            playSound(bossSpawnSound, 0.7);
             bgMusic.pause();
             playSound(bossMusic, 0.6);
         }
@@ -836,7 +892,7 @@
                 if (bullet.isPlayerBullet) {
                     for (let j = enemies.length - 1; j >= 0; j--) {
                         const enemy = enemies[j];
-                        if (checkCollision(bullet, enemy)) {
+                        if (checkCollision(bullet, enemy) && enemy.health > 0) {
                             enemy.health -= playerUpgrades.damage;
                             bullets.splice(i, 1);
                             
@@ -870,6 +926,7 @@
                                     score += 5000;
                                     bossActive = false;
                                     bossHealthBar.style.display = 'none';
+                                    playSound(bossDeathSound, 0.8);
                                     bossMusic.pause();
                                     bgMusic.play().catch(e => console.log("Music play error:", e));
                                 }
@@ -1001,6 +1058,7 @@
             level++;
             bossSpawned = false;
             enemySpawnRate = Math.max(200, enemySpawnRate - 100);
+            playSound(levelUpSound, 0.6);
             showPowerupMessage(`LEVEL ${level} REACHED!`);
             
             // Every 5 levels, reset spawn rate to prevent it from getting too fast
@@ -1104,6 +1162,8 @@
             // Stop all sounds
             bgMusic.pause();
             bossMusic.pause();
+            engineSound.pause();
+            engineSoundPlaying = false;
             
             // Show game over screen
             finalScoreDisplay.textContent = `SCORE: ${score}`;
@@ -1119,7 +1179,7 @@
             soundEnabled = !soundEnabled;
             
             if (soundEnabled) {
-                soundToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
+                soundToggle.innerHTML = '<i class="fas fa-volume-up"></i><div class="sound-wave"></div><div class="sound-wave"></div><div class="sound-wave"></div>';
                 if (gameRunning) {
                     if (bossActive) {
                         bossMusic.play().catch(e => console.log("Music play error:", e));
@@ -1176,8 +1236,8 @@
         `;
         document.head.appendChild(style);
         
-        // Generate sound effects when the page loads
-        window.addEventListener('load', generateSoundEffects);
+        // Load sound effects when the page loads
+        window.addEventListener('load', loadSoundEffects);
     </script>
 </body>
 </html>
