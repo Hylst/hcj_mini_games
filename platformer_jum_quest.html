@@ -122,6 +122,8 @@
         
         .player {
             transition: transform 0.1s ease;
+            position: absolute;
+            z-index: 10;
         }
         
         .damage-effect {
@@ -133,6 +135,43 @@
             50% { filter: brightness(1.5); }
             100% { filter: brightness(1); }
         }
+        
+        .facing-right {
+            transform: scaleX(1);
+        }
+        
+        .facing-left {
+            transform: scaleX(-1);
+        }
+        
+        .double-jump-indicator {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #FFD700;
+            border-radius: 50%;
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 20;
+        }
+        
+        .dash-effect {
+            animation: dash 0.3s ease-out;
+        }
+        
+        @keyframes dash {
+            0% { opacity: 0.8; transform: scale(1); }
+            100% { opacity: 0; transform: scale(2); }
+        }
     </style>
 </head>
 <body class="bg-gray-900 flex justify-center items-center h-screen">
@@ -140,7 +179,12 @@
         <div class="parallax-bg"></div>
         
         <!-- Player Character -->
-        <div class="player absolute w-8 h-8 bg-blue-600 rounded-full shadow-md z-10" id="player"></div>
+        <div class="player w-8 h-8 bg-blue-600 rounded-full shadow-md" id="player">
+            <div class="absolute inset-0 flex justify-center items-center">
+                <i class="fas fa-user text-white text-xs"></i>
+            </div>
+            <div class="double-jump-indicator hidden" id="doubleJumpIndicator"></div>
+        </div>
         
         <!-- Platforms -->
         <div class="platform absolute w-32 h-4 bg-green-600 rounded-sm bottom-10 left-32 z-5" id="platform1"></div>
@@ -209,6 +253,9 @@
         <div class="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-lg z-20">
             <span class="font-bold">Lives:</span> <span id="lives">3</span>
         </div>
+        <div class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-lg z-20 hidden" id="abilityIndicator">
+            <span class="font-bold">Double Jump Ready!</span>
+        </div>
         
         <!-- Game Over Screen (initially hidden) -->
         <div class="game-overlay hidden" id="gameOverlay">
@@ -229,6 +276,7 @@
                 <div class="mb-6">
                     <p class="mb-2"><i class="fas fa-arrow-left mr-2"></i> <i class="fas fa-arrow-right mr-4"></i> Move</p>
                     <p class="mb-2"><i class="fas fa-arrow-up mr-4"></i> Jump</p>
+                    <p class="mb-2"><i class="fas fa-space-shuttle mr-2"></i> Double Jump (when available)</p>
                     <p class="mb-2"><i class="fas fa-star mr-2 text-yellow-500"></i> Find hidden areas</p>
                 </div>
                 <button class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-bold" id="startButton">
@@ -247,6 +295,7 @@
     <audio id="hiddenSound" src="https://assets.mixkit.co/sfx/preview/mixkit-magic-sparkle-902.mp3"></audio>
     <audio id="gameOverSound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3"></audio>
     <audio id="backgroundMusic" loop src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-668.mp3"></audio>
+    <audio id="doubleJumpSound" src="https://assets.mixkit.co/sfx/preview/mixkit-extra-bonus-in-a-video-game-2045.mp3"></audio>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -260,6 +309,8 @@
             const restartButton = document.getElementById('restartButton');
             const startScreen = document.getElementById('startScreen');
             const startButton = document.getElementById('startButton');
+            const doubleJumpIndicator = document.getElementById('doubleJumpIndicator');
+            const abilityIndicator = document.getElementById('abilityIndicator');
             
             // Platforms
             const platforms = [
@@ -297,6 +348,7 @@
             const hiddenSound = document.getElementById('hiddenSound');
             const gameOverSound = document.getElementById('gameOverSound');
             const backgroundMusic = document.getElementById('backgroundMusic');
+            const doubleJumpSound = document.getElementById('doubleJumpSound');
             
             // Game state
             let score = 0;
@@ -312,10 +364,18 @@
             let isOnGround = false;
             let hasSpecialCollectible = false;
             let gameSpeed = 1;
+            let hasDoubleJump = false;
+            let canDoubleJump = false;
+            let facingRight = true;
+            let keys = {
+                ArrowLeft: false,
+                ArrowRight: false,
+                ArrowUp: false,
+                Space: false
+            };
             
             // Initialize player position
-            player.style.left = `${playerX}px`;
-            player.style.bottom = `${playerY}px`;
+            updatePlayerPosition();
             
             // Event listeners
             document.addEventListener('keydown', handleKeyDown);
@@ -335,6 +395,7 @@
             function gameLoop() {
                 if (isGameOver || !isGameStarted) return;
                 
+                handleMovement();
                 updatePlayerPosition();
                 checkCollisions();
                 checkEnemyCollisions();
@@ -343,6 +404,35 @@
                 checkHiddenArea();
                 
                 requestAnimationFrame(gameLoop);
+            }
+            
+            // Handle movement based on key states
+            function handleMovement() {
+                // Horizontal movement
+                if (keys.ArrowLeft) {
+                    velocityX = -5;
+                    if (facingRight) {
+                        player.classList.remove('facing-right');
+                        player.classList.add('facing-left');
+                        facingRight = false;
+                    }
+                } else if (keys.ArrowRight) {
+                    velocityX = 5;
+                    if (!facingRight) {
+                        player.classList.remove('facing-left');
+                        player.classList.add('facing-right');
+                        facingRight = true;
+                    }
+                } else {
+                    velocityX = 0;
+                }
+                
+                // Jumping
+                if ((keys.ArrowUp || keys.Space) && isOnGround) {
+                    jump();
+                } else if ((keys.ArrowUp || keys.Space) && canDoubleJump && hasDoubleJump) {
+                    doubleJump();
+                }
             }
             
             // Update player position based on velocity
@@ -391,15 +481,21 @@
                             isOnGround = true;
                             velocityY = 0;
                             
+                            // Enable double jump when landing
+                            canDoubleJump = true;
+                            doubleJumpIndicator.classList.remove('hidden');
+                            
                             // Special platform behaviors
                             if (platform.id === 'bouncePlatform') {
                                 jump(15);
                                 bounceSound.play();
+                                createParticles(playerX + player.offsetWidth/2, playerY, 5, '#FF69B4');
                             } else if (platform.id === 'fragilePlatform') {
                                 // Fragile platform breaks after landing
                                 setTimeout(() => {
                                     platform.style.opacity = '0';
                                     breakSound.play();
+                                    createParticles(playerX + player.offsetWidth/2, playerY, 10, '#888');
                                 }, 300);
                             } else {
                                 // Regular landing
@@ -411,6 +507,53 @@
                         }
                     }
                 });
+                
+                // Check if player is falling (disable double jump if falling)
+                if (velocityY < 0 && !isOnGround) {
+                    canDoubleJump = false;
+                    doubleJumpIndicator.classList.add('hidden');
+                }
+            }
+            
+            // Create visual particles
+            function createParticles(x, y, count, color) {
+                for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.backgroundColor = color;
+                    particle.style.left = `${x}px`;
+                    particle.style.bottom = `${y}px`;
+                    
+                    // Random direction and speed
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 3 + 1;
+                    const vx = Math.cos(angle) * speed;
+                    const vy = Math.sin(angle) * speed;
+                    
+                    gameContainer.appendChild(particle);
+                    
+                    let posX = x;
+                    let posY = y;
+                    let opacity = 1;
+                    
+                    const animateParticle = () => {
+                        posX += vx;
+                        posY += vy;
+                        opacity -= 0.02;
+                        
+                        particle.style.left = `${posX}px`;
+                        particle.style.bottom = `${posY}px`;
+                        particle.style.opacity = opacity;
+                        
+                        if (opacity > 0) {
+                            requestAnimationFrame(animateParticle);
+                        } else {
+                            particle.remove();
+                        }
+                    };
+                    
+                    requestAnimationFrame(animateParticle);
+                }
             }
             
             // Check collisions with collectibles
@@ -421,6 +564,21 @@
                         score += 100;
                         scoreDisplay.textContent = score;
                         coinSound.play();
+                        createParticles(
+                            parseFloat(coin.style.left) + coin.offsetWidth/2,
+                            parseFloat(coin.style.top || coin.offsetTop),
+                            8,
+                            '#FFD700'
+                        );
+                        
+                        // 30% chance to get double jump ability
+                        if (Math.random() < 0.3 && !hasDoubleJump) {
+                            hasDoubleJump = true;
+                            abilityIndicator.classList.remove('hidden');
+                            setTimeout(() => {
+                                abilityIndicator.classList.add('hidden');
+                            }, 2000);
+                        }
                     }
                 });
             }
@@ -433,6 +591,12 @@
                     score += 500;
                     scoreDisplay.textContent = score;
                     hiddenSound.play();
+                    createParticles(
+                        parseFloat(specialCollectible.style.left) + specialCollectible.offsetWidth/2,
+                        parseFloat(specialCollectible.style.top || specialCollectible.offsetTop),
+                        15,
+                        '#9400D3'
+                    );
                 }
             }
             
@@ -445,6 +609,12 @@
                         score += 1000;
                         scoreDisplay.textContent = score;
                         hiddenSound.play();
+                        createParticles(
+                            parseFloat(hiddenArea.style.left) + hiddenArea.offsetWidth/2,
+                            parseFloat(hiddenArea.style.top || hiddenArea.offsetTop),
+                            20,
+                            '#FFA500'
+                        );
                     }
                 }
             }
@@ -454,8 +624,14 @@
                 if (isColliding(player, enemy1)) {
                     takeDamage();
                     // Bounce player away from enemy
-                    velocityX = playerX < enemy1.offsetLeft ? -5 : 5;
-                    velocityY = 5;
+                    velocityX = playerX < enemy1.offsetLeft ? -8 : 8;
+                    velocityY = 8;
+                    createParticles(
+                        playerX + player.offsetWidth/2,
+                        playerY,
+                        10,
+                        '#FF0000'
+                    );
                 }
             }
             
@@ -498,15 +674,29 @@
                 playerX = 50;
                 playerY = 300;
                 hasSpecialCollectible = false;
+                hasDoubleJump = false;
+                canDoubleJump = false;
+                facingRight = true;
+                
+                // Reset keys state
+                keys = {
+                    ArrowLeft: false,
+                    ArrowRight: false,
+                    ArrowUp: false,
+                    Space: false
+                };
                 
                 // Reset UI
                 scoreDisplay.textContent = score;
                 livesDisplay.textContent = lives;
                 gameOverlay.classList.add('hidden');
+                abilityIndicator.classList.add('hidden');
+                doubleJumpIndicator.classList.add('hidden');
                 
-                // Reset player position
-                player.style.left = `${playerX}px`;
-                player.style.bottom = `${playerY}px`;
+                // Reset player position and facing
+                player.classList.remove('facing-left');
+                player.classList.add('facing-right');
+                updatePlayerPosition();
                 
                 // Reset collectibles
                 coins.forEach(coin => {
@@ -550,10 +740,27 @@
                     isOnGround = false;
                     player.classList.add('jump-animation');
                     jumpSound.play();
+                    createParticles(playerX + player.offsetWidth/2, playerY, 5, '#1E90FF');
                     
                     setTimeout(() => {
                         player.classList.remove('jump-animation');
                         isJumping = false;
+                    }, 500);
+                }
+            }
+            
+            // Double jump function
+            function doubleJump() {
+                if (canDoubleJump && hasDoubleJump) {
+                    velocityY = 12; // Higher jump for double jump
+                    canDoubleJump = false;
+                    doubleJumpIndicator.classList.add('hidden');
+                    player.classList.add('jump-animation');
+                    doubleJumpSound.play();
+                    createParticles(playerX + player.offsetWidth/2, playerY, 10, '#00FF00');
+                    
+                    setTimeout(() => {
+                        player.classList.remove('jump-animation');
                     }, 500);
                 }
             }
@@ -563,15 +770,17 @@
                 if (!isGameStarted || isGameOver) return;
                 
                 switch(e.key) {
-                    case 'ArrowUp':
-                    case ' ':
-                        jump();
-                        break;
                     case 'ArrowLeft':
-                        velocityX = -5;
+                        keys.ArrowLeft = true;
                         break;
                     case 'ArrowRight':
-                        velocityX = 5;
+                        keys.ArrowRight = true;
+                        break;
+                    case 'ArrowUp':
+                        keys.ArrowUp = true;
+                        break;
+                    case ' ':
+                        keys.Space = true;
                         break;
                 }
             }
@@ -580,8 +789,19 @@
             function handleKeyUp(e) {
                 if (!isGameStarted || isGameOver) return;
                 
-                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                    velocityX = 0;
+                switch(e.key) {
+                    case 'ArrowLeft':
+                        keys.ArrowLeft = false;
+                        break;
+                    case 'ArrowRight':
+                        keys.ArrowRight = false;
+                        break;
+                    case 'ArrowUp':
+                        keys.ArrowUp = false;
+                        break;
+                    case ' ':
+                        keys.Space = false;
+                        break;
                 }
             }
         });
