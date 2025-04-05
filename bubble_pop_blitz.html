@@ -5,15 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bubble Pop Blitz</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-10px) rotate(2deg); }
+            50% { transform: translateY(-5px) rotate(0deg); }
+            75% { transform: translateY(-10px) rotate(-2deg); }
         }
         
         @keyframes pop {
             0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.8; }
+            50% { transform: scale(1.3); opacity: 0.8; }
             100% { transform: scale(0); opacity: 0; }
         }
         
@@ -29,8 +32,9 @@
         }
         
         @keyframes comboPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.5); }
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.9; }
+            100% { transform: scale(2); opacity: 0; }
         }
         
         @keyframes ripple {
@@ -38,13 +42,38 @@
             100% { transform: scale(3); opacity: 0; }
         }
         
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.9); }
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes sparkle {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+        
         .bubble {
             position: absolute;
             border-radius: 50%;
             cursor: pointer;
             user-select: none;
-            animation: float 3s ease-in-out infinite;
+            animation: float 4s ease-in-out infinite;
             transition: transform 0.2s ease;
+            box-shadow: inset 0 -5px 15px rgba(255, 255, 255, 0.4);
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 80%);
+            z-index: 2;
         }
         
         .bubble:hover {
@@ -52,7 +81,7 @@
         }
         
         .bubble-popping {
-            animation: pop 0.3s forwards;
+            animation: pop 0.4s cubic-bezier(0.5, 1.8, 0.9, 1.1) forwards;
         }
         
         .ripple {
@@ -61,15 +90,19 @@
             background: rgba(255, 255, 255, 0.5);
             transform: scale(0);
             pointer-events: none;
+            mix-blend-mode: overlay;
+            z-index: 3;
         }
         
         .combo-text {
             position: absolute;
             font-weight: bold;
             color: white;
-            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
             pointer-events: none;
-            animation: comboPulse 0.5s forwards;
+            animation: comboPulse 0.6s forwards;
+            font-size: 1.5rem;
+            z-index: 10;
         }
         
         .shake {
@@ -80,8 +113,15 @@
             animation: pulse 0.5s infinite;
         }
         
+        .glow {
+            animation: glow 1s infinite;
+        }
+        
         .game-container {
             touch-action: manipulation;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1a237e, #0d47a1);
         }
         
         .bubble-spawner {
@@ -89,59 +129,283 @@
             width: 100%;
             height: 30px;
             bottom: 0;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.1), transparent);
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.3), transparent);
+            z-index: 1;
+        }
+        
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: bounce 1s ease-out forwards;
+            opacity: 0.8;
+            z-index: 4;
+        }
+        
+        .special-bubble {
+            animation: float 3s ease-in-out infinite, glow 2s infinite;
+        }
+        
+        .bomb-bubble {
+            animation: float 3s ease-in-out infinite, pulse 0.8s infinite;
+        }
+        
+        .score-pop {
+            position: absolute;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+            pointer-events: none;
+            animation: comboPulse 0.8s forwards;
+            z-index: 5;
+        }
+        
+        .powerup-btn:disabled {
+            filter: grayscale(80%);
+            opacity: 0.7;
+        }
+        
+        .game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 20;
+            color: white;
+        }
+        
+        .bubble-trail {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .sparkle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: sparkle 0.8s ease-out forwards;
+            z-index: 6;
+        }
+        
+        .rainbow-text {
+            background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: rainbow 5s ease infinite;
+        }
+        
+        .ocean-wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 200%;
+            height: 100px;
+            background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1200 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" fill="rgba(255,255,255,0.1)" opacity=".25"/><path d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z" fill="rgba(255,255,255,0.1)" opacity=".5"/><path d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z" fill="rgba(255,255,255,0.1)"/></svg>');
+            animation: wave 10s linear infinite;
+            z-index: 0;
+        }
+        
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-50%); }
+            100% { transform: translateX(-100%); }
+        }
+        
+        .underwater-light {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,150,255,0.3) 0%, rgba(0,150,255,0) 70%);
+            filter: blur(20px);
+            animation: moveLight 15s infinite alternate ease-in-out;
+            z-index: 0;
+        }
+        
+        @keyframes moveLight {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            25% { transform: translate(30%, 40%) scale(1.2); }
+            50% { transform: translate(70%, 20%) scale(0.8); }
+            75% { transform: translate(20%, 70%) scale(1.1); }
+            100% { transform: translate(80%, 50%) scale(0.9); }
+        }
+        
+        .creator-credit {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            z-index: 100;
+        }
+        
+        .settings-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            padding: 10px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .settings-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .settings-content {
+            display: none;
+            margin-top: 10px;
+        }
+        
+        .settings-content.show {
+            display: block;
+        }
+        
+        .volume-control {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .volume-control label {
+            margin-right: 10px;
+            color: white;
+            font-size: 0.9rem;
+        }
+        
+        .volume-control input {
+            width: 100px;
+        }
+        
+        .difficulty-select {
+            margin: 10px 0;
+            color: white;
+        }
+        
+        .difficulty-select select {
+            width: 100%;
+            padding: 5px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .difficulty-select label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-900 to-purple-900 min-h-screen overflow-hidden">
     <div class="container mx-auto px-4 py-8 max-w-4xl relative">
+        <!-- Settings Panel -->
+        <div class="settings-panel">
+            <button class="settings-btn" id="settings-toggle">
+                <i class="fas fa-cog"></i>
+            </button>
+            <div class="settings-content" id="settings-content">
+                <div class="volume-control">
+                    <label for="music-volume"><i class="fas fa-music"></i></label>
+                    <input type="range" id="music-volume" min="0" max="1" step="0.1" value="0.3">
+                </div>
+                <div class="volume-control">
+                    <label for="sfx-volume"><i class="fas fa-volume-up"></i></label>
+                    <input type="range" id="sfx-volume" min="0" max="1" step="0.1" value="0.5">
+                </div>
+                <div class="difficulty-select">
+                    <label for="difficulty">Difficulty:</label>
+                    <select id="difficulty">
+                        <option value="easy">Easy</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="hard">Hard</option>
+                        <option value="insane">Insane</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
         <!-- Game Header -->
         <header class="text-center mb-4">
             <h1 class="text-4xl md:text-5xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-yellow-300 to-pink-400">
-                Bubble Pop Blitz
+                BUBBLE POP BLITZ
             </h1>
-            <p class="text-lg text-blue-200">Pop bubbles fast for chain reactions and big combos!</p>
+            <p class="text-lg text-blue-200">Pop fast for massive combos!</p>
         </header>
 
         <!-- Game Stats -->
         <div class="flex justify-between items-center mb-4">
-            <div class="bg-blue-600/30 px-4 py-2 rounded-lg">
-                <span class="font-bold text-blue-200">Score:</span>
+            <div class="bg-blue-600/30 px-4 py-2 rounded-lg backdrop-blur-sm border border-blue-400/30">
+                <span class="font-bold text-blue-200">SCORE:</span>
                 <span id="score" class="ml-2 text-2xl font-bold text-yellow-300">0</span>
             </div>
             
-            <div class="bg-purple-600/30 px-4 py-2 rounded-lg">
-                <span class="font-bold text-purple-200">Combo:</span>
+            <div id="combo-container" class="bg-purple-600/30 px-4 py-2 rounded-lg backdrop-blur-sm border border-purple-400/30 transition-all duration-300">
+                <span class="font-bold text-purple-200">COMBO:</span>
                 <span id="combo" class="ml-2 text-2xl font-bold text-pink-300">1x</span>
             </div>
             
-            <div class="bg-green-600/30 px-4 py-2 rounded-lg">
-                <span class="font-bold text-green-200">Chain:</span>
+            <div id="chain-container" class="bg-green-600/30 px-4 py-2 rounded-lg backdrop-blur-sm border border-green-400/30 transition-all duration-300">
+                <span class="font-bold text-green-200">CHAIN:</span>
                 <span id="chain" class="ml-2 text-2xl font-bold text-green-300">0</span>
             </div>
         </div>
 
         <!-- Game Area -->
-        <div id="game-container" class="game-container bg-black/20 rounded-xl shadow-2xl border border-white/20 relative overflow-hidden" style="height: 70vh;">
+        <div id="game-container" class="game-container rounded-xl shadow-2xl border-2 border-white/20 relative overflow-hidden" style="height: 70vh;">
+            <!-- Ocean wave effect -->
+            <div class="ocean-wave"></div>
+            
+            <!-- Underwater light effect -->
+            <div class="underwater-light"></div>
+            
             <!-- Bubbles will be added here dynamically -->
             <div class="bubble-spawner"></div>
         </div>
 
         <!-- Controls -->
         <div class="flex justify-center space-x-4 mt-4">
-            <button id="powerup-btn" class="flex items-center px-4 py-2 bg-yellow-600/70 hover:bg-yellow-600 rounded-lg transition-colors">
-                <i class="fas fa-bolt mr-2"></i> Power-Up (<span id="powerup-count">3</span>)
+            <button id="powerup-btn" class="powerup-btn flex items-center px-4 py-2 bg-yellow-600/70 hover:bg-yellow-600 rounded-lg transition-all duration-300 border border-yellow-400/50 backdrop-blur-sm">
+                <i class="fas fa-bolt mr-2"></i> POWER-UP (<span id="powerup-count">3</span>)
             </button>
-            <button id="new-game-btn" class="flex items-center px-4 py-2 bg-blue-600/70 hover:bg-blue-600 rounded-lg transition-colors">
-                <i class="fas fa-redo mr-2"></i> New Game
+            <button id="new-game-btn" class="flex items-center px-4 py-2 bg-blue-600/70 hover:bg-blue-600 rounded-lg transition-all duration-300 border border-blue-400/50 backdrop-blur-sm">
+                <i class="fas fa-redo mr-2"></i> NEW GAME
             </button>
         </div>
 
         <!-- Instructions -->
         <div class="mt-6 text-center text-blue-200 text-sm">
             <p>Tap bubbles quickly to build combos. Chain reactions multiply your score!</p>
-            <p class="mt-1">Bigger bubbles = more points. Special bubbles have unique effects.</p>
+            <p class="mt-1">Special bubbles have unique effects - look for glowing ones!</p>
         </div>
+    </div>
+    
+    <!-- Creator Credit -->
+    <div class="creator-credit">
+        Created by <span class="rainbow-text">Geoffroy Streit - Hylst</span>
     </div>
 
     <!-- Audio elements -->
@@ -149,6 +413,11 @@
     <audio id="combo-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3" preload="auto"></audio>
     <audio id="chain-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3" preload="auto"></audio>
     <audio id="powerup-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-bonus-earned-2065.mp3" preload="auto"></audio>
+    <audio id="special-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" preload="auto"></audio>
+    <audio id="gameover-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3" preload="auto"></audio>
+    <audio id="bg-music" loop src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-668.mp3" preload="auto"></audio>
+    <audio id="rainbow-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-magic-sparkles-528.mp3" preload="auto"></audio>
+    <audio id="bomb-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-explosion-impact-1684.mp3" preload="auto"></audio>
 
     <script>
         // Game variables
@@ -163,15 +432,91 @@
         let chainTimeout;
         let bubbleInterval;
         let specialBubbleInterval;
+        let gameTime = 0;
+        let difficulty = 1;
+        let difficultySetting = 'normal';
+        let musicVolume = 0.3;
+        let sfxVolume = 0.5;
         
         // Bubble types with different properties
         const bubbleTypes = [
-            { color: 'rgba(74, 222, 128, 0.8)', size: 40, points: 10, speed: 2 }, // Green - standard
-            { color: 'rgba(96, 165, 250, 0.8)', size: 60, points: 20, speed: 1.5 }, // Blue - bigger
-            { color: 'rgba(249, 168, 212, 0.8)', size: 30, points: 5, speed: 3 }, // Pink - small and fast
-            { color: 'rgba(250, 204, 21, 0.8)', size: 50, points: 30, speed: 1 }, // Yellow - bonus points
-            { color: 'rgba(167, 139, 250, 0.8)', size: 45, points: 15, speed: 2, special: 'chain' }, // Purple - chain booster
-            { color: 'rgba(239, 68, 68, 0.8)', size: 70, points: 50, speed: 0.8, special: 'bomb' } // Red - bomb (pops nearby bubbles)
+            { 
+                color: 'rgba(74, 222, 128, 0.9)', 
+                size: 40, 
+                points: 10, 
+                speed: 2,
+                name: 'Standard',
+                sound: 'pop-sound'
+            }, // Green - standard
+            { 
+                color: 'rgba(96, 165, 250, 0.9)', 
+                size: 60, 
+                points: 20, 
+                speed: 1.5,
+                name: 'Big',
+                sound: 'pop-sound'
+            }, // Blue - bigger
+            { 
+                color: 'rgba(249, 168, 212, 0.9)', 
+                size: 30, 
+                points: 5, 
+                speed: 3,
+                name: 'Speedy',
+                sound: 'pop-sound'
+            }, // Pink - small and fast
+            { 
+                color: 'rgba(250, 204, 21, 0.9)', 
+                size: 50, 
+                points: 30, 
+                speed: 1,
+                name: 'Bonus',
+                sound: 'pop-sound'
+            }, // Yellow - bonus points
+            { 
+                color: 'rgba(167, 139, 250, 0.9)', 
+                size: 45, 
+                points: 15, 
+                speed: 2, 
+                special: 'chain',
+                name: 'Chain',
+                sound: 'special-sound'
+            }, // Purple - chain booster
+            { 
+                color: 'rgba(239, 68, 68, 0.9)', 
+                size: 70, 
+                points: 50, 
+                speed: 0.8, 
+                special: 'bomb',
+                name: 'Bomb',
+                sound: 'bomb-sound'
+            }, // Red - bomb (pops nearby bubbles)
+            { 
+                color: 'rgba(255, 159, 28, 0.9)', 
+                size: 55, 
+                points: 40, 
+                speed: 1.2, 
+                special: 'multiplier',
+                name: 'Multiplier',
+                sound: 'special-sound'
+            }, // Orange - score multiplier
+            { 
+                color: 'rgba(0, 255, 255, 0.9)', 
+                size: 50, 
+                points: 25, 
+                speed: 1.5, 
+                special: 'powerup',
+                name: 'Power-Up',
+                sound: 'powerup-sound'
+            },  // Cyan - power-up
+            { 
+                color: 'rgba(255, 0, 255, 0.9)', 
+                size: 60, 
+                points: 100, 
+                speed: 1, 
+                special: 'rainbow',
+                name: 'Rainbow',
+                sound: 'rainbow-sound'
+            }   // Magenta - rainbow (super rare)
         ];
         
         // DOM elements
@@ -179,6 +524,8 @@
         const scoreElement = document.getElementById('score');
         const comboElement = document.getElementById('combo');
         const chainElement = document.getElementById('chain');
+        const comboContainer = document.getElementById('combo-container');
+        const chainContainer = document.getElementById('chain-container');
         const powerupBtn = document.getElementById('powerup-btn');
         const powerupCount = document.getElementById('powerup-count');
         const newGameBtn = document.getElementById('new-game-btn');
@@ -186,6 +533,16 @@
         const comboSound = document.getElementById('combo-sound');
         const chainSound = document.getElementById('chain-sound');
         const powerupSound = document.getElementById('powerup-sound');
+        const specialSound = document.getElementById('special-sound');
+        const gameoverSound = document.getElementById('gameover-sound');
+        const bgMusic = document.getElementById('bg-music');
+        const rainbowSound = document.getElementById('rainbow-sound');
+        const bombSound = document.getElementById('bomb-sound');
+        const settingsToggle = document.getElementById('settings-toggle');
+        const settingsContent = document.getElementById('settings-content');
+        const musicVolumeControl = document.getElementById('music-volume');
+        const sfxVolumeControl = document.getElementById('sfx-volume');
+        const difficultySelect = document.getElementById('difficulty');
         
         // Initialize game
         function initGame() {
@@ -197,15 +554,42 @@
             gameActive = true;
             bubbles = [];
             lastPopTime = 0;
+            gameTime = 0;
+            
+            // Set difficulty based on selection
+            switch(difficultySetting) {
+                case 'easy':
+                    difficulty = 0.7;
+                    break;
+                case 'hard':
+                    difficulty = 1.5;
+                    break;
+                case 'insane':
+                    difficulty = 2;
+                    break;
+                default: // normal
+                    difficulty = 1;
+            }
             
             // Clear any existing bubbles
-            gameContainer.querySelectorAll('.bubble').forEach(bubble => bubble.remove());
+            gameContainer.querySelectorAll('.bubble, .combo-text, .ripple, .particle, .sparkle').forEach(el => el.remove());
+            
+            // Remove game over overlay if exists
+            const overlay = document.querySelector('.game-overlay');
+            if (overlay) overlay.remove();
             
             // Update UI
             updateUI();
             
             // Start bubble spawning
             startBubbleSpawning();
+            
+            // Start background music
+            bgMusic.volume = musicVolume;
+            bgMusic.play().catch(e => console.log("Autoplay prevented - click to start"));
+            
+            // Start game loop
+            requestAnimationFrame(gameLoop);
         }
         
         // Start bubble spawning
@@ -217,31 +601,118 @@
             // Regular bubbles
             bubbleInterval = setInterval(() => {
                 if (gameActive) {
-                    spawnBubble();
+                    // Spawn more bubbles as game progresses
+                    const bubblesToSpawn = Math.min(1 + Math.floor(gameTime / 30), 3);
+                    for (let i = 0; i < bubblesToSpawn; i++) {
+                        spawnBubble();
+                    }
                 }
-            }, 800);
+            }, 1000 - Math.min(gameTime * 10, 800)); // Spawn faster over time
             
             // Special bubbles (less frequent)
             specialBubbleInterval = setInterval(() => {
                 if (gameActive) {
-                    spawnBubble(true);
+                    // Random chance to spawn special bubble
+                    if (Math.random() < 0.7) {
+                        spawnBubble(true);
+                    }
+                    
+                    // Very small chance to spawn rainbow bubble
+                    if (Math.random() < 0.05) {
+                        spawnRainbowBubble();
+                    }
                 }
-            }, 5000);
+            }, 5000 - Math.min(gameTime * 50, 3000)); // Spawn specials more often over time
+        }
+        
+        // Spawn a rainbow bubble (very rare)
+        function spawnRainbowBubble() {
+            const rainbowType = bubbleTypes.find(b => b.special === 'rainbow');
+            spawnBubbleWithType(rainbowType);
+        }
+        
+        // Spawn a bubble with specific type
+        function spawnBubbleWithType(bubbleType) {
+            const containerRect = gameContainer.getBoundingClientRect();
+            const containerWidth = containerRect.width;
+            const containerHeight = containerRect.height;
+            
+            // Create bubble element
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            
+            // Add special classes for special bubbles
+            if (bubbleType.special) {
+                if (bubbleType.special === 'bomb') {
+                    bubble.classList.add('bomb-bubble');
+                } else if (bubbleType.special === 'rainbow') {
+                    bubble.classList.add('special-bubble');
+                    bubble.style.background = 'linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3)';
+                    bubble.style.backgroundSize = '400% 400%';
+                    bubble.style.animation = 'float 3s ease-in-out infinite, rainbow 5s ease infinite';
+                } else {
+                    bubble.classList.add('special-bubble');
+                }
+            }
+            
+            bubble.style.width = `${bubbleType.size}px`;
+            bubble.style.height = `${bubbleType.size}px`;
+            if (bubbleType.special !== 'rainbow') {
+                bubble.style.backgroundColor = bubbleType.color;
+            }
+            bubble.style.left = `${Math.random() * (containerWidth - bubbleType.size)}px`;
+            bubble.style.bottom = '0';
+            bubble.style.animationDuration = `${3 + Math.random() * 2}s`;
+            bubble.style.animationDelay = `${Math.random() * 2}s`;
+            
+            // Store game data on the element
+            bubble.dataset.points = bubbleType.points;
+            bubble.dataset.speed = bubbleType.speed * difficulty;
+            bubble.dataset.type = bubbleType.name;
+            bubble.dataset.sound = bubbleType.sound;
+            if (bubbleType.special) {
+                bubble.dataset.special = bubbleType.special;
+            }
+            
+            // Add click handler
+            bubble.addEventListener('click', () => popBubble(bubble));
+            bubble.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                popBubble(bubble);
+            }, { passive: false });
+            
+            // Add to game container
+            gameContainer.appendChild(bubble);
+            
+            // Add to bubbles array
+            bubbles.push({
+                element: bubble,
+                speed: bubbleType.speed * difficulty,
+                x: parseFloat(bubble.style.left),
+                y: 0,
+                targetY: Math.random() * (containerHeight - 100) + 50,
+                type: bubbleType
+            });
+            
+            // Add bubble trail effect
+            createBubbleTrail(bubble);
+            
+            // Add sparkles to special bubbles
+            if (bubbleType.special) {
+                createSparkles(bubble);
+            }
         }
         
         // Spawn a new bubble
         function spawnBubble(isSpecial = false) {
             if (!gameActive) return;
             
-            const containerRect = gameContainer.getBoundingClientRect();
-            const containerWidth = containerRect.width;
-            const containerHeight = containerRect.height;
-            
             // Choose bubble type
             let bubbleType;
             if (isSpecial) {
-                // Only choose from special bubbles (last two in array)
-                bubbleType = bubbleTypes[4 + Math.floor(Math.random() * 2)];
+                // Only choose from special bubbles (last five in array)
+                const specialTypes = bubbleTypes.slice(4, 8); // Exclude rainbow from normal special spawns
+                bubbleType = specialTypes[Math.floor(Math.random() * specialTypes.length)];
             } else {
                 // Random bubble type (weighted towards common types)
                 const rand = Math.random();
@@ -251,54 +722,116 @@
                 else bubbleType = bubbleTypes[3]; // 10% chance for bonus
             }
             
-            // Create bubble element
-            const bubble = document.createElement('div');
-            bubble.className = 'bubble';
-            bubble.style.width = `${bubbleType.size}px`;
-            bubble.style.height = `${bubbleType.size}px`;
-            bubble.style.backgroundColor = bubbleType.color;
-            bubble.style.left = `${Math.random() * (containerWidth - bubbleType.size)}px`;
-            bubble.style.bottom = '0';
-            bubble.style.animationDuration = `${3 + Math.random() * 2}s`;
-            bubble.style.animationDelay = `${Math.random() * 2}s`;
-            
-            // Store game data on the element
-            bubble.dataset.points = bubbleType.points;
-            bubble.dataset.speed = bubbleType.speed;
-            if (bubbleType.special) {
-                bubble.dataset.special = bubbleType.special;
-            }
-            
-            // Add click handler
-            bubble.addEventListener('click', () => popBubble(bubble));
-            
-            // Add to game container
-            gameContainer.appendChild(bubble);
-            
-            // Add to bubbles array
-            bubbles.push({
-                element: bubble,
-                speed: bubbleType.speed,
-                x: parseFloat(bubble.style.left),
-                y: 0,
-                targetY: Math.random() * (containerHeight - 100) + 50
-            });
+            spawnBubbleWithType(bubbleType);
+        }
+        
+        // Create sparkles around a bubble
+        function createSparkles(bubble) {
+            const sparkleInterval = setInterval(() => {
+                if (!gameActive || !document.body.contains(bubble)) {
+                    clearInterval(sparkleInterval);
+                    return;
+                }
+                
+                const rect = bubble.getBoundingClientRect();
+                const containerRect = gameContainer.getBoundingClientRect();
+                
+                // Create 1-3 sparkles
+                const sparkleCount = 1 + Math.floor(Math.random() * 3);
+                
+                for (let i = 0; i < sparkleCount; i++) {
+                    const sparkle = document.createElement('div');
+                    sparkle.className = 'sparkle';
+                    
+                    // Position sparkle randomly around the bubble
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = rect.width / 2 + 5 + Math.random() * 10;
+                    
+                    sparkle.style.left = `${rect.left - containerRect.left + rect.width/2 + Math.cos(angle) * distance - 4}px`;
+                    sparkle.style.top = `${rect.top - containerRect.top + rect.height/2 + Math.sin(angle) * distance - 4}px`;
+                    
+                    // Random size and delay
+                    sparkle.style.width = `${4 + Math.random() * 4}px`;
+                    sparkle.style.height = sparkle.style.width;
+                    sparkle.style.animationDelay = `${Math.random() * 0.5}s`;
+                    
+                    gameContainer.appendChild(sparkle);
+                    
+                    // Remove after animation
+                    setTimeout(() => {
+                        sparkle.remove();
+                    }, 800);
+                }
+                
+            }, 500);
+        }
+        
+        // Create bubble trail effect
+        function createBubbleTrail(bubble) {
+            const trailInterval = setInterval(() => {
+                if (!gameActive || !document.body.contains(bubble)) {
+                    clearInterval(trailInterval);
+                    return;
+                }
+                
+                const rect = bubble.getBoundingClientRect();
+                const containerRect = gameContainer.getBoundingClientRect();
+                
+                const trail = document.createElement('div');
+                trail.className = 'bubble-trail';
+                trail.style.left = `${rect.left - containerRect.left + rect.width/2 - 5}px`;
+                trail.style.top = `${rect.bottom - containerRect.top}px`;
+                trail.style.opacity = '0.6';
+                
+                // Match trail color to bubble
+                if (bubble.dataset.special === 'rainbow') {
+                    trail.style.background = 'linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3)';
+                    trail.style.backgroundSize = '400% 400%';
+                    trail.style.animation = 'rainbow 5s ease infinite';
+                } else {
+                    trail.style.backgroundColor = window.getComputedStyle(bubble).backgroundColor;
+                }
+                
+                gameContainer.appendChild(trail);
+                
+                // Animate and fade out trail
+                let opacity = 0.6;
+                const fadeInterval = setInterval(() => {
+                    opacity -= 0.05;
+                    trail.style.opacity = opacity;
+                    trail.style.top = `${parseFloat(trail.style.top) - 2}px`;
+                    
+                    if (opacity <= 0) {
+                        clearInterval(fadeInterval);
+                        trail.remove();
+                    }
+                }, 50);
+                
+            }, 200);
         }
         
         // Pop a bubble
         function popBubble(bubble, isChain = false) {
-            if (!gameActive) return;
+            if (!gameActive || bubble.classList.contains('bubble-popping')) return;
             
-            // Play pop sound
-            popSound.currentTime = 0;
-            popSound.play();
+            // Play pop sound with variation
+            const soundId = bubble.dataset.sound || 'pop-sound';
+            const sound = document.getElementById(soundId);
+            sound.currentTime = 0;
+            sound.volume = sfxVolume;
+            sound.playbackRate = 0.8 + Math.random() * 0.4;
+            sound.play();
             
             // Get bubble data
             const points = parseInt(bubble.dataset.points);
             const special = bubble.dataset.special;
+            const bubbleType = bubble.dataset.type;
             
             // Add ripple effect
             createRipple(bubble);
+            
+            // Create particles
+            createParticles(bubble, bubbleType);
             
             // Mark as popping (starts animation)
             bubble.classList.add('bubble-popping');
@@ -306,7 +839,7 @@
             // Remove from DOM after animation
             setTimeout(() => {
                 bubble.remove();
-            }, 300);
+            }, 400);
             
             // Remove from bubbles array
             bubbles = bubbles.filter(b => b.element !== bubble);
@@ -319,42 +852,69 @@
             // Update combo if popped quickly (within 500ms)
             if (timeSinceLastPop < 500) {
                 combo++;
+                
+                // Visual feedback for combos
+                if (combo >= 5) {
+                    comboContainer.classList.add('glow');
+                }
+                
                 if (combo % 5 === 0) {
                     // Play combo sound every 5 pops
                     comboSound.currentTime = 0;
+                    comboSound.volume = sfxVolume;
                     comboSound.play();
                     
                     // Show combo text
-                    createComboText(bubble, `${combo}x COMBO!`);
+                    createComboText(bubble, `${combo}x COMBO!`, 'pink');
                 }
                 
                 // Reset combo timeout
                 clearTimeout(comboTimeout);
                 comboTimeout = setTimeout(() => {
                     combo = 1;
+                    comboContainer.classList.remove('glow');
                     updateUI();
                 }, 1000);
             } else {
                 // Reset combo if too slow
                 combo = 1;
+                comboContainer.classList.remove('glow');
+            }
+            
+            // Handle special bubble effects
+            if (special) {
+                specialSound.currentTime = 0;
+                specialSound.volume = sfxVolume;
+                specialSound.play();
+                
+                // Show special text
+                createComboText(bubble, `${bubbleType.toUpperCase()}!`, 'cyan');
             }
             
             // Handle chain reactions for special bubbles
             if (special === 'chain' || isChain) {
                 chain++;
+                
+                // Visual feedback for chains
+                if (chain >= 3) {
+                    chainContainer.classList.add('glow');
+                }
+                
                 if (chain % 3 === 0) {
                     // Play chain sound every 3 in chain
                     chainSound.currentTime = 0;
+                    chainSound.volume = sfxVolume;
                     chainSound.play();
                     
                     // Show chain text
-                    createComboText(bubble, `${chain} CHAIN!`);
+                    createComboText(bubble, `${chain} CHAIN!`, 'lightgreen');
                 }
                 
                 // Reset chain timeout
                 clearTimeout(chainTimeout);
                 chainTimeout = setTimeout(() => {
                     chain = 0;
+                    chainContainer.classList.remove('glow');
                     updateUI();
                 }, 1500);
                 
@@ -362,7 +922,33 @@
                 popNearbyBubbles(bubble);
             } else if (special === 'bomb') {
                 // Bomb effect - pop all bubbles in radius
+                bombSound.currentTime = 0;
+                bombSound.volume = sfxVolume;
+                bombSound.play();
                 popNearbyBubbles(bubble, 150);
+            } else if (special === 'multiplier') {
+                // Multiplier effect - double current combo
+                combo *= 2;
+                createComboText(bubble, 'COMBO x2!', 'orange');
+            } else if (special === 'powerup') {
+                // Power-up effect - add a power-up
+                powerups = Math.min(powerups + 1, 5);
+                createComboText(bubble, 'POWER-UP +1!', 'cyan');
+            } else if (special === 'rainbow') {
+                // Rainbow effect - mega points and screen flash
+                rainbowSound.currentTime = 0;
+                rainbowSound.volume = sfxVolume;
+                rainbowSound.play();
+                
+                // Flash screen with rainbow effect
+                const flash = document.createElement('div');
+                flash.className = 'absolute inset-0 bg-gradient-to-br from-red-400 via-yellow-400 to-purple-400 opacity-70';
+                flash.style.animation = 'fadeOut 1s forwards';
+                gameContainer.appendChild(flash);
+                
+                setTimeout(() => {
+                    flash.remove();
+                }, 1000);
             }
             
             // Calculate score with combo and chain multipliers
@@ -370,10 +956,65 @@
             score += pointsEarned;
             
             // Show points text
-            createComboText(bubble, `+${pointsEarned}`);
+            createScoreText(bubble, `+${pointsEarned}`);
             
             // Update UI
             updateUI();
+        }
+        
+        // Create particles when bubble pops
+        function createParticles(bubble, bubbleType) {
+            const rect = bubble.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            const color = window.getComputedStyle(bubble).backgroundColor;
+            
+            // Create 8-12 particles
+            const particleCount = 8 + Math.floor(Math.random() * 5);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.width = `${5 + Math.random() * 10}px`;
+                particle.style.height = particle.style.width;
+                
+                // Rainbow particles for rainbow bubbles
+                if (bubbleType === 'Rainbow') {
+                    const hue = Math.random() * 360;
+                    particle.style.backgroundColor = `hsl(${hue}, 100%, 70%)`;
+                } else {
+                    particle.style.backgroundColor = color;
+                }
+                
+                // Position at bubble center
+                const x = rect.left - containerRect.left + rect.width/2;
+                const y = rect.top - containerRect.top + rect.height/2;
+                
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                
+                // Random direction
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 5 + Math.random() * 20;
+                
+                // Animate particle
+                const duration = 0.5 + Math.random() * 0.5;
+                particle.style.transition = `all ${duration}s ease-out`;
+                
+                gameContainer.appendChild(particle);
+                
+                // Trigger animation
+                setTimeout(() => {
+                    particle.style.left = `${x + Math.cos(angle) * distance}px`;
+                    particle.style.top = `${y + Math.sin(angle) * distance}px`;
+                    particle.style.opacity = '0';
+                    particle.style.transform = 'scale(0.5)';
+                }, 10);
+                
+                // Remove after animation
+                setTimeout(() => {
+                    particle.remove();
+                }, duration * 1000);
+            }
         }
         
         // Pop bubbles near the clicked bubble
@@ -420,6 +1061,15 @@
             ripple.style.top = `${rect.top - gameContainer.getBoundingClientRect().top}px`;
             ripple.style.animation = 'ripple 0.6s linear forwards';
             
+            // Rainbow ripple for rainbow bubbles
+            if (bubble.dataset.special === 'rainbow') {
+                ripple.style.background = 'linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3)';
+                ripple.style.backgroundSize = '400% 400%';
+                ripple.style.animation = 'ripple 0.6s linear forwards, rainbow 1s ease infinite';
+            } else {
+                ripple.style.backgroundColor = window.getComputedStyle(bubble).backgroundColor;
+            }
+            
             gameContainer.appendChild(ripple);
             
             setTimeout(() => {
@@ -428,26 +1078,54 @@
         }
         
         // Create combo/chain text
-        function createComboText(bubble, text) {
+        function createComboText(bubble, text, color = 'white') {
             const comboText = document.createElement('div');
             comboText.className = 'combo-text';
             comboText.textContent = text;
+            comboText.style.color = color;
             
             const rect = bubble.getBoundingClientRect();
-            comboText.style.left = `${rect.left - gameContainer.getBoundingClientRect().left + rect.width / 2}px`;
-            comboText.style.top = `${rect.top - gameContainer.getBoundingClientRect().top}px`;
+            const containerRect = gameContainer.getBoundingClientRect();
+            comboText.style.left = `${rect.left - containerRect.left + rect.width / 2}px`;
+            comboText.style.top = `${rect.top - containerRect.top}px`;
             
             gameContainer.appendChild(comboText);
             
             // Animate upward
-            let pos = rect.top - gameContainer.getBoundingClientRect().top;
+            let pos = rect.top - containerRect.top;
             const id = setInterval(() => {
-                pos -= 1;
+                pos -= 2;
                 comboText.style.top = `${pos}px`;
                 
-                if (pos < rect.top - gameContainer.getBoundingClientRect().top - 100) {
+                if (pos < rect.top - containerRect.top - 100) {
                     clearInterval(id);
                     comboText.remove();
+                }
+            }, 20);
+        }
+        
+        // Create score text
+        function createScoreText(bubble, text) {
+            const scoreText = document.createElement('div');
+            scoreText.className = 'score-pop';
+            scoreText.textContent = text;
+            
+            const rect = bubble.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            scoreText.style.left = `${rect.left - containerRect.left + rect.width / 2}px`;
+            scoreText.style.top = `${rect.top - containerRect.top}px`;
+            
+            gameContainer.appendChild(scoreText);
+            
+            // Animate upward
+            let pos = rect.top - containerRect.top;
+            const id = setInterval(() => {
+                pos -= 1;
+                scoreText.style.top = `${pos}px`;
+                
+                if (pos < rect.top - containerRect.top - 50) {
+                    clearInterval(id);
+                    scoreText.remove();
                 }
             }, 20);
         }
@@ -458,7 +1136,19 @@
             
             powerups--;
             powerupSound.currentTime = 0;
+            powerupSound.volume = sfxVolume;
             powerupSound.play();
+            
+            // Create power-up effect
+            const powerupEffect = document.createElement('div');
+            powerupEffect.className = 'absolute inset-0 bg-white/10 rounded-xl';
+            powerupEffect.style.animation = 'ripple 1s forwards';
+            powerupEffect.style.mixBlendMode = 'overlay';
+            gameContainer.appendChild(powerupEffect);
+            
+            setTimeout(() => {
+                powerupEffect.remove();
+            }, 1000);
             
             // Pop all bubbles on screen
             bubbles.forEach(bubble => {
@@ -470,32 +1160,32 @@
         
         // Update UI elements
         function updateUI() {
-            scoreElement.textContent = score;
+            scoreElement.textContent = score.toLocaleString();
             comboElement.textContent = `${combo}x`;
             chainElement.textContent = chain;
             powerupCount.textContent = powerups;
             
             // Disable powerup button if no powerups left
-            if (powerups <= 0) {
-                powerupBtn.disabled = true;
-                powerupBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            } else {
-                powerupBtn.disabled = false;
-                powerupBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
+            powerupBtn.disabled = powerups <= 0;
         }
         
-        // Game loop for bubble movement
-        function gameLoop() {
+        // Game loop for bubble movement and game timing
+        function gameLoop(timestamp) {
             if (!gameActive) return;
             
             const containerHeight = gameContainer.clientHeight;
+            
+            // Update game time (for difficulty scaling)
+            gameTime += 0.016; // Approximate 60fps
+            
+            // Increase difficulty over time
+            difficulty = 1 + Math.min(gameTime / 120, 2); // Cap at 3x speed
             
             // Move each bubble
             bubbles.forEach(bubble => {
                 // If bubble hasn't reached target Y, move upward
                 if (bubble.y < bubble.targetY) {
-                    bubble.y += bubble.speed;
+                    bubble.y += bubble.speed * difficulty;
                     bubble.element.style.bottom = `${bubble.y}px`;
                 }
                 
@@ -510,27 +1200,101 @@
         
         // End the game
         function endGame() {
+            if (!gameActive) return;
+            
             gameActive = false;
             clearInterval(bubbleInterval);
             clearInterval(specialBubbleInterval);
             
+            // Play game over sound
+            gameoverSound.currentTime = 0;
+            gameoverSound.volume = sfxVolume;
+            gameoverSound.play();
+            
+            // Stop background music
+            bgMusic.pause();
+            
             // Shake game container
             gameContainer.classList.add('shake');
             
-            // Show game over message
+            // Create game over overlay
             const gameOver = document.createElement('div');
-            gameOver.className = 'absolute inset-0 flex items-center justify-center bg-black/70 text-white text-4xl font-bold';
-            gameOver.textContent = 'GAME OVER';
+            gameOver.className = 'game-overlay';
+            
+            gameOver.innerHTML = `
+                <div class="text-4xl font-bold mb-4 text-red-400">GAME OVER</div>
+                <div class="text-2xl mb-6">Final Score: <span class="text-yellow-300">${score.toLocaleString()}</span></div>
+                <div class="flex space-x-4">
+                    <button id="restart-btn" class="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-lg transition-colors">
+                        <i class="fas fa-play mr-2"></i> PLAY AGAIN
+                    </button>
+                    <button id="share-btn" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors">
+                        <i class="fas fa-share-alt mr-2"></i> SHARE
+                    </button>
+                </div>
+            `;
+            
             gameContainer.appendChild(gameOver);
+            
+            // Add event listeners for overlay buttons
+            document.getElementById('restart-btn').addEventListener('click', initGame);
+            document.getElementById('share-btn').addEventListener('click', shareScore);
             
             setTimeout(() => {
                 gameContainer.classList.remove('shake');
             }, 1000);
         }
         
+        // Share score function
+        function shareScore() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Bubble Pop Blitz',
+                    text: `I scored ${score.toLocaleString()} points in Bubble Pop Blitz! Can you beat it?`,
+                    url: window.location.href
+                }).catch(err => {
+                    console.log('Error sharing:', err);
+                    copyToClipboard();
+                });
+            } else {
+                copyToClipboard();
+            }
+        }
+        
+        // Fallback for browsers that don't support Web Share API
+        function copyToClipboard() {
+            const text = `I scored ${score.toLocaleString()} points in Bubble Pop Blitz! Play it here: ${window.location.href}`;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Score copied to clipboard!');
+            }).catch(err => {
+                console.log('Could not copy text: ', err);
+                prompt('Copy this link to share your score:', text);
+            });
+        }
+        
         // Event listeners
         powerupBtn.addEventListener('click', usePowerup);
         newGameBtn.addEventListener('click', initGame);
+        
+        // Settings toggle
+        settingsToggle.addEventListener('click', () => {
+            settingsContent.classList.toggle('show');
+        });
+        
+        // Volume controls
+        musicVolumeControl.addEventListener('input', (e) => {
+            musicVolume = parseFloat(e.target.value);
+            bgMusic.volume = musicVolume;
+        });
+        
+        sfxVolumeControl.addEventListener('input', (e) => {
+            sfxVolume = parseFloat(e.target.value);
+        });
+        
+        // Difficulty selection
+        difficultySelect.addEventListener('change', (e) => {
+            difficultySetting = e.target.value;
+        });
         
         // Touch support for mobile
         gameContainer.addEventListener('touchstart', (e) => {
@@ -546,9 +1310,11 @@
             }
         }, { passive: false });
         
-        // Start the game
-        initGame();
-        gameLoop();
+        // Start the game when user interacts (for autoplay policies)
+        document.addEventListener('click', function initOnClick() {
+            initGame();
+            document.removeEventListener('click', initOnClick);
+        }, { once: true });
     </script>
 </body>
 </html>
