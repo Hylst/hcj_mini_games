@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertical Jump Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            height: 100vh;
+            margin: 0;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+            color: white;
+        }
+        
+        #game-over-screen {
+            display: none;
+        }
+        
+        .platform {
+            position: absolute;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s ease;
+        }
+        
+        .platform:hover {
+            transform: scale(1.02);
+        }
+        
+        .player {
+            position: absolute;
+            border-radius: 50%;
+            transition: transform 0.1s ease;
+            z-index: 5;
+        }
+        
+        .coin {
+            position: absolute;
+            border-radius: 50%;
+            animation: spin 2s linear infinite;
+            z-index: 4;
+        }
+        
+        .spring {
+            position: absolute;
+            border-radius: 50%;
+            z-index: 3;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        
+        @keyframes jump {
+            0% { transform: translateY(0) scale(1, 1); }
+            50% { transform: translateY(-20px) scale(1.1, 0.9); }
+            100% { transform: translateY(0) scale(1, 1); }
+        }
+        
+        .jump-animation {
+            animation: jump 0.5s ease;
+        }
+        
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 1.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+        
+        #high-score-display {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            color: #fbbf24;
+            font-size: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+        
+        .btn {
+            background-color: #fbbf24;
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 24px;
+            margin: 10px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:hover {
+            background-color: #f59e0b;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .title {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            color: #fbbf24;
+            text-shadow: 4px 4px 0px #7c2d12;
+            letter-spacing: 2px;
+        }
+        
+        .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            color: #ffffff;
+        }
+        
+        #sound-toggle {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 20;
+        }
+        
+        #controls-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score-display">Score: 0</div>
+        <div id="high-score-display">High Score: 0</div>
+        
+        <div id="start-screen">
+            <h1 class="title">VERTICAL JUMP ADVENTURE</h1>
+            <p class="subtitle">Reach for the stars!</p>
+            <button id="start-btn" class="btn">START GAME</button>
+        </div>
+        
+        <div id="game-over-screen">
+            <h1 class="title">GAME OVER</h1>
+            <p id="final-score" class="subtitle">Score: 0</p>
+            <button id="restart-btn" class="btn">PLAY AGAIN</button>
+        </div>
+        
+        <button id="sound-toggle">
+            <i class="fas fa-volume-up"></i>
+        </button>
+        
+        <div id="controls-info">
+            <p>CONTROLS: SPACE or CLICK to JUMP</p>
+        </div>
+    </div>
+
+    <audio id="jump-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3"></audio>
+    <audio id="coin-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-coin-win-notification-919.mp3"></audio>
+    <audio id="spring-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3"></audio>
+    <audio id="game-over-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3"></audio>
+    <audio id="bg-music" loop src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-668.mp3"></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game elements
+            const gameContainer = document.getElementById('game-container');
+            const startScreen = document.getElementById('start-screen');
+            const gameOverScreen = document.getElementById('game-over-screen');
+            const startBtn = document.getElementById('start-btn');
+            const restartBtn = document.getElementById('restart-btn');
+            const scoreDisplay = document.getElementById('score-display');
+            const highScoreDisplay = document.getElementById('high-score-display');
+            const finalScoreDisplay = document.getElementById('final-score');
+            const soundToggle = document.getElementById('sound-toggle');
+            
+            // Audio elements
+            const jumpSound = document.getElementById('jump-sound');
+            const coinSound = document.getElementById('coin-sound');
+            const springSound = document.getElementById('spring-sound');
+            const gameOverSound = document.getElementById('game-over-sound');
+            const bgMusic = document.getElementById('bg-music');
+            
+            // Game state
+            let gameRunning = false;
+            let score = 0;
+            let highScore = localStorage.getItem('highScore') || 0;
+            let soundEnabled = true;
+            let platforms = [];
+            let coins = [];
+            let springs = [];
+            let particles = [];
+            let player;
+            let gravity = 0.5;
+            let velocity = 0;
+            let playerY = 0;
+            let scrollOffset = 0;
+            let gameSpeed = 2;
+            let platformGap = 150;
+            let lastPlatformY = 0;
+            let animationId;
+            
+            // Update high score display
+            highScoreDisplay.textContent = `High Score: ${highScore}`;
+            
+            // Sound toggle
+            soundToggle.addEventListener('click', () => {
+                soundEnabled = !soundEnabled;
+                if (soundEnabled) {
+                    soundToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
+                    bgMusic.play();
+                } else {
+                    soundToggle.innerHTML = '<i class="fas fa-volume-mute"></i>';
+                    bgMusic.pause();
+                }
+            });
+            
+            // Start game
+            startBtn.addEventListener('click', startGame);
+            restartBtn.addEventListener('click', startGame);
+            
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && gameRunning) {
+                    e.preventDefault();
+                    jump();
+                }
+            });
+            
+            // Mouse/touch controls
+            gameContainer.addEventListener('click', () => {
+                if (gameRunning) {
+                    jump();
+                }
+            });
+            
+            function startGame() {
+                // Reset game state
+                gameRunning = true;
+                score = 0;
+                scoreDisplay.textContent = `Score: ${score}`;
+                
+                // Clear all game elements
+                clearGameElements();
+                
+                // Create player
+                createPlayer();
+                
+                // Create initial platforms
+                createInitialPlatforms();
+                
+                // Start game loop
+                gameLoop();
+                
+                // Hide screens
+                startScreen.style.display = 'none';
+                gameOverScreen.style.display = 'none';
+                
+                // Play background music
+                if (soundEnabled) {
+                    bgMusic.currentTime = 0;
+                    bgMusic.play();
+                }
+            }
+            
+            function clearGameElements() {
+                // Remove all platforms, coins, springs, and particles
+                document.querySelectorAll('.platform, .coin, .spring, .particle').forEach(el => el.remove());
+                platforms = [];
+                coins = [];
+                springs = [];
+                particles = [];
+            }
+            
+            function createPlayer() {
+                player = document.createElement('div');
+                player.className = 'player bg-red-500 w-12 h-12';
+                player.style.left = '50%';
+                player.style.transform = 'translateX(-50%)';
+                player.style.bottom = '100px';
+                gameContainer.appendChild(player);
+                
+                playerY = window.innerHeight - 100;
+            }
+            
+            function createInitialPlatforms() {
+                // Create ground platform
+                const ground = document.createElement('div');
+                ground.className = 'platform bg-green-500 w-64 h-8';
+                ground.style.left = '50%';
+                ground.style.transform = 'translateX(-50%)';
+                ground.style.bottom = '50px';
+                gameContainer.appendChild(ground);
+                
+                platforms.push({
+                    element: ground,
+                    x: window.innerWidth / 2 - 128,
+                    y: window.innerHeight - 50,
+                    width: 256,
+                    height: 16
+                });
+                
+                // Create some starting platforms above
+                for (let i = 0; i < 5; i++) {
+                    createPlatform(window.innerHeight - 50 - (i + 1) * platformGap);
+                }
+                
+                lastPlatformY = window.innerHeight - 50 - 5 * platformGap;
+            }
+            
+            function createPlatform(y) {
+                const width = 100 + Math.random() * 150;
+                const x = Math.random() * (window.innerWidth - width);
+                
+                const platform = document.createElement('div');
+                
+                // Random platform type (color)
+                const platformTypes = [
+                    'bg-green-500', 'bg-blue-500', 'bg-purple-500', 
+                    'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500'
+                ];
+                const type = platformTypes[Math.floor(Math.random() * platformTypes.length)];
+                
+                platform.className = `platform ${type} h-6`;
+                platform.style.width = `${width}px`;
+                platform.style.left = `${x}px`;
+                platform.style.top = `${y}px`;
+                gameContainer.appendChild(platform);
+                
+                platforms.push({
+                    element: platform,
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: 16
+                });
+                
+                // 20% chance to spawn a coin on this platform
+                if (Math.random() < 0.2) {
+                    createCoin(x + width / 2 - 10, y - 30);
+                }
+                
+                // 10% chance to spawn a spring on this platform
+                if (Math.random() < 0.1) {
+                    createSpring(x + width / 2 - 15, y - 15);
+                }
+                
+                return platform;
+            }
+            
+            function createCoin(x, y) {
+                const coin = document.createElement('div');
+                coin.className = 'coin bg-yellow-400 w-6 h-6';
+                coin.style.left = `${x}px`;
+                coin.style.top = `${y}px`;
+                gameContainer.appendChild(coin);
+                
+                coins.push({
+                    element: coin,
+                    x: x,
+                    y: y,
+                    width: 12,
+                    height: 12
+                });
+            }
+            
+            function createSpring(x, y) {
+                const spring = document.createElement('div');
+                spring.className = 'spring bg-gray-300 w-8 h-4';
+                spring.style.left = `${x}px`;
+                spring.style.top = `${y}px`;
+                gameContainer.appendChild(spring);
+                
+                springs.push({
+                    element: spring,
+                    x: x,
+                    y: y,
+                    width: 16,
+                    height: 8
+                });
+            }
+            
+            function createParticles(x, y, color) {
+                for (let i = 0; i < 10; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = `particle ${color} w-2 h-2`;
+                    particle.style.left = `${x}px`;
+                    particle.style.top = `${y}px`;
+                    
+                    // Random velocity
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 3;
+                    const vx = Math.cos(angle) * speed;
+                    const vy = Math.sin(angle) * speed;
+                    
+                    gameContainer.appendChild(particle);
+                    
+                    particles.push({
+                        element: particle,
+                        x: x,
+                        y: y,
+                        vx: vx,
+                        vy: vy,
+                        life: 30 + Math.random() * 30
+                    });
+                }
+            }
+            
+            function jump() {
+                if (velocity >= 0) { // Can only jump when falling or stationary
+                    velocity = -12;
+                    player.classList.add('jump-animation');
+                    
+                    if (soundEnabled) {
+                        jumpSound.currentTime = 0;
+                        jumpSound.play();
+                    }
+                    
+                    setTimeout(() => {
+                        player.classList.remove('jump-animation');
+                    }, 500);
+                }
+            }
+            
+            function springJump() {
+                velocity = -20;
+                
+                if (soundEnabled) {
+                    springSound.currentTime = 0;
+                    springSound.play();
+                }
+                
+                // Spring animation
+                const spring = document.createElement('div');
+                spring.className = 'absolute bg-gray-300 w-8 h-2';
+                spring.style.left = `${parseInt(player.style.left) + 12}px`;
+                spring.style.bottom = `${parseInt(player.style.bottom) - 12}px`;
+                gameContainer.appendChild(spring);
+                
+                setTimeout(() => {
+                    spring.remove();
+                }, 200);
+            }
+            
+            function gameLoop() {
+                if (!gameRunning) return;
+                
+                // Apply gravity
+                velocity += gravity;
+                playerY += velocity;
+                
+                // Check if player hits the bottom
+                if (playerY > window.innerHeight - 50) {
+                    playerY = window.innerHeight - 50;
+                    velocity = 0;
+                }
+                
+                // Update player position
+                player.style.bottom = `${window.innerHeight - playerY}px`;
+                
+                // Check platform collisions
+                let onPlatform = false;
+                const playerRect = {
+                    x: window.innerWidth / 2 - 24,
+                    y: playerY - 24,
+                    width: 24,
+                    height: 24
+                };
+                
+                for (const platform of platforms) {
+                    if (
+                        playerRect.x + playerRect.width > platform.x &&
+                        playerRect.x < platform.x + platform.width &&
+                        playerRect.y + playerRect.height > platform.y &&
+                        playerRect.y < platform.y + platform.height &&
+                        velocity > 0
+                    ) {
+                        // Landed on a platform
+                        playerY = platform.y + platform.height;
+                        velocity = 0;
+                        onPlatform = true;
+                        
+                        // Create landing particles
+                        createParticles(
+                            playerRect.x + playerRect.width / 2,
+                            playerRect.y + playerRect.height,
+                            'bg-yellow-300'
+                        );
+                    }
+                }
+                
+                // Check coin collisions
+                for (let i = coins.length - 1; i >= 0; i--) {
+                    const coin = coins[i];
+                    const coinRect = {
+                        x: coin.x,
+                        y: coin.y,
+                        width: coin.width,
+                        height: coin.height
+                    };
+                    
+                    if (
+                        playerRect.x + playerRect.width > coinRect.x &&
+                        playerRect.x < coinRect.x + coinRect.width &&
+                        playerRect.y + playerRect.height > coinRect.y &&
+                        playerRect.y < coinRect.y + coinRect.height
+                    ) {
+                        // Collect coin
+                        score += 10;
+                        scoreDisplay.textContent = `Score: ${score}`;
+                        
+                        if (soundEnabled) {
+                            coinSound.currentTime = 0;
+                            coinSound.play();
+                        }
+                        
+                        // Create coin collection particles
+                        createParticles(
+                            coinRect.x + coinRect.width / 2,
+                            coinRect.y + coinRect.height / 2,
+                            'bg-yellow-400'
+                        );
+                        
+                        // Remove coin
+                        coin.element.remove();
+                        coins.splice(i, 1);
+                    }
+                }
+                
+                // Check spring collisions
+                for (let i = springs.length - 1; i >= 0; i--) {
+                    const spring = springs[i];
+                    const springRect = {
+                        x: spring.x,
+                        y: spring.y,
+                        width: spring.width,
+                        height: spring.height
+                    };
+                    
+                    if (
+                        playerRect.x + playerRect.width > springRect.x &&
+                        playerRect.x < springRect.x + springRect.width &&
+                        playerRect.y + playerRect.height > springRect.y &&
+                        playerRect.y < springRect.y + springRect.height &&
+                        velocity > 0
+                    ) {
+                        // Hit a spring
+                        springJump();
+                        
+                        // Remove spring
+                        spring.element.remove();
+                        springs.splice(i, 1);
+                    }
+                }
+                
+                // Update particles
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const particle = particles[i];
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.life--;
+                    
+                    particle.element.style.left = `${particle.x}px`;
+                    particle.element.style.top = `${particle.y}px`;
+                    particle.element.style.opacity = particle.life / 60;
+                    
+                    if (particle.life <= 0) {
+                        particle.element.remove();
+                        particles.splice(i, 1);
+                    }
+                }
+                
+                // Camera follow - scroll up when player gets above center
+                const cameraThreshold = window.innerHeight / 3;
+                if (playerY < cameraThreshold + scrollOffset) {
+                    scrollOffset = playerY - cameraThreshold;
+                    
+                    // Move all elements down to simulate camera scroll
+                    document.querySelectorAll('.platform, .coin, .spring').forEach(el => {
+                        const currentTop = parseInt(el.style.top);
+                        el.style.top = `${currentTop + 5}px`;
+                    });
+                    
+                    // Update platform positions in array
+                    for (const platform of platforms) {
+                        platform.y += 5;
+                    }
+                    
+                    for (const coin of coins) {
+                        coin.y += 5;
+                    }
+                    
+                    for (const spring of springs) {
+                        spring.y += 5;
+                    }
+                    
+                    // Add score for moving up
+                    score += 1;
+                    scoreDisplay.textContent = `Score: ${score}`;
+                    
+                    // Increase difficulty
+                    gameSpeed = 2 + Math.floor(score / 1000);
+                    platformGap = 150 - Math.floor(score / 500) * 10;
+                    if (platformGap < 80) platformGap = 80;
+                }
+                
+                // Generate new platforms when needed
+                while (lastPlatformY > scrollOffset + 100) {
+                    lastPlatformY -= platformGap;
+                    createPlatform(lastPlatformY);
+                }
+                
+                // Remove platforms that are below the screen
+                for (let i = platforms.length - 1; i >= 0; i--) {
+                    if (platforms[i].y > window.innerHeight + 100) {
+                        platforms[i].element.remove();
+                        platforms.splice(i, 1);
+                    }
+                }
+                
+                // Remove coins that are below the screen
+                for (let i = coins.length - 1; i >= 0; i--) {
+                    if (coins[i].y > window.innerHeight + 100) {
+                        coins[i].element.remove();
+                        coins.splice(i, 1);
+                    }
+                }
+                
+                // Remove springs that are below the screen
+                for (let i = springs.length - 1; i >= 0; i--) {
+                    if (springs[i].y > window.innerHeight + 100) {
+                        springs[i].element.remove();
+                        springs.splice(i, 1);
+                    }
+                }
+                
+                // Game over if player falls below screen
+                if (playerY > window.innerHeight + 100) {
+                    gameOver();
+                    return;
+                }
+                
+                animationId = requestAnimationFrame(gameLoop);
+            }
+            
+            function gameOver() {
+                gameRunning = false;
+                cancelAnimationFrame(animationId);
+                
+                // Update high score
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('highScore', highScore);
+                    highScoreDisplay.textContent = `High Score: ${highScore}`;
+                }
+                
+                // Show game over screen
+                finalScoreDisplay.textContent = `Score: ${score}`;
+                gameOverScreen.style.display = 'flex';
+                
+                if (soundEnabled) {
+                    bgMusic.pause();
+                    gameOverSound.currentTime = 0;
+                    gameOverSound.play();
+                }
+            }
+            
+            // Initialize game
+            bgMusic.volume = 0.3;
+        });
+    </script>
+</body>
+</html>
