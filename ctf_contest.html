@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTF Conquest - Capture the Flag Mini-Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        @keyframes flagWave {
+            0% { transform: skewY(0deg); }
+            25% { transform: skewY(5deg); }
+            50% { transform: skewY(0deg); }
+            75% { transform: skewY(-5deg); }
+            100% { transform: skewY(0deg); }
+        }
+        
+        .flag-animation {
+            animation: flagWave 2s infinite;
+            transform-origin: bottom;
+        }
+        
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .game-container {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .player {
+            transition: all 0.3s ease;
+        }
+        
+        .player.captured {
+            filter: brightness(0.5);
+            transform: scale(0.8);
+        }
+        
+        .explosion {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, rgba(255,255,0,0.8) 0%, rgba(255,100,0,0.8) 50%, rgba(255,0,0,0) 70%);
+            border-radius: 50%;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.5s ease-out;
+        }
+        
+        .explosion.active {
+            opacity: 1;
+            transform: scale(3);
+        }
+        
+        .terrain {
+            background: repeating-linear-gradient(
+                45deg,
+                #4a7c59,
+                #4a7c59 10px,
+                #3a6a4a 10px,
+                #3a6a4a 20px
+            );
+        }
+        
+        .water {
+            background: repeating-linear-gradient(
+                45deg,
+                #3a7ca5,
+                #3a7ca5 10px,
+                #2d5d83 10px,
+                #2d5d83 20px
+            );
+            animation: waterFlow 10s linear infinite;
+        }
+        
+        @keyframes waterFlow {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 40px; }
+        }
+        
+        .obstacle {
+            background: repeating-linear-gradient(
+                45deg,
+                #8b4513,
+                #8b4513 10px,
+                #a0522d 10px,
+                #a0522d 20px
+            );
+        }
+        
+        .powerup {
+            filter: drop-shadow(0 0 8px rgba(255, 255, 0, 0.8));
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="game-container min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        <!-- Game Title -->
+        <div class="text-center mb-6">
+            <h1 class="text-4xl md:text-6xl font-bold mb-2 text-yellow-300 pulse">CTF CONQUEST</h1>
+            <p class="text-lg md:text-xl text-gray-200">Capture the Flag Mini-Game</p>
+        </div>
+        
+        <!-- Game Controls -->
+        <div class="flex flex-wrap justify-center gap-4 mb-6">
+            <button id="startGame" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-bold transition-all">
+                <i class="fas fa-play mr-2"></i>Start Game
+            </button>
+            <button id="joinGame" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-bold transition-all">
+                <i class="fas fa-user-plus mr-2"></i>Join Game
+            </button>
+            <button id="howToPlay" class="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg font-bold transition-all">
+                <i class="fas fa-question-circle mr-2"></i>How to Play
+            </button>
+        </div>
+        
+        <!-- Game Stats -->
+        <div class="flex justify-between w-full max-w-4xl mb-6">
+            <div class="bg-gray-800 bg-opacity-70 p-3 rounded-lg text-center flex-1 mx-2">
+                <h3 class="text-lg font-bold text-red-400">Red Team</h3>
+                <p class="text-2xl font-bold" id="redScore">0</p>
+                <p class="text-sm" id="redPlayers">0 players</p>
+            </div>
+            <div class="bg-gray-800 bg-opacity-70 p-3 rounded-lg text-center flex-1 mx-2">
+                <h3 class="text-lg font-bold text-blue-400">Blue Team</h3>
+                <p class="text-2xl font-bold" id="blueScore">0</p>
+                <p class="text-sm" id="bluePlayers">0 players</p>
+            </div>
+            <div class="bg-gray-800 bg-opacity-70 p-3 rounded-lg text-center flex-1 mx-2">
+                <h3 class="text-lg font-bold">Time Left</h3>
+                <p class="text-2xl font-bold" id="gameTime">3:00</p>
+                <p class="text-sm">Flags: <span id="flagsCaptured">0/0</span></p>
+            </div>
+        </div>
+        
+        <!-- Game Board -->
+        <div id="gameBoard" class="relative w-full max-w-4xl h-96 md:h-[500px] bg-gray-800 rounded-lg overflow-hidden border-4 border-gray-700 hidden">
+            <!-- Terrain elements will be added dynamically -->
+        </div>
+        
+        <!-- Player Selection Modal -->
+        <div id="playerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+            <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full">
+                <h2 class="text-2xl font-bold mb-4 text-center">Join the Battle!</h2>
+                <div class="mb-4">
+                    <label class="block mb-2">Player Name</label>
+                    <input type="text" id="playerName" class="w-full p-2 rounded bg-gray-700 border border-gray-600" placeholder="Your name">
+                </div>
+                <div class="mb-6">
+                    <label class="block mb-2">Choose Your Team</label>
+                    <div class="flex justify-center gap-4">
+                        <button data-team="red" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-flag mr-2"></i> Red Team
+                        </button>
+                        <button data-team="blue" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-flag mr-2"></i> Blue Team
+                        </button>
+                    </div>
+                </div>
+                <button id="confirmJoin" class="w-full bg-green-600 hover:bg-green-700 py-2 rounded-lg font-bold">
+                    Join Game
+                </button>
+            </div>
+        </div>
+        
+        <!-- How to Play Modal -->
+        <div id="howToPlayModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+            <div class="bg-gray-800 p-6 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                <h2 class="text-2xl font-bold mb-4 text-center">How to Play CTF Conquest</h2>
+                <div class="space-y-4">
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <h3 class="text-xl font-bold text-yellow-400 mb-2"><i class="fas fa-bullseye mr-2"></i>Objective</h3>
+                        <p>Capture the enemy team's flag and bring it back to your base while defending your own flag.</p>
+                    </div>
+                    
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <h3 class="text-xl font-bold text-blue-400 mb-2"><i class="fas fa-gamepad mr-2"></i>Controls</h3>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><strong>WASD</strong> or <strong>Arrow Keys</strong> to move your character</li>
+                            <li><strong>Space</strong> to use special abilities (when available)</li>
+                            <li><strong>E</strong> to interact with flags and items</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <h3 class="text-xl font-bold text-green-400 mb-2"><i class="fas fa-star mr-2"></i>Power-ups</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-yellow-400 rounded-full mr-2"></div>
+                                <span>Speed Boost</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-red-400 rounded-full mr-2"></div>
+                                <span>Invincibility</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-blue-400 rounded-full mr-2"></div>
+                                <span>Stealth Mode</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-purple-400 rounded-full mr-2"></div>
+                                <span>Teleport</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <h3 class="text-xl font-bold text-red-400 mb-2"><i class="fas fa-robot mr-2"></i>AI Opponents</h3>
+                        <p>The game features intelligent AI opponents with different behaviors:</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><strong>Defenders</strong> - Stay near the flag</li>
+                            <li><strong>Attackers</strong> - Try to capture your flag</li>
+                            <li><strong>Scouts</strong> - Patrol the map</li>
+                        </ul>
+                    </div>
+                </div>
+                <button id="closeHowToPlay" class="w-full mt-6 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg font-bold">
+                    Got It!
+                </button>
+            </div>
+        </div>
+        
+        <!-- Game Over Modal -->
+        <div id="gameOverModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+            <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full text-center">
+                <h2 id="gameOverTitle" class="text-3xl font-bold mb-4"></h2>
+                <p id="gameOverMessage" class="text-xl mb-6"></p>
+                <div class="flex justify-center gap-4">
+                    <button id="playAgain" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-bold">
+                        Play Again
+                    </button>
+                    <button id="exitGame" class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg font-bold">
+                        Exit
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Audio Elements -->
+        <audio id="flagCaptureSound" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" preload="auto"></audio>
+        <audio id="flagReturnSound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" preload="auto"></audio>
+        <audio id="playerTagSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3" preload="auto"></audio>
+        <audio id="powerupSound" src="https://assets.mixkit.co/sfx/preview/mixkit-power-up-electric-zap-2580.mp3" preload="auto"></audio>
+        <audio id="backgroundMusic" loop src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-668.mp3" preload="auto"></audio>
+    </div>
+
+    <script>
+        // Game State
+        const gameState = {
+            players: {},
+            aiPlayers: [],
+            flags: {
+                red: { captured: false, carrier: null, position: null },
+                blue: { captured: false, carrier: null, position: null }
+            },
+            terrain: [],
+            obstacles: [],
+            powerups: [],
+            scores: { red: 0, blue: 0 },
+            gameTime: 180, // 3 minutes in seconds
+            gameActive: false,
+            playerId: null,
+            playerTeam: null,
+            playerName: null,
+            aiDifficulty: 1, // 1-3 scale
+            mapSize: { width: 0, height: 0 },
+            cellSize: 40,
+            lastUpdate: 0,
+            updateInterval: 1000/60 // 60 FPS
+        };
+
+        // DOM Elements
+        const gameBoard = document.getElementById('gameBoard');
+        const playerModal = document.getElementById('playerModal');
+        const howToPlayModal = document.getElementById('howToPlayModal');
+        const gameOverModal = document.getElementById('gameOverModal');
+        const playerNameInput = document.getElementById('playerName');
+        const redScoreElement = document.getElementById('redScore');
+        const blueScoreElement = document.getElementById('blueScore');
+        const redPlayersElement = document.getElementById('redPlayers');
+        const bluePlayersElement = document.getElementById('bluePlayers');
+        const gameTimeElement = document.getElementById('gameTime');
+        const flagsCapturedElement = document.getElementById('flagsCaptured');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        
+        // Event Listeners
+        document.getElementById('startGame').addEventListener('click', showPlayerModal);
+        document.getElementById('joinGame').addEventListener('click', showPlayerModal);
+        document.getElementById('howToPlay').addEventListener('click', () => howToPlayModal.classList.remove('hidden'));
+        document.getElementById('closeHowToPlay').addEventListener('click', () => howToPlayModal.classList.add('hidden'));
+        document.getElementById('confirmJoin').addEventListener('click', joinGame);
+        document.getElementById('playAgain').addEventListener('click', resetGame);
+        document.getElementById('exitGame').addEventListener('click', () => window.location.reload());
+        
+        // Team selection
+        document.querySelectorAll('[data-team]').forEach(button => {
+            button.addEventListener('click', function() {
+                gameState.playerTeam = this.getAttribute('data-team');
+                document.querySelectorAll('[data-team]').forEach(btn => {
+                    btn.classList.remove('ring-4', 'ring-yellow-400');
+                });
+                this.classList.add('ring-4', 'ring-yellow-400');
+            });
+        });
+
+        // Show player modal
+        function showPlayerModal() {
+            playerModal.classList.remove('hidden');
+        }
+
+        // Join game
+        function joinGame() {
+            const name = playerNameInput.value.trim();
+            if (!name || !gameState.playerTeam) {
+                alert('Please enter your name and select a team!');
+                return;
+            }
+            
+            gameState.playerName = name;
+            playerModal.classList.add('hidden');
+            initializeGame();
+        }
+
+        // Initialize game
+        function initializeGame() {
+            // Set up game board dimensions
+            gameState.mapSize = {
+                width: Math.floor(gameBoard.clientWidth / gameState.cellSize),
+                height: Math.floor(gameBoard.clientHeight / gameState.cellSize)
+            };
+            
+            // Clear previous game elements
+            gameBoard.innerHTML = '';
+            
+            // Generate terrain
+            generateTerrain();
+            
+            // Place flags
+            placeFlags();
+            
+            // Add player
+            addPlayer(gameState.playerName, gameState.playerTeam, true);
+            
+            // Add AI players
+            addAIPlayers();
+            
+            // Start game
+            gameBoard.classList.remove('hidden');
+            gameState.gameActive = true;
+            gameState.lastUpdate = Date.now();
+            
+            // Start game loop
+            requestAnimationFrame(gameLoop);
+            
+            // Start timer
+            startTimer();
+            
+            // Play background music
+            backgroundMusic.volume = 0.3;
+            backgroundMusic.play();
+            
+            // Set up keyboard controls
+            setupControls();
+        }
+
+        // Generate terrain
+        function generateTerrain() {
+            // Create grass terrain
+            const terrain = document.createElement('div');
+            terrain.className = 'terrain absolute inset-0';
+            gameBoard.appendChild(terrain);
+            
+            // Add water obstacles
+            for (let i = 0; i < 3; i++) {
+                const x = Math.floor(Math.random() * (gameState.mapSize.width - 8));
+                const y = Math.floor(Math.random() * (gameState.mapSize.height - 3));
+                const width = Math.floor(Math.random() * 5) + 3;
+                const height = Math.floor(Math.random() * 3) + 1;
+                
+                const water = document.createElement('div');
+                water.className = 'water absolute';
+                water.style.width = `${width * gameState.cellSize}px`;
+                water.style.height = `${height * gameState.cellSize}px`;
+                water.style.left = `${x * gameState.cellSize}px`;
+                water.style.top = `${y * gameState.cellSize}px`;
+                gameBoard.appendChild(water);
+                
+                gameState.obstacles.push({
+                    x, y, width, height, type: 'water'
+                });
+            }
+            
+            // Add rock obstacles
+            for (let i = 0; i < 5; i++) {
+                const x = Math.floor(Math.random() * (gameState.mapSize.width - 2));
+                const y = Math.floor(Math.random() * (gameState.mapSize.height - 2));
+                const width = Math.floor(Math.random() * 2) + 1;
+                const height = Math.floor(Math.random() * 2) + 1;
+                
+                const rock = document.createElement('div');
+                rock.className = 'obstacle absolute';
+                rock.style.width = `${width * gameState.cellSize}px`;
+                rock.style.height = `${height * gameState.cellSize}px`;
+                rock.style.left = `${x * gameState.cellSize}px`;
+                rock.style.top = `${y * gameState.cellSize}px`;
+                gameBoard.appendChild(rock);
+                
+                gameState.obstacles.push({
+                    x, y, width, height, type: 'rock'
+                });
+            }
+            
+            // Add trees
+            for (let i = 0; i < 8; i++) {
+                const x = Math.floor(Math.random() * gameState.mapSize.width);
+                const y = Math.floor(Math.random() * gameState.mapSize.height);
+                
+                const tree = document.createElement('div');
+                tree.className = 'absolute flex justify-center items-end';
+                tree.style.left = `${x * gameState.cellSize}px`;
+                tree.style.top = `${y * gameState.cellSize}px`;
+                tree.style.width = `${gameState.cellSize}px`;
+                tree.style.height = `${gameState.cellSize}px`;
+                
+                const trunk = document.createElement('div');
+                trunk.className = 'absolute bg-yellow-800 w-2 h-8 bottom-0';
+                trunk.style.left = '50%';
+                trunk.style.transform = 'translateX(-50%)';
+                
+                const leaves = document.createElement('div');
+                leaves.className = 'absolute bg-green-700 rounded-full w-8 h-8 bottom-6';
+                leaves.style.left = '50%';
+                leaves.style.transform = 'translateX(-50%)';
+                
+                tree.appendChild(trunk);
+                tree.appendChild(leaves);
+                gameBoard.appendChild(tree);
+                
+                gameState.obstacles.push({
+                    x, y, width: 1, height: 1, type: 'tree'
+                });
+            }
+            
+            // Add power-ups
+            const powerupTypes = ['speed', 'invincibility', 'stealth', 'teleport'];
+            for (let i = 0; i < 4; i++) {
+                const x = Math.floor(Math.random() * gameState.mapSize.width);
+                const y = Math.floor(Math.random() * gameState.mapSize.height);
+                const type = powerupTypes[i % powerupTypes.length];
+                
+                const powerup = document.createElement('div');
+                powerup.className = 'powerup absolute rounded-full flex items-center justify-center';
+                powerup.style.width = `${gameState.cellSize / 2}px`;
+                powerup.style.height = `${gameState.cellSize / 2}px`;
+                powerup.style.left = `${x * gameState.cellSize + gameState.cellSize / 4}px`;
+                powerup.style.top = `${y * gameState.cellSize + gameState.cellSize / 4}px`;
+                
+                let color, icon;
+                switch (type) {
+                    case 'speed':
+                        color = 'bg-yellow-400';
+                        icon = 'fa-bolt';
+                        break;
+                    case 'invincibility':
+                        color = 'bg-red-400';
+                        icon = 'fa-shield-alt';
+                        break;
+                    case 'stealth':
+                        color = 'bg-blue-400';
+                        icon = 'fa-user-ninja';
+                        break;
+                    case 'teleport':
+                        color = 'bg-purple-400';
+                        icon = 'fa-random';
+                        break;
+                }
+                
+                powerup.classList.add(color);
+                
+                const iconElement = document.createElement('i');
+                iconElement.className = `fas ${icon} text-white text-xs`;
+                powerup.appendChild(iconElement);
+                
+                gameBoard.appendChild(powerup);
+                
+                gameState.powerups.push({
+                    x, y, type, element: powerup, active: true
+                });
+            }
+        }
+
+        // Place flags
+        function placeFlags() {
+            // Red flag (top left area)
+            const redX = 2;
+            const redY = 2;
+            
+            const redFlag = document.createElement('div');
+            redFlag.className = 'absolute flag-animation';
+            redFlag.style.left = `${redX * gameState.cellSize}px`;
+            redFlag.style.top = `${redY * gameState.cellSize}px`;
+            redFlag.style.width = `${gameState.cellSize}px`;
+            redFlag.style.height = `${gameState.cellSize}px`;
+            
+            const redFlagPole = document.createElement('div');
+            redFlagPole.className = 'absolute bg-gray-300 w-1 h-8 left-1/2';
+            redFlagPole.style.transform = 'translateX(-50%)';
+            
+            const redFlagCloth = document.createElement('div');
+            redFlagCloth.className = 'absolute bg-red-600 w-6 h-4 left-1/2 top-1';
+            redFlagCloth.style.clipPath = 'polygon(0 0, 100% 50%, 0 100%)';
+            
+            redFlag.appendChild(redFlagPole);
+            redFlag.appendChild(redFlagCloth);
+            gameBoard.appendChild(redFlag);
+            
+            gameState.flags.red.position = { x: redX, y: redY };
+            gameState.flags.red.element = redFlag;
+            
+            // Blue flag (bottom right area)
+            const blueX = gameState.mapSize.width - 3;
+            const blueY = gameState.mapSize.height - 3;
+            
+            const blueFlag = document.createElement('div');
+            blueFlag.className = 'absolute flag-animation';
+            blueFlag.style.left = `${blueX * gameState.cellSize}px`;
+            blueFlag.style.top = `${blueY * gameState.cellSize}px`;
+            blueFlag.style.width = `${gameState.cellSize}px`;
+            blueFlag.style.height = `${gameState.cellSize}px`;
+            
+            const blueFlagPole = document.createElement('div');
+            blueFlagPole.className = 'absolute bg-gray-300 w-1 h-8 left-1/2';
+            blueFlagPole.style.transform = 'translateX(-50%)';
+            
+            const blueFlagCloth = document.createElement('div');
+            blueFlagCloth.className = 'absolute bg-blue-600 w-6 h-4 left-1/2 top-1';
+            blueFlagCloth.style.clipPath = 'polygon(0 50%, 100% 0, 100% 100%)';
+            
+            blueFlag.appendChild(blueFlagPole);
+            blueFlag.appendChild(blueFlagCloth);
+            gameBoard.appendChild(blueFlag);
+            
+            gameState.flags.blue.position = { x: blueX, y: blueY };
+            gameState.flags.blue.element = blueFlag;
+        }
+
+        // Add player
+        function addPlayer(name, team, isLocal = false) {
+            const id = 'player-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+            const spawnArea = team === 'red' ? 
+                { x: 5, y: 5 } : 
+                { x: gameState.mapSize.width - 6, y: gameState.mapSize.height - 6 };
+            
+            const player = {
+                id,
+                name,
+                team,
+                x: spawnArea.x,
+                y: spawnArea.y,
+                speed: 2,
+                isLocal,
+                carryingFlag: null,
+                invincible: false,
+                stealth: false,
+                lastTagged: 0,
+                element: null
+            };
+            
+            // Create player element
+            const playerElement = document.createElement('div');
+            playerElement.className = `player absolute rounded-full flex items-center justify-center ${team === 'red' ? 'bg-red-500' : 'bg-blue-500'}`;
+            playerElement.style.width = `${gameState.cellSize - 10}px`;
+            playerElement.style.height = `${gameState.cellSize - 10}px`;
+            playerElement.style.left = `${player.x * gameState.cellSize + 5}px`;
+            playerElement.style.top = `${player.y * gameState.cellSize + 5}px`;
+            playerElement.style.transition = 'all 0.2s ease';
+            
+            const nameElement = document.createElement('div');
+            nameElement.className = 'absolute -top-6 text-xs font-bold whitespace-nowrap';
+            nameElement.textContent = name;
+            playerElement.appendChild(nameElement);
+            
+            if (isLocal) {
+                playerElement.classList.add('ring-2', 'ring-yellow-300');
+                const localBadge = document.createElement('div');
+                localBadge.className = 'absolute -bottom-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-4 h-4 flex items-center justify-center';
+                localBadge.innerHTML = '<i class="fas fa-user"></i>';
+                playerElement.appendChild(localBadge);
+            }
+            
+            gameBoard.appendChild(playerElement);
+            player.element = playerElement;
+            
+            gameState.players[id] = player;
+            
+            if (isLocal) {
+                gameState.playerId = id;
+            }
+            
+            updatePlayerCount();
+            
+            return id;
+        }
+
+        // Add AI players
+        function addAIPlayers() {
+            const aiCount = 4; // 2 per team
+            
+            for (let i = 0; i < aiCount; i++) {
+                const team = i < aiCount / 2 ? 'red' : 'blue';
+                const name = `AI ${team === 'red' ? 'Red' : 'Blue'} ${i % (aiCount / 2) + 1}`;
+                const id = addPlayer(name, team);
+                
+                const ai = {
+                    ...gameState.players[id],
+                    behavior: ['defender', 'attacker', 'scout'][Math.floor(Math.random() * 3)],
+                    lastDecision: 0,
+                    decisionInterval: 1000 + Math.random() * 2000,
+                    target: null
+                };
+                
+                gameState.aiPlayers.push(ai);
+                gameState.players[id] = ai;
+            }
+        }
+
+        // Update player count display
+        function updatePlayerCount() {
+            const redCount = Object.values(gameState.players).filter(p => p.team === 'red').length;
+            const blueCount = Object.values(gameState.players).filter(p => p.team === 'blue').length;
+            
+            redPlayersElement.textContent = `${redCount} player${redCount !== 1 ? 's' : ''}`;
+            bluePlayersElement.textContent = `${blueCount} player${blueCount !== 1 ? 's' : ''}`;
+        }
+
+        // Setup keyboard controls
+        function setupControls() {
+            const keys = {
+                w: false, a: false, s: false, d: false,
+                up: false, left: false, down: false, right: false,
+                space: false, e: false
+            };
+            
+            document.addEventListener('keydown', (e) => {
+                if (!gameState.gameActive) return;
+                
+                const key = e.key.toLowerCase();
+                if (key === 'w' || key === 'arrowup') keys.up = true;
+                if (key === 'a' || key === 'arrowleft') keys.left = true;
+                if (key === 's' || key === 'arrowdown') keys.down = true;
+                if (key === 'd' || key === 'arrowright') keys.right = true;
+                if (key === ' ') keys.space = true;
+                if (key === 'e') keys.e = true;
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                const key = e.key.toLowerCase();
+                if (key === 'w' || key === 'arrowup') keys.up = false;
+                if (key === 'a' || key === 'arrowleft') keys.left = false;
+                if (key === 's' || key === 'arrowdown') keys.down = false;
+                if (key === 'd' || key === 'arrowright') keys.right = false;
+                if (key === ' ') keys.space = false;
+                if (key === 'e') keys.e = false;
+            });
+            
+            // Store keys in game state
+            gameState.keys = keys;
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (!gameState.gameActive) return;
+            
+            const now = Date.now();
+            const deltaTime = now - gameState.lastUpdate;
+            
+            if (deltaTime >= gameState.updateInterval) {
+                updateGame(deltaTime);
+                gameState.lastUpdate = now - (deltaTime % gameState.updateInterval);
+            }
+            
+            renderGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Update game state
+        function updateGame(deltaTime) {
+            // Update local player
+            const player = gameState.players[gameState.playerId];
+            if (player) {
+                let dx = 0, dy = 0;
+                
+                if (gameState.keys.up) dy -= 1;
+                if (gameState.keys.down) dy += 1;
+                if (gameState.keys.left) dx -= 1;
+                if (gameState.keys.right) dx += 1;
+                
+                // Normalize diagonal movement
+                if (dx !== 0 && dy !== 0) {
+                    dx *= 0.7071; // 1/sqrt(2)
+                    dy *= 0.7071;
+                }
+                
+                // Apply speed
+                dx *= player.speed * (deltaTime / 1000);
+                dy *= player.speed * (deltaTime / 1000);
+                
+                // Check for collisions before moving
+                const newX = player.x + dx;
+                const newY = player.y + dy;
+                
+                if (!checkCollision(newX, newY, player)) {
+                    player.x = newX;
+                    player.y = newY;
+                }
+                
+                // Check for flag interactions
+                if (gameState.keys.e) {
+                    checkFlagInteraction(player);
+                }
+                
+                // Check for powerup collisions
+                checkPowerupCollision(player);
+            }
+            
+            // Update AI players
+            updateAI(deltaTime);
+            
+            // Update flags
+            updateFlags();
+            
+            // Check for win condition
+            checkWinCondition();
+        }
+
+        // Check collision with obstacles and boundaries
+        function checkCollision(x, y, player) {
+            // Check boundaries
+            if (x < 0 || x >= gameState.mapSize.width || y < 0 || y >= gameState.mapSize.height) {
+                return true;
+            }
+            
+            // Check obstacles
+            for (const obstacle of gameState.obstacles) {
+                if (x >= obstacle.x && x < obstacle.x + obstacle.width &&
+                    y >= obstacle.y && y < obstacle.y + obstacle.height) {
+                    return true;
+                }
+            }
+            
+            // Check other players (if not invincible)
+            if (!player.invincible) {
+                for (const otherPlayer of Object.values(gameState.players)) {
+                    if (otherPlayer.id !== player.id && 
+                        !otherPlayer.stealth &&
+                        Math.abs(x - otherPlayer.x) < 1 && 
+                        Math.abs(y - otherPlayer.y) < 1) {
+                        
+                        // Tagged by opponent
+                        if (otherPlayer.team !== player.team && Date.now() - player.lastTagged > 3000) {
+                            playerTagged(player, otherPlayer);
+                            return true;
+                        }
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        // Player tagged event
+        function playerTagged(player, byPlayer) {
+            player.lastTagged = Date.now();
+            
+            // Drop flag if carrying
+            if (player.carryingFlag) {
+                dropFlag(player.carryingFlag, player);
+            }
+            
+            // Create explosion effect
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = `${player.x * gameState.cellSize}px`;
+            explosion.style.top = `${player.y * gameState.cellSize}px`;
+            gameBoard.appendChild(explosion);
+            
+            setTimeout(() => {
+                explosion.classList.add('active');
+            }, 10);
+            
+            setTimeout(() => {
+                explosion.remove();
+            }, 500);
+            
+            // Play sound
+            const sound = document.getElementById('playerTagSound');
+            sound.currentTime = 0;
+            sound.play();
+            
+            // Respawn player
+            setTimeout(() => {
+                const spawnArea = player.team === 'red' ? 
+                    { x: 5, y: 5 } : 
+                    { x: gameState.mapSize.width - 6, y: gameState.mapSize.height - 6 };
+                
+                player.x = spawnArea.x;
+                player.y = spawnArea.y;
+                
+                if (player.element) {
+                    player.element.style.left = `${player.x * gameState.cellSize + 5}px`;
+                    player.element.style.top = `${player.y * gameState.cellSize + 5}px`;
+                }
+            }, 1000);
+        }
+
+        // Check flag interaction
+        function checkFlagInteraction(player) {
+            const flagTeam = player.team === 'red' ? 'blue' : 'red';
+            const flag = gameState.flags[flagTeam];
+            const homeFlag = gameState.flags[player.team];
+            
+            // Check if player is near their own flag (to return captured flag)
+            if (player.carryingFlag === flagTeam && 
+                Math.abs(player.x - homeFlag.position.x) < 1.5 && 
+                Math.abs(player.y - homeFlag.position.y) < 1.5) {
+                
+                returnFlag(flagTeam, player);
+                return;
+            }
+            
+            // Check if player is near enemy flag
+            if (!flag.captured && 
+                Math.abs(player.x - flag.position.x) < 1.5 && 
+                Math.abs(player.y - flag.position.y) < 1.5) {
+                
+                captureFlag(flagTeam, player);
+            }
+        }
+
+        // Capture flag
+        function captureFlag(flagTeam, player) {
+            const flag = gameState.flags[flagTeam];
+            
+            flag.captured = true;
+            flag.carrier = player.id;
+            player.carryingFlag = flagTeam;
+            
+            // Hide flag element
+            if (flag.element) {
+                flag.element.style.display = 'none';
+            }
+            
+            // Update player appearance
+            if (player.element) {
+                const flagIndicator = document.createElement('div');
+                flagIndicator.className = 'absolute -top-2 -right-2 bg-white text-black text-xs rounded-full w-4 h-4 flex items-center justify-center';
+                flagIndicator.innerHTML = '<i class="fas fa-flag"></i>';
+                player.element.appendChild(flagIndicator);
+            }
+            
+            // Play sound
+            const sound = document.getElementById('flagCaptureSound');
+            sound.currentTime = 0;
+            sound.play();
+            
+            // Update UI
+            updateFlagStatus();
+        }
+
+        // Return flag
+        function returnFlag(flagTeam, player) {
+            const flag = gameState.flags[flagTeam];
+            
+            flag.captured = false;
+            flag.carrier = null;
+            player.carryingFlag = null;
+            
+            // Score point
+            gameState.scores[player.team]++;
+            updateScores();
+            
+            // Show flag at original position
+            if (flag.element) {
+                flag.element.style.display = 'block';
+                flag.element.style.left = `${flag.position.x * gameState.cellSize}px`;
+                flag.element.style.top = `${flag.position.y * gameState.cellSize}px`;
+            }
+            
+            // Remove flag indicator from player
+            if (player.element) {
+                const flagIndicator = player.element.querySelector('.fa-flag');
+                if (flagIndicator) {
+                    flagIndicator.parentElement.remove();
+                }
+            }
+            
+            // Play sound
+            const sound = document.getElementById('flagReturnSound');
+            sound.currentTime = 0;
+            sound.play();
+            
+            // Update UI
+            updateFlagStatus();
+        }
+
+        // Drop flag
+        function dropFlag(flagTeam, player) {
+            const flag = gameState.flags[flagTeam];
+            
+            flag.captured = true; // Still captured but not carried
+            flag.carrier = null;
+            player.carryingFlag = null;
+            
+            // Place flag at player's position
+            flag.position = { x: Math.floor(player.x), y: Math.floor(player.y) };
+            
+            // Show flag at dropped position
+            if (flag.element) {
+                flag.element.style.display = 'block';
+                flag.element.style.left = `${flag.position.x * gameState.cellSize}px`;
+                flag.element.style.top = `${flag.position.y * gameState.cellSize}px`;
+            }
+            
+            // Remove flag indicator from player
+            if (player.element) {
+                const flagIndicator = player.element.querySelector('.fa-flag');
+                if (flagIndicator) {
+                    flagIndicator.parentElement.remove();
+                }
+            }
+            
+            // Update UI
+            updateFlagStatus();
+        }
+
+        // Update flags
+        function updateFlags() {
+            for (const team of ['red', 'blue']) {
+                const flag = gameState.flags[team];
+                
+                if (flag.captured && flag.carrier) {
+                    const carrier = gameState.players[flag.carrier];
+                    if (carrier) {
+                        flag.position = { x: carrier.x, y: carrier.y };
+                    }
+                }
+            }
+        }
+
+        // Check powerup collision
+        function checkPowerupCollision(player) {
+            for (let i = 0; i < gameState.powerups.length; i++) {
+                const powerup = gameState.powerups[i];
+                
+                if (powerup.active && 
+                    Math.abs(player.x - powerup.x) < 1 && 
+                    Math.abs(player.y - powerup.y) < 1) {
+                    
+                    applyPowerup(player, powerup.type);
+                    powerup.active = false;
+                    powerup.element.style.display = 'none';
+                    
+                    // Respawn powerup after delay
+                    setTimeout(() => {
+                        powerup.x = Math.floor(Math.random() * gameState.mapSize.width);
+                        powerup.y = Math.floor(Math.random() * gameState.mapSize.height);
+                        powerup.active = true;
+                        powerup.element.style.display = 'block';
+                        powerup.element.style.left = `${powerup.x * gameState.cellSize + gameState.cellSize / 4}px`;
+                        powerup.element.style.top = `${powerup.y * gameState.cellSize + gameState.cellSize / 4}px`;
+                    }, 10000);
+                    
+                    // Play sound
+                    const sound = document.getElementById('powerupSound');
+                    sound.currentTime = 0;
+                    sound.play();
+                    
+                    break;
+                }
+            }
+        }
+
+        // Apply powerup to player
+        function applyPowerup(player, type) {
+            // Remove any existing powerup effects
+            if (player.powerupTimeout) {
+                clearTimeout(player.powerupTimeout);
+            }
+            
+            // Apply new powerup
+            switch (type) {
+                case 'speed':
+                    player.speed = 4;
+                    showPowerupEffect(player, 'Speed Boost!', 'text-yellow-400');
+                    break;
+                case 'invincibility':
+                    player.invincible = true;
+                    showPowerupEffect(player, 'Invincibility!', 'text-red-400');
+                    break;
+                case 'stealth':
+                    player.stealth = true;
+                    player.element.classList.add('opacity-50');
+                    showPowerupEffect(player, 'Stealth Mode!', 'text-blue-400');
+                    break;
+                case 'teleport':
+                    player.x = Math.floor(Math.random() * gameState.mapSize.width);
+                    player.y = Math.floor(Math.random() * gameState.mapSize.height);
+                    showPowerupEffect(player, 'Teleported!', 'text-purple-400');
+                    break;
+            }
+            
+            // Set timeout to remove powerup effect
+            player.powerupTimeout = setTimeout(() => {
+                player.speed = 2;
+                player.invincible = false;
+                player.stealth = false;
+                player.element.classList.remove('opacity-50');
+            }, 5000);
+        }
+
+        // Show powerup effect text
+        function showPowerupEffect(player, text, colorClass) {
+            const effect = document.createElement('div');
+            effect.className = `absolute -top-10 text-xs font-bold ${colorClass}`;
+            effect.textContent = text;
+            player.element.appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 2000);
+        }
+
+        // Update AI players
+        function updateAI(deltaTime) {
+            const now = Date.now();
+            
+            for (const ai of gameState.aiPlayers) {
+                // Make decisions at intervals
+                if (now - ai.lastDecision > ai.decisionInterval) {
+                    ai.lastDecision = now;
+                    ai.decisionInterval = 1000 + Math.random() * 2000;
+                    
+                    // Choose behavior based on role
+                    let targetX, targetY;
+                    
+                    switch (ai.behavior) {
+                        case 'defender':
+                            // Stay near own flag
+                            const ownFlag = gameState.flags[ai.team];
+                            targetX = ownFlag.position.x + (Math.random() * 6 - 3);
+                            targetY = ownFlag.position.y + (Math.random() * 6 - 3);
+                            break;
+                            
+                        case 'attacker':
+                            // Go for enemy flag
+                            const enemyFlagTeam = ai.team === 'red' ? 'blue' : 'red';
+                            const enemyFlag = gameState.flags[enemyFlagTeam];
+                            
+                            if (enemyFlag.captured && enemyFlag.carrier) {
+                                // Chase flag carrier
+                                const carrier = gameState.players[enemyFlag.carrier];
+                                targetX = carrier.x;
+                                targetY = carrier.y;
+                            } else {
+                                // Go to flag
+                                targetX = enemyFlag.position.x;
+                                targetY = enemyFlag.position.y;
+                            }
+                            break;
+                            
+                        case 'scout':
+                            // Patrol random areas
+                            targetX = Math.random() * gameState.mapSize.width;
+                            targetY = Math.random() * gameState.mapSize.height;
+                            break;
+                    }
+                    
+                    // Ensure target is within bounds
+                    targetX = Math.max(0, Math.min(gameState.mapSize.width - 1, targetX));
+                    targetY = Math.max(0, Math.min(gameState.mapSize.height - 1, targetY));
+                    
+                    ai.target = { x: targetX, y: targetY };
+                }
+                
+                // Move toward target
+                if (ai.target) {
+                    const dx = ai.target.x - ai.x;
+                    const dy = ai.target.y - ai.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance > 0.5) {
+                        const speed = ai.speed * (deltaTime / 1000);
+                        const moveX = (dx / distance) * speed;
+                        const moveY = (dy / distance) * speed;
+                        
+                        const newX = ai.x + moveX;
+                        const newY = ai.y + moveY;
+                        
+                        if (!checkCollision(newX, newY, ai)) {
+                            ai.x = newX;
+                            ai.y = newY;
+                        }
+                    }
+                }
+                
+                // Random chance to interact with flag
+                if (Math.random() < 0.01) {
+                    checkFlagInteraction(ai);
+                }
+            }
+        }
+
+        // Check win condition
+        function checkWinCondition() {
+            // Check if time is up
+            if (gameState.gameTime <= 0) {
+                endGame();
+                return;
+            }
+            
+            // Check score limit (optional)
+            if (gameState.scores.red >= 5 || gameState.scores.blue >= 5) {
+                endGame();
+                return;
+            }
+        }
+
+        // Update scores
+        function updateScores() {
+            redScoreElement.textContent = gameState.scores.red;
+            blueScoreElement.textContent = gameState.scores.blue;
+        }
+
+        // Update flag status
+        function updateFlagStatus() {
+            const redFlag = gameState.flags.red;
+            const blueFlag = gameState.flags.blue;
+            
+            let flagsCaptured = 0;
+            if (redFlag.captured) flagsCaptured++;
+            if (blueFlag.captured) flagsCaptured++;
+            
+            flagsCapturedElement.textContent = `${flagsCaptured}/2`;
+        }
+
+        // Start game timer
+        function startTimer() {
+            gameState.timerInterval = setInterval(() => {
+                gameState.gameTime--;
+                
+                const minutes = Math.floor(gameState.gameTime / 60);
+                const seconds = gameState.gameTime % 60;
+                gameTimeElement.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                
+                if (gameState.gameTime <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // End game
+        function endGame() {
+            gameState.gameActive = false;
+            clearInterval(gameState.timerInterval);
+            backgroundMusic.pause();
+            
+            // Determine winner
+            let winner = null;
+            if (gameState.scores.red > gameState.scores.blue) {
+                winner = 'Red Team';
+            } else if (gameState.scores.blue > gameState.scores.red) {
+                winner = 'Blue Team';
+            }
+            
+            // Show game over modal
+            const gameOverTitle = document.getElementById('gameOverTitle');
+            const gameOverMessage = document.getElementById('gameOverMessage');
+            
+            if (winner) {
+                gameOverTitle.textContent = `${winner} Wins!`;
+                gameOverTitle.className = `text-3xl font-bold mb-4 ${winner === 'Red Team' ? 'text-red-400' : 'text-blue-400'}`;
+                gameOverMessage.textContent = `Final Score: Red ${gameState.scores.red} - Blue ${gameState.scores.blue}`;
+            } else {
+                gameOverTitle.textContent = `It's a Tie!`;
+                gameOverTitle.className = 'text-3xl font-bold mb-4 text-yellow-400';
+                gameOverMessage.textContent = `Both teams scored ${gameState.scores.red} points.`;
+            }
+            
+            gameOverModal.classList.remove('hidden');
+        }
+
+        // Reset game
+        function resetGame() {
+            gameOverModal.classList.add('hidden');
+            
+            // Reset game state
+            gameState.players = {};
+            gameState.aiPlayers = [];
+            gameState.scores = { red: 0, blue: 0 };
+            gameState.gameTime = 180;
+            gameState.gameActive = false;
+            
+            // Update UI
+            redScoreElement.textContent = '0';
+            blueScoreElement.textContent = '0';
+            gameTimeElement.textContent = '3:00';
+            flagsCapturedElement.textContent = '0/0';
+            
+            // Reinitialize game
+            initializeGame();
+        }
+
+        // Render game
+        function renderGame() {
+            // Update player positions
+            for (const player of Object.values(gameState.players)) {
+                if (player.element) {
+                    player.element.style.left = `${player.x * gameState.cellSize + 5}px`;
+                    player.element.style.top = `${player.y * gameState.cellSize + 5}px`;
+                    
+                    // Update carrying flag position
+                    if (player.carryingFlag) {
+                        const flagIndicator = player.element.querySelector('.fa-flag');
+                        if (flagIndicator) {
+                            flagIndicator.parentElement.style.transform = `rotate(${Date.now() / 50}deg)`;
+                        }
+                    }
+                }
+            }
+            
+            // Update flag positions (for dropped flags)
+            for (const team of ['red', 'blue']) {
+                const flag = gameState.flags[team];
+                if (flag.captured && !flag.carrier && flag.element) {
+                    flag.element.style.left = `${flag.position.x * gameState.cellSize}px`;
+                    flag.element.style.top = `${flag.position.y * gameState.cellSize}px`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
