@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Constructeur de Mots Français</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .letter {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .letter:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .letter.dragging {
+            transform: scale(1.1);
+            z-index: 10;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .word-slot {
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.7);
+        }
+        
+        .word-slot.highlight {
+            background: rgba(220, 252, 231, 0.7);
+            transform: scale(1.05);
+        }
+        
+        .correct {
+            animation: correct 0.5s ease;
+        }
+        
+        .incorrect {
+            animation: shake 0.5s ease;
+        }
+        
+        .combo {
+            animation: pulse 0.5s ease;
+        }
+        
+        @keyframes correct {
+            0% { background-color: rgba(220, 252, 231, 0.7); }
+            50% { background-color: rgba(167, 243, 208, 0.7); }
+            100% { background-color: rgba(220, 252, 231, 0.7); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .hint-letter {
+            animation: hintGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes hintGlow {
+            from { box-shadow: 0 0 5px rgba(251, 191, 36, 0.5); }
+            to { box-shadow: 0 0 15px rgba(251, 191, 36, 0.8); }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-2xl bg-white rounded-xl shadow-xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-blue-600 text-white p-6 text-center">
+            <h1 class="text-3xl font-bold">Constructeur de Mots Français</h1>
+            <div class="flex justify-between items-center mt-4">
+                <div class="text-xl">
+                    Score: <span id="score" class="font-bold">0</span>
+                </div>
+                <div class="text-xl">
+                    Combo: <span id="combo" class="font-bold">x1</span>
+                </div>
+                <div class="text-xl">
+                    <span id="hint-count" class="font-bold">3</span> <span class="text-sm">indices</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Area -->
+        <div class="p-6">
+            <!-- Word to find -->
+            <div class="mb-8 text-center">
+                <h2 class="text-xl font-semibold mb-2">Trouvez ce mot:</h2>
+                <div id="word-definition" class="text-lg italic mb-4"></div>
+                <div id="word-image" class="h-32 flex items-center justify-center mb-4">
+                    <div class="text-gray-400">Image apparaîtra ici</div>
+                </div>
+                <div id="word-slots" class="flex justify-center gap-2 mb-4 flex-wrap"></div>
+            </div>
+            
+            <!-- Available letters -->
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-4 text-center">Lettres disponibles:</h2>
+                <div id="letter-pool" class="flex justify-center gap-2 flex-wrap"></div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="flex justify-center gap-4 mt-8">
+                <button id="check-word" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full transition">
+                    Vérifier
+                </button>
+                <button id="hint-button" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-full transition">
+                    Indice
+                </button>
+                <button id="shuffle-letters" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full transition">
+                    Mélanger
+                </button>
+                <button id="new-word" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-full transition">
+                    Nouveau Mot
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Word validation feedback -->
+    <div id="feedback" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-xl shadow-2xl text-center hidden">
+        <h2 class="text-2xl font-bold mb-4"></h2>
+        <p class="text-lg mb-4"></p>
+        <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full transition">
+            Continuer
+        </button>
+    </div>
+    
+    <script>
+        // Game data
+        const frenchWords = [
+            { word: "maison", definition: "Un bâtiment où les gens vivent", image: "🏠" },
+            { word: "soleil", definition: "L'étoile au centre de notre système solaire", image: "☀️" },
+            { word: "ordinateur", definition: "Machine électronique pour traiter des données", image: "💻" },
+            { word: "bibliothèque", definition: "Lieu où sont conservés des livres", image: "📚" },
+            { word: "chocolat", definition: "Aliment sucré fait à partir de cacao", image: "🍫" },
+            { word: "éléphant", definition: "Grand mammifère avec une trompe", image: "🐘" },
+            { word: "montagne", definition: "Grande élévation naturelle du terrain", image: "⛰️" },
+            { word: "parapluie", definition: "Objet pour se protéger de la pluie", image: "☂️" },
+            { word: "téléphone", definition: "Appareil pour communiquer à distance", image: "📱" },
+            { word: "aventure", definition: "Expérience excitante ou inhabituelle", image: "🗺️" }
+        ];
+        
+        // Game state
+        let currentWord = {};
+        let score = 0;
+        let combo = 1;
+        let hints = 3;
+        let placedLetters = {};
+        let shuffledLetters = [];
+        
+        // DOM elements
+        const wordDefinitionEl = document.getElementById('word-definition');
+        const wordImageEl = document.getElementById('word-image');
+        const wordSlotsEl = document.getElementById('word-slots');
+        const letterPoolEl = document.getElementById('letter-pool');
+        const scoreEl = document.getElementById('score');
+        const comboEl = document.getElementById('combo');
+        const hintCountEl = document.getElementById('hint-count');
+        const checkWordBtn = document.getElementById('check-word');
+        const hintButton = document.getElementById('hint-button');
+        const shuffleLettersBtn = document.getElementById('shuffle-letters');
+        const newWordBtn = document.getElementById('new-word');
+        const feedbackEl = document.getElementById('feedback');
+        
+        // Initialize game
+        function initGame() {
+            // Reset game state
+            score = 0;
+            combo = 1;
+            hints = 3;
+            updateUI();
+            
+            // Start with a new word
+            newWord();
+        }
+        
+        // Select a new random word
+        function newWord() {
+            // Reset combo on new word
+            combo = 1;
+            updateUI();
+            
+            // Clear previous word
+            wordSlotsEl.innerHTML = '';
+            letterPoolEl.innerHTML = '';
+            placedLetters = {};
+            
+            // Select random word
+            currentWord = frenchWords[Math.floor(Math.random() * frenchWords.length)];
+            
+            // Display word info
+            wordDefinitionEl.textContent = currentWord.definition;
+            wordImageEl.innerHTML = `<div class="text-6xl">${currentWord.image}</div>`;
+            
+            // Create word slots
+            for (let i = 0; i < currentWord.word.length; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'word-slot w-12 h-12 md:w-16 md:h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-2xl font-bold cursor-pointer';
+                slot.dataset.position = i;
+                slot.addEventListener('dragover', handleDragOver);
+                slot.addEventListener('drop', handleDrop);
+                slot.addEventListener('click', handleSlotClick);
+                wordSlotsEl.appendChild(slot);
+            }
+            
+            // Prepare letters (add some extra random letters)
+            const letters = currentWord.word.split('');
+            const extraLetters = 5;
+            const frenchLetters = 'abcdefghijklmnopqrstuvwxyzéèêëàâùûîïôöœç';
+            
+            for (let i = 0; i < extraLetters; i++) {
+                letters.push(frenchLetters[Math.floor(Math.random() * frenchLetters.length)]);
+            }
+            
+            // Shuffle letters
+            shuffledLetters = shuffleArray(letters);
+            renderLetters();
+        }
+        
+        // Render letters in the pool
+        function renderLetters() {
+            letterPoolEl.innerHTML = '';
+            
+            shuffledLetters.forEach((letter, index) => {
+                if (placedLetters[index]) return; // Skip placed letters
+                
+                const letterEl = document.createElement('div');
+                letterEl.className = 'letter bg-white w-12 h-12 md:w-16 md:h-16 rounded-lg border-2 border-blue-500 flex items-center justify-center text-2xl font-bold cursor-pointer select-none';
+                letterEl.textContent = letter.toUpperCase();
+                letterEl.dataset.index = index;
+                letterEl.dataset.letter = letter;
+                letterEl.draggable = true;
+                
+                letterEl.addEventListener('dragstart', handleDragStart);
+                letterEl.addEventListener('dragend', handleDragEnd);
+                letterEl.addEventListener('click', () => handleLetterClick(letterEl));
+                
+                letterPoolEl.appendChild(letterEl);
+            });
+        }
+        
+        // Handle drag start
+        function handleDragStart(e) {
+            this.classList.add('dragging', 'opacity-50');
+            e.dataTransfer.setData('text/plain', this.dataset.index);
+        }
+        
+        // Handle drag end
+        function handleDragEnd() {
+            this.classList.remove('dragging', 'opacity-50');
+        }
+        
+        // Handle drag over
+        function handleDragOver(e) {
+            e.preventDefault();
+            this.classList.add('highlight');
+        }
+        
+        // Handle drop
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('highlight');
+            
+            const letterIndex = e.dataTransfer.getData('text/plain');
+            const letterEl = document.querySelector(`.letter[data-index="${letterIndex}"]`);
+            
+            if (letterEl) {
+                placeLetter(letterEl, this);
+            }
+        }
+        
+        // Handle letter click
+        function handleLetterClick(letterEl) {
+            // Find first empty slot
+            const emptySlot = document.querySelector('.word-slot:empty');
+            if (emptySlot) {
+                placeLetter(letterEl, emptySlot);
+            }
+        }
+        
+        // Handle slot click (remove letter)
+        function handleSlotClick() {
+            if (this.textContent) {
+                // Find the placed letter index
+                for (const [index, pos] of Object.entries(placedLetters)) {
+                    if (pos === parseInt(this.dataset.position)) {
+                        delete placedLetters[index];
+                        this.textContent = '';
+                        renderLetters();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Place a letter in a slot
+        function placeLetter(letterEl, slot) {
+            const letterIndex = letterEl.dataset.index;
+            
+            // Check if this letter is already placed
+            if (placedLetters[letterIndex] !== undefined) {
+                // Remove from previous position
+                const prevSlot = document.querySelector(`.word-slot[data-position="${placedLetters[letterIndex]}"]`);
+                if (prevSlot) prevSlot.textContent = '';
+            }
+            
+            // Place in new position
+            placedLetters[letterIndex] = parseInt(slot.dataset.position);
+            slot.textContent = letterEl.dataset.letter.toUpperCase();
+            
+            renderLetters();
+        }
+        
+        // Check if the current word is correct
+        function checkWord() {
+            const slots = document.querySelectorAll('.word-slot');
+            let attemptedWord = '';
+            
+            slots.forEach(slot => {
+                attemptedWord += slot.textContent ? slot.textContent.toLowerCase() : '_';
+            });
+            
+            if (attemptedWord === currentWord.word) {
+                // Correct word
+                slots.forEach(slot => {
+                    slot.classList.add('correct');
+                });
+                
+                // Calculate points (base 100 + 50 per letter + combo bonus)
+                const points = 100 + (currentWord.word.length * 50) * combo;
+                score += points;
+                
+                // Increase combo
+                combo++;
+                
+                // Show feedback
+                showFeedback('Bravo!', `Vous avez trouvé "${currentWord.word}" et gagné ${points} points!`);
+            } else {
+                // Incorrect word
+                slots.forEach(slot => {
+                    slot.classList.add('incorrect');
+                });
+                
+                // Reset combo
+                combo = 1;
+                
+                // Show feedback
+                showFeedback('Essaie encore', `Ce n'est pas le bon mot. Essayez encore!`);
+                
+                // Remove incorrect class after animation
+                setTimeout(() => {
+                    slots.forEach(slot => {
+                        slot.classList.remove('incorrect');
+                    });
+                }, 1000);
+            }
+            
+            updateUI();
+        }
+        
+        // Show feedback modal
+        function showFeedback(title, message) {
+            const titleEl = feedbackEl.querySelector('h2');
+            const messageEl = feedbackEl.querySelector('p');
+            const buttonEl = feedbackEl.querySelector('button');
+            
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            buttonEl.textContent = title === 'Bravo!' ? 'Mot suivant' : 'OK';
+            
+            feedbackEl.classList.remove('hidden');
+            
+            // Handle button click
+            buttonEl.onclick = () => {
+                feedbackEl.classList.add('hidden');
+                if (title === 'Bravo!') {
+                    newWord();
+                }
+            };
+        }
+        
+        // Use a hint
+        function useHint() {
+            if (hints <= 0) return;
+            
+            hints--;
+            updateUI();
+            
+            // Find first empty slot
+            const emptySlot = document.querySelector('.word-slot:empty');
+            if (!emptySlot) return;
+            
+            const position = parseInt(emptySlot.dataset.position);
+            const correctLetter = currentWord.word[position];
+            
+            // Find a correct letter in the pool
+            let hintLetterEl = null;
+            
+            document.querySelectorAll('.letter').forEach(letterEl => {
+                if (letterEl.dataset.letter === correctLetter && !placedLetters[letterEl.dataset.index]) {
+                    hintLetterEl = letterEl;
+                }
+            });
+            
+            if (hintLetterEl) {
+                // Highlight the letter
+                hintLetterEl.classList.add('hint-letter');
+                
+                // Auto-place after delay if not placed
+                setTimeout(() => {
+                    if (!hintLetterEl.classList.contains('hint-letter')) return;
+                    
+                    hintLetterEl.classList.remove('hint-letter');
+                    placeLetter(hintLetterEl, emptySlot);
+                }, 2000);
+            }
+        }
+        
+        // Shuffle letters in the pool
+        function shuffleLetters() {
+            // Get current placed letter indexes
+            const placedIndexes = Object.keys(placedLetters);
+            
+            // Filter out placed letters from shuffle
+            const lettersToShuffle = shuffledLetters.filter((_, index) => !placedIndexes.includes(index.toString()));
+            const shuffled = shuffleArray(lettersToShuffle);
+            
+            // Rebuild the shuffledLetters array
+            let shuffleIndex = 0;
+            shuffledLetters = shuffledLetters.map((letter, index) => {
+                if (placedIndexes.includes(index.toString())) {
+                    return letter;
+                } else {
+                    return shuffled[shuffleIndex++];
+                }
+            });
+            
+            renderLetters();
+        }
+        
+        // Update UI elements
+        function updateUI() {
+            scoreEl.textContent = score;
+            comboEl.textContent = `x${combo}`;
+            hintCountEl.textContent = hints;
+            
+            // Style combo based on value
+            if (combo > 1) {
+                comboEl.classList.add('combo');
+                comboEl.classList.add('text-green-600');
+            } else {
+                comboEl.classList.remove('combo');
+                comboEl.classList.remove('text-green-600');
+            }
+        }
+        
+        // Utility function to shuffle array
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+        
+        // Event listeners
+        checkWordBtn.addEventListener('click', checkWord);
+        hintButton.addEventListener('click', useHint);
+        shuffleLettersBtn.addEventListener('click', shuffleLetters);
+        newWordBtn.addEventListener('click', newWord);
+        
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
