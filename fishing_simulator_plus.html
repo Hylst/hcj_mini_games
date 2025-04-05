@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fishing Simulator Plus - Enhanced Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes wave {
+            0% { transform: translateX(0) translateY(0); }
+            25% { transform: translateX(-5%) translateY(-10px); }
+            50% { transform: translateX(-10%) translateY(-5px); }
+            75% { transform: translateX(-5%) translateY(-10px); }
+            100% { transform: translateX(0) translateY(0); }
+        }
+        
+        @keyframes ripple {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+        
+        @keyframes fishSwim {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        @keyframes bobberBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        
+        @keyframes casting {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-150px) rotate(30deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+        
+        .water-surface {
+            animation: wave 12s ease-in-out infinite;
+            background: linear-gradient(180deg, rgba(32, 128, 255, 0.9) 0%, rgba(16, 64, 192, 0.95) 100%);
+            box-shadow: inset 0 0 50px rgba(0, 0, 128, 0.5);
+        }
+        
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 70%);
+            animation: ripple 2s infinite ease-out;
+        }
+        
+        .fish {
+            position: absolute;
+            transition: transform 0.5s ease, left 1s linear, top 1s ease-in-out;
+            animation: fishSwim 2s infinite ease-in-out;
+            z-index: 10;
+        }
+        
+        .bobber {
+            transition: all 0.3s ease;
+            position: absolute;
+            z-index: 20;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        
+        .casting {
+            animation: casting 1s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+        }
+        
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .depth-meter {
+            background: linear-gradient(to bottom, #1e3a8a, #3b82f6, #93c5fd);
+        }
+        
+        .fish-body {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .fish-tail {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 25%;
+            height: 100%;
+            border-radius: 0 50% 50% 0;
+            transform-origin: left center;
+            animation: tailWag 0.5s infinite alternate;
+        }
+        
+        @keyframes tailWag {
+            0% { transform: scaleX(1) rotateY(0deg); }
+            100% { transform: scaleX(1.2) rotateY(20deg); }
+        }
+        
+        .fish-eye {
+            position: absolute;
+            top: 25%;
+            right: 10%;
+            width: 15%;
+            height: 15%;
+            border-radius: 50%;
+            background: white;
+        }
+        
+        .fish-pupil {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 50%;
+            border-radius: 50%;
+            background: black;
+            transform: translate(-50%, -50%);
+        }
+        
+        .fish-fin {
+            position: absolute;
+            top: 0;
+            left: 30%;
+            width: 15%;
+            height: 30%;
+            border-radius: 50% 50% 0 0;
+        }
+        
+        .pulse {
+            animation: pulse 0.5s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        
+        .sun {
+            position: absolute;
+            top: 10%;
+            right: 15%;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffde00 0%, #ff9900 100%);
+            box-shadow: 0 0 40px #ff9900;
+            z-index: 1;
+        }
+        
+        .cloud {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.8;
+            z-index: 2;
+        }
+        
+        .underwater {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40%;
+            background: linear-gradient(to top, rgba(10, 30, 80, 0.8), transparent);
+            z-index: 5;
+        }
+        
+        .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: bubbleRise 4s infinite linear;
+        }
+        
+        @keyframes bubbleRise {
+            0% { transform: translateY(0) scale(0.5); opacity: 0.5; }
+            100% { transform: translateY(-100px) scale(1.2); opacity: 0; }
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 100;
+            transform: translateY(-100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .tooltip:after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.7) transparent transparent transparent;
+        }
+        
+        .tutorial-highlight {
+            animation: highlight 1.5s infinite alternate;
+        }
+        
+        @keyframes highlight {
+            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+            100% { box-shadow: 0 0 0 5px rgba(255, 215, 0, 0.5); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-blue-100 to-blue-300 min-h-screen flex flex-col">
+    <header class="bg-gradient-to-r from-blue-800 to-blue-600 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold flex items-center">
+                    <i class="fas fa-fish mr-3"></i> Fishing Simulator Plus
+                </h1>
+                <div class="text-sm opacity-80">By Geoffroy Streit - Hylst</div>
+            </div>
+            <div class="flex items-center space-x-6">
+                <div class="flex items-center bg-blue-700 px-3 py-1 rounded-lg">
+                    <i class="fas fa-coins text-yellow-300 mr-2"></i>
+                    <span id="money" class="font-bold text-lg">100</span>
+                </div>
+                <div class="flex items-center bg-blue-700 px-3 py-1 rounded-lg">
+                    <i class="fas fa-trophy text-yellow-300 mr-2"></i>
+                    <span id="score" class="font-bold text-lg">0</span>
+                </div>
+                <div class="flex items-center bg-blue-700 px-3 py-1 rounded-lg">
+                    <i class="fas fa-flag text-green-300 mr-2"></i>
+                    <span id="level" class="font-bold text-lg">1</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 container mx-auto p-4 flex flex-col lg:flex-row gap-6">
+        <!-- Fishing Area -->
+        <div class="flex-1 relative overflow-hidden rounded-2xl shadow-2xl h-96 lg:h-auto border-4 border-blue-900">
+            <div class="water-surface w-full h-full relative overflow-hidden">
+                <div class="sun"></div>
+                <div class="cloud" style="top: 15%; left: 10%; width: 80px; height: 40px;"></div>
+                <div class="cloud" style="top: 20%; right: 20%; width: 100px; height: 50px;"></div>
+                <div class="underwater"></div>
+                <!-- Water ripples and bubbles will be added dynamically -->
+            </div>
+            
+            <!-- Fishing rod -->
+            <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-30">
+                <div class="relative">
+                    <div class="h-40 w-5 bg-gradient-to-b from-gray-900 to-gray-700 rounded transform -rotate-12 origin-bottom shadow-lg"></div>
+                    <div class="absolute top-0 left-5 h-5 w-40 bg-gradient-to-r from-gray-800 to-gray-600 rounded transform rotate-12 origin-left shadow"></div>
+                    <div id="fishing-line" class="absolute top-5 left-40 w-0.5 bg-gradient-to-b from-gray-200 to-transparent origin-top"></div>
+                    <div id="bobber" class="bobber absolute w-6 h-8 bg-gradient-to-b from-red-600 to-red-400 rounded-full flex items-center justify-center">
+                        <div class="w-1 h-3 bg-white rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tooltip -->
+            <div id="tooltip" class="tooltip"></div>
+        </div>
+        
+        <!-- Controls Panel -->
+        <div class="w-full lg:w-96 bg-gradient-to-b from-white to-gray-100 rounded-2xl shadow-xl p-6 flex flex-col border border-gray-200">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-blue-200 pb-3 flex items-center">
+                <i class="fas fa-sliders-h mr-3 text-blue-600"></i> Fishing Controls
+            </h2>
+            
+            <!-- Casting Section -->
+            <div class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <h3 class="font-semibold mb-3 text-lg flex items-center text-blue-800">
+                    <i class="fas fa-bullseye mr-2"></i> Casting Power
+                </h3>
+                <div class="mb-3 flex justify-between items-center">
+                    <span class="text-gray-700">Power:</span>
+                    <span id="cast-power" class="font-bold text-blue-800">50%</span>
+                </div>
+                <input type="range" id="cast-strength" min="10" max="100" value="50" class="w-full mb-3 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                
+                <div class="mb-4 flex justify-between items-center">
+                    <span class="text-gray-700">Wind: <span id="wind-direction" class="font-bold text-blue-800">→</span></span>
+                    <span id="wind-strength" class="font-bold text-blue-800">Moderate</span>
+                </div>
+                
+                <button id="cast-button" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white py-3 px-6 rounded-xl font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center tutorial-highlight">
+                    <i class="fas fa-water mr-3"></i> Cast Line
+                </button>
+            </div>
+            
+            <!-- Bait Selection -->
+            <div class="mb-6 bg-green-50 p-4 rounded-lg border border-green-100">
+                <h3 class="font-semibold mb-3 text-lg flex items-center text-green-800">
+                    <i class="fas fa-worm mr-2"></i> Bait Selection
+                </h3>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bait-option cursor-pointer p-3 rounded-xl border-2 border-green-200 text-center bg-white hover:bg-green-50 transition-all" data-bait="worm" data-cost="5">
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-700 to-green-500 rounded-full mx-auto mb-2 flex items-center justify-center text-white">
+                            <i class="fas fa-worm text-2xl"></i>
+                        </div>
+                        <div class="font-medium text-green-800">Worm</div>
+                        <div class="text-xs text-gray-600">$5</div>
+                    </div>
+                    <div class="bait-option cursor-pointer p-3 rounded-xl border-2 border-purple-200 text-center bg-white hover:bg-purple-50 transition-all" data-bait="lure" data-cost="15">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-700 to-purple-500 rounded-full mx-auto mb-2 flex items-center justify-center text-white">
+                            <i class="fas fa-spinner text-2xl"></i>
+                        </div>
+                        <div class="font-medium text-purple-800">Lure</div>
+                        <div class="text-xs text-gray-600">$15</div>
+                    </div>
+                    <div class="bait-option cursor-pointer p-3 rounded-xl border-2 border-blue-200 text-center bg-white hover:bg-blue-50 transition-all bg-blue-100 border-blue-300" data-bait="fly" data-cost="25">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-700 to-blue-500 rounded-full mx-auto mb-2 flex items-center justify-center text-white">
+                            <i class="fas fa-feather text-2xl"></i>
+                        </div>
+                        <div class="font-medium text-blue-800">Fly</div>
+                        <div class="text-xs text-gray-600">$25</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Depth Control -->
+            <div class="mb-6 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                <h3 class="font-semibold mb-3 text-lg flex items-center text-indigo-800">
+                    <i class="fas fa-ruler-vertical mr-2"></i> Depth Control
+                </h3>
+                <div class="h-4 w-full bg-gray-200 rounded-full mb-3 overflow-hidden shadow-inner">
+                    <div id="depth-indicator" class="depth-meter h-full w-1/2 rounded-full shadow-md"></div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <button id="decrease-depth" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg shadow transition">
+                        <i class="fas fa-arrow-down text-gray-700"></i>
+                    </button>
+                    <span id="depth-value" class="font-bold text-indigo-800">Medium</span>
+                    <button id="increase-depth" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg shadow transition">
+                        <i class="fas fa-arrow-up text-gray-700"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="mt-auto">
+                <button id="reel-button" disabled class="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white py-3 px-6 rounded-xl font-bold transition-all shadow-md hover:shadow-lg opacity-50 cursor-not-allowed">
+                    <i class="fas fa-undo mr-3"></i> Reel In
+                </button>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Fish Log -->
+    <div class="container mx-auto p-4">
+        <div class="bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-xl p-6 border border-gray-200">
+            <h2 class="text-2xl font-bold mb-4 border-b-2 border-green-200 pb-3 flex items-center">
+                <i class="fas fa-clipboard-list mr-3 text-green-600"></i> Fish Collection
+            </h2>
+            <div id="fish-log" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <!-- Fish will be added here when caught -->
+                <div class="text-center text-gray-500 p-6 bg-gray-100 rounded-xl">
+                    <i class="fas fa-fish text-4xl mb-3 opacity-50"></i>
+                    <div class="font-medium">No fish caught yet</div>
+                    <div class="text-sm">Cast your line to start!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Catch Modal -->
+    <div id="catch-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden z-50">
+        <div class="bg-gradient-to-b from-white to-gray-100 rounded-2xl p-8 max-w-md w-full mx-4 text-center shadow-2xl border-2 border-yellow-300 transform transition-all duration-300 scale-95 opacity-0">
+            <div class="absolute -top-5 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-yellow-900 px-4 py-1 rounded-full font-bold shadow-lg">
+                <i class="fas fa-trophy mr-1"></i> New Catch!
+            </div>
+            <h3 class="text-3xl font-bold mb-3 text-blue-800">You caught a <span id="fish-name" class="text-blue-600">Fish</span>!</h3>
+            <div id="fish-size" class="text-xl mb-2 text-gray-700">Size: Medium</div>
+            <div id="fish-value" class="text-3xl font-bold text-green-600 mb-6">+$<span>25</span></div>
+            <div class="flex justify-center mb-6">
+                <div id="caught-fish" class="fish w-32 h-16 relative">
+                    <div class="fish-body">
+                        <div class="absolute top-1/2 left-0 w-3/4 h-4 rounded-full"></div>
+                        <div class="fish-tail"></div>
+                        <div class="fish-eye">
+                            <div class="fish-pupil"></div>
+                        </div>
+                        <div class="fish-fin"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="xp-gain" class="text-sm text-blue-600 mb-6">+10 XP</div>
+            <button id="close-modal" class="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white py-3 px-8 rounded-xl font-bold transition-all shadow-md hover:shadow-lg">
+                Continue Fishing
+            </button>
+        </div>
+    </div>
+    
+    <!-- Tutorial Modal -->
+    <div id="tutorial-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40">
+        <div class="bg-gradient-to-b from-white to-gray-100 rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl border-2 border-blue-300">
+            <h2 class="text-3xl font-bold mb-6 text-center text-blue-800 flex items-center justify-center">
+                <i class="fas fa-graduation-cap mr-3"></i> Fishing Tutorial
+            </h2>
+            
+            <div class="space-y-4 mb-6">
+                <div class="flex items-start">
+                    <div class="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-blue-700">Casting</h3>
+                        <p class="text-gray-700">Adjust the power slider and click "Cast Line" to cast your fishing line. The wind will affect your cast distance.</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start">
+                    <div class="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                        <i class="fas fa-worm"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-green-700">Bait Selection</h3>
+                        <p class="text-gray-700">Different fish prefer different baits. Choose the right bait to attract specific fish types.</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start">
+                    <div class="bg-indigo-100 text-indigo-800 rounded-full w-8 h-8 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                        <i class="fas fa-ruler-vertical"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-indigo-700">Depth Control</h3>
+                        <p class="text-gray-700">Fish live at different depths. Adjust the depth to target specific fish species.</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start">
+                    <div class="bg-yellow-100 text-yellow-800 rounded-full w-8 h-8 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                        <i class="fas fa-fish"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-yellow-700">Catching Fish</h3>
+                        <p class="text-gray-700">When the bobber starts bouncing, click it quickly to catch the fish before it gets away!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="start-game" class="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white py-3 px-6 rounded-xl font-bold transition-all shadow-md hover:shadow-lg">
+                <i class="fas fa-play mr-2"></i> Start Fishing!
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Enhanced game state
+            const state = {
+                money: 100,
+                score: 0,
+                level: 1,
+                xp: 0,
+                xpToNextLevel: 100,
+                isCasting: false,
+                isFishing: false,
+                hasBite: false,
+                currentBait: 'fly',
+                currentDepth: 1, // 0: shallow, 1: medium, 2: deep
+                windDirection: Math.random() > 0.5 ? 1 : -1, // 1 for right, -1 for left
+                windStrength: Math.floor(Math.random() * 3), // 0: light, 1: moderate, 2: strong
+                castPower: 50,
+                fishInArea: [],
+                caughtFish: [],
+                difficulty: 1, // Increases with level
+                tutorialCompleted: false
+            };
+            
+            // Enhanced fish types with properties
+            const fishTypes = [
+                { name: 'Trout', color: 'bg-gradient-to-br from-green-600 to-green-400', size: 'small', value: 15, depth: 0, bait: ['worm', 'fly'], rarity: 1, xp: 10 },
+                { name: 'Bass', color: 'bg-gradient-to-br from-blue-600 to-blue-400', size: 'medium', value: 25, depth: 1, bait: ['worm', 'lure'], rarity: 2, xp: 15 },
+                { name: 'Salmon', color: 'bg-gradient-to-br from-pink-600 to-pink-400', size: 'medium', value: 30, depth: 1, bait: ['fly', 'lure'], rarity: 2, xp: 20 },
+                { name: 'Catfish', color: 'bg-gradient-to-br from-gray-800 to-gray-600', size: 'large', value: 40, depth: 2, bait: ['worm'], rarity: 3, xp: 25 },
+                { name: 'Pike', color: 'bg-gradient-to-br from-yellow-600 to-yellow-400', size: 'large', value: 50, depth: 2, bait: ['lure'], rarity: 3, xp: 30 },
+                { name: 'Goldfish', color: 'bg-gradient-to-br from-yellow-400 to-yellow-300', size: 'tiny', value: 5, depth: 0, bait: ['worm', 'fly'], rarity: 1, xp: 5 },
+                { name: 'Carp', color: 'bg-gradient-to-br from-orange-600 to-orange-400', size: 'large', value: 35, depth: 1, bait: ['worm', 'lure'], rarity: 2, xp: 25 },
+                { name: 'Perch', color: 'bg-gradient-to-br from-green-700 to-green-500', size: 'small', value: 20, depth: 0, bait: ['worm'], rarity: 1, xp: 15 },
+                { name: 'Sturgeon', color: 'bg-gradient-to-br from-gray-700 to-gray-500', size: 'huge', value: 75, depth: 2, bait: ['lure'], rarity: 4, xp: 50 }
+            ];
+            
+            // DOM elements
+            const elements = {
+                money: document.getElementById('money'),
+                score: document.getElementById('score'),
+                level: document.getElementById('level'),
+                castButton: document.getElementById('cast-button'),
+                reelButton: document.getElementById('reel-button'),
+                castStrength: document.getElementById('cast-strength'),
+                castPower: document.getElementById('cast-power'),
+                windDirection: document.getElementById('wind-direction'),
+                windStrength: document.getElementById('wind-strength'),
+                fishingLine: document.getElementById('fishing-line'),
+                bobber: document.getElementById('bobber'),
+                waterSurface: document.querySelector('.water-surface'),
+                fishLog: document.getElementById('fish-log'),
+                baitOptions: document.querySelectorAll('.bait-option'),
+                depthIndicator: document.getElementById('depth-indicator'),
+                depthValue: document.getElementById('depth-value'),
+                increaseDepth: document.getElementById('increase-depth'),
+                decreaseDepth: document.getElementById('decrease-depth'),
+                catchModal: document.getElementById('catch-modal'),
+                fishName: document.getElementById('fish-name'),
+                fishSize: document.getElementById('fish-size'),
+                fishValue: document.getElementById('fish-value'),
+                caughtFish: document.getElementById('caught-fish'),
+                closeModal: document.getElementById('close-modal'),
+                xpGain: document.getElementById('xp-gain'),
+                tooltip: document.getElementById('tooltip'),
+                tutorialModal: document.getElementById('tutorial-modal'),
+                startGame: document.getElementById('start-game')
+            };
+            
+            // Initialize game
+            function init() {
+                updateUI();
+                setupEventListeners();
+                createWaterEffects();
+                updateWindDisplay();
+                
+                // Set initial bait selection
+                document.querySelector(`.bait-option[data-bait="${state.currentBait}"]`).classList.add('bg-blue-100', 'border-blue-300');
+                
+                // Show tutorial if not completed
+                if (!state.tutorialCompleted) {
+                    showTutorial();
+                }
+            }
+            
+            // Show tutorial
+            function showTutorial() {
+                elements.tutorialModal.classList.remove('hidden');
+            }
+            
+            // Update UI based on game state
+            function updateUI() {
+                elements.money.textContent = state.money;
+                elements.score.textContent = state.score;
+                elements.level.textContent = state.level;
+                elements.castPower.textContent = `${state.castPower}%`;
+                
+                // Update depth display
+                const depthTexts = ['Shallow', 'Medium', 'Deep'];
+                elements.depthValue.textContent = depthTexts[state.currentDepth];
+                elements.depthIndicator.style.width = `${(state.currentDepth + 1) * 33.33}%`;
+            }
+            
+            // Set up event listeners
+            function setupEventListeners() {
+                // Start game button
+                elements.startGame.addEventListener('click', function() {
+                    state.tutorialCompleted = true;
+                    elements.tutorialModal.classList.add('hidden');
+                });
+                
+                // Cast button
+                elements.castButton.addEventListener('click', startCasting);
+                
+                // Reel button
+                elements.reelButton.addEventListener('click', reelIn);
+                
+                // Cast strength slider
+                elements.castStrength.addEventListener('input', function() {
+                    state.castPower = parseInt(this.value);
+                    updateUI();
+                });
+                
+                // Bait selection
+                elements.baitOptions.forEach(option => {
+                    option.addEventListener('click', function() {
+                        const bait = this.dataset.bait;
+                        const cost = parseInt(this.dataset.cost);
+                        
+                        if (state.money >= cost) {
+                            // Remove highlight from all options
+                            elements.baitOptions.forEach(opt => {
+                                opt.classList.remove('bg-blue-100', 'border-blue-300');
+                                opt.classList.remove('bg-green-100', 'border-green-300');
+                                opt.classList.remove('bg-purple-100', 'border-purple-300');
+                            });
+                            
+                            // Highlight selected option
+                            if (bait === 'worm') {
+                                this.classList.add('bg-green-100', 'border-green-300');
+                            } else if (bait === 'lure') {
+                                this.classList.add('bg-purple-100', 'border-purple-300');
+                            } else {
+                                this.classList.add('bg-blue-100', 'border-blue-300');
+                            }
+                            
+                            state.currentBait = bait;
+                            state.money -= cost;
+                            updateUI();
+                        } else {
+                            showTooltip(this, "Not enough money!");
+                        }
+                    });
+                    
+                    // Add hover tooltips
+                    option.addEventListener('mouseenter', function() {
+                        const bait = this.dataset.bait;
+                        const fishList = fishTypes.filter(fish => fish.bait.includes(bait))
+                            .map(fish => fish.name)
+                            .join(', ');
+                        
+                        showTooltip(this, `Attracts: ${fishList || 'No fish'}`);
+                    });
+                    
+                    option.addEventListener('mouseleave', function() {
+                        hideTooltip();
+                    });
+                });
+                
+                // Depth controls
+                elements.increaseDepth.addEventListener('click', function() {
+                    if (state.currentDepth < 2) {
+                        state.currentDepth++;
+                        updateUI();
+                    }
+                });
+                
+                elements.decreaseDepth.addEventListener('click', function() {
+                    if (state.currentDepth > 0) {
+                        state.currentDepth--;
+                        updateUI();
+                    }
+                });
+                
+                // Close modal
+                elements.closeModal.addEventListener('click', function() {
+                    elements.catchModal.classList.add('hidden');
+                });
+                
+                // Bobber click for fishing action
+                elements.bobber.addEventListener('click', function() {
+                    if (state.hasBite) {
+                        catchFish();
+                    }
+                });
+                
+                // Show tooltip when hovering over bobber
+                elements.bobber.addEventListener('mouseenter', function() {
+                    if (state.isFishing && !state.hasBite) {
+                        showTooltip(this, "Waiting for a bite...");
+                    } else if (state.hasBite) {
+                        showTooltip(this, "Click now to catch!");
+                    }
+                });
+                
+                elements.bobber.addEventListener('mouseleave', function() {
+                    hideTooltip();
+                });
+            }
+            
+            // Show tooltip
+            function showTooltip(element, text) {
+                const rect = element.getBoundingClientRect();
+                elements.tooltip.textContent = text;
+                elements.tooltip.style.left = `${rect.left + rect.width / 2}px`;
+                elements.tooltip.style.top = `${rect.top}px`;
+                elements.tooltip.style.opacity = '1';
+            }
+            
+            // Hide tooltip
+            function hideTooltip() {
+                elements.tooltip.style.opacity = '0';
+            }
+            
+            // Create water effects (ripples and bubbles)
+            function createWaterEffects() {
+                const water = elements.waterSurface;
+                
+                // Clear existing effects
+                const existingEffects = document.querySelectorAll('.ripple, .bubble');
+                existingEffects.forEach(e => e.remove());
+                
+                // Create ripples
+                for (let i = 0; i < 8; i++) {
+                    const ripple = document.createElement('div');
+                    ripple.className = 'ripple';
+                    
+                    // Random position
+                    const left = Math.random() * 80 + 10;
+                    const top = Math.random() * 80 + 10;
+                    const size = Math.random() * 30 + 20;
+                    
+                    ripple.style.left = `${left}%`;
+                    ripple.style.top = `${top}%`;
+                    ripple.style.width = `${size}px`;
+                    ripple.style.height = `${size}px`;
+                    ripple.style.animationDelay = `${Math.random() * 3}s`;
+                    
+                    water.appendChild(ripple);
+                }
+                
+                // Create bubbles
+                for (let i = 0; i < 15; i++) {
+                    const bubble = document.createElement('div');
+                    bubble.className = 'bubble';
+                    
+                    // Random position at bottom
+                    const left = Math.random() * 90 + 5;
+                    const size = Math.random() * 15 + 5;
+                    const delay = Math.random() * 5;
+                    
+                    bubble.style.left = `${left}%`;
+                    bubble.style.bottom = `${Math.random() * 30}%`;
+                    bubble.style.width = `${size}px`;
+                    bubble.style.height = `${size}px`;
+                    bubble.style.animationDelay = `${delay}s`;
+                    
+                    water.appendChild(bubble);
+                }
+                
+                // Schedule next effect creation
+                setTimeout(createWaterEffects, 5000);
+            }
+            
+            // Update wind display
+            function updateWindDisplay() {
+                const directions = {
+                    '-1': '←',
+                    '1': '→'
+                };
+                
+                const strengths = ['Light', 'Moderate', 'Strong'];
+                const strengthClasses = ['text-green-600', 'text-yellow-600', 'text-red-600'];
+                
+                elements.windDirection.textContent = directions[state.windDirection];
+                elements.windDirection.className = `font-bold text-2xl ${strengthClasses[state.windStrength]}`;
+                elements.windStrength.textContent = strengths[state.windStrength];
+                elements.windStrength.className = `font-bold ${strengthClasses[state.windStrength]}`;
+            }
+            
+            // Start casting
+            function startCasting() {
+                if (state.isCasting) return;
+                
+                state.isCasting = true;
+                elements.castButton.disabled = true;
+                elements.bobber.classList.add('casting');
+                
+                // Calculate cast distance with wind effect
+                const windEffect = (state.windStrength + 1) * 15 * state.windDirection;
+                const castDistance = (state.castPower / 100) * 80 + windEffect;
+                
+                // Animate the cast
+                setTimeout(() => {
+                    elements.bobber.classList.remove('casting');
+                    
+                    // Position the bobber
+                    const bobberX = 50 + (castDistance / 2) * state.windDirection;
+                    elements.bobber.style.left = `${bobberX}%`;
+                    elements.bobber.style.top = '30%';
+                    
+                    // Extend fishing line
+                    const lineLength = Math.sqrt(Math.pow(castDistance, 2) + Math.pow(30, 2));
+                    elements.fishingLine.style.height = `${lineLength}px`;
+                    elements.fishingLine.style.transform = `rotate(${state.windDirection > 0 ? '' : '-'}${30}deg)`;
+                    
+                    // Start fishing
+                    state.isCasting = false;
+                    state.isFishing = true;
+                    elements.reelButton.disabled = false;
+                    elements.castButton.disabled = false;
+                    
+                    // Generate fish in the area
+                    generateFish();
+                    
+                    // Wait for a bite
+                    setTimeout(waitForBite, Math.random() * 4000 + 2000);
+                }, 1000);
+            }
+            
+            // Generate fish in the fishing area
+            function generateFish() {
+                // Clear existing fish
+                state.fishInArea = [];
+                document.querySelectorAll('.fish').forEach(f => f.remove());
+                
+                // Generate fish based on difficulty level
+                const fishCount = Math.floor(Math.random() * (3 + state.difficulty)) + 3;
+                
+                for (let i = 0; i < fishCount; i++) {
+                    // Weighted random based on rarity and level
+                    let fishType;
+                    const roll = Math.random() * 100;
+                    
+                    if (roll < 5 && state.level >= 5) {
+                        // 5% chance for rare fish if level 5+
+                        fishType = fishTypes.find(f => f.rarity === 4);
+                    } else if (roll < 20 && state.level >= 3) {
+                        // 15% chance for uncommon fish if level 3+
+                        fishType = fishTypes[Math.floor(Math.random() * fishTypes.filter(f => f.rarity === 3).length)];
+                    } else if (roll < 50) {
+                        // 30% chance for common fish
+                        fishType = fishTypes[Math.floor(Math.random() * fishTypes.filter(f => f.rarity === 2).length)];
+                    } else {
+                        // 50% chance for very common fish
+                        fishType = fishTypes[Math.floor(Math.random() * fishTypes.filter(f => f.rarity === 1).length)];
+                    }
+                    
+                    if (!fishType) {
+                        fishType = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+                    }
+                    
+                    const fish = {
+                        type: fishType,
+                        id: Date.now() + i,
+                        x: Math.random() * 70 + 15,
+                        y: Math.random() * 60 + 20,
+                        direction: Math.random() > 0.5 ? 1 : -1,
+                        speed: Math.random() * (1 + state.difficulty/5) + 0.5,
+                        depth: fishType.depth
+                    };
+                    
+                    state.fishInArea.push(fish);
+                    createFishElement(fish);
+                }
+            }
+            
+            // Create fish DOM element
+            function createFishElement(fish) {
+                const fishElement = document.createElement('div');
+                fishElement.className = `fish ${fish.type.color}`;
+                fishElement.dataset.id = fish.id;
+                fishElement.style.left = `${fish.x}%`;
+                fishElement.style.top = `${fish.y}%`;
+                fishElement.style.transform = `scaleX(${fish.direction})`;
+                fishElement.style.width = `${fish.type.size === 'tiny' ? 30 : fish.type.size === 'small' ? 40 : fish.type.size === 'medium' ? 50 : fish.type.size === 'large' ? 60 : 70}px`;
+                fishElement.style.height = `${fish.type.size === 'tiny' ? 15 : fish.type.size === 'small' ? 20 : fish.type.size === 'medium' ? 25 : fish.type.size === 'large' ? 30 : 35}px`;
+                
+                // Add fish body
+                fishElement.innerHTML = `
+                    <div class="fish-body">
+                        <div class="absolute top-1/2 left-0 w-3/4 h-2/3 rounded-full"></div>
+                        <div class="fish-tail"></div>
+                        <div class="fish-eye">
+                            <div class="fish-pupil"></div>
+                        </div>
+                        <div class="fish-fin"></div>
+                    </div>
+                `;
+                
+                elements.waterSurface.appendChild(fishElement);
+                
+                // Add hover tooltip
+                fishElement.addEventListener('mouseenter', function() {
+                    showTooltip(this, `${fish.type.name} (${fish.type.size})`);
+                });
+                
+                fishElement.addEventListener('mouseleave', function() {
+                    hideTooltip();
+                });
+                
+                // Animate fish movement
+                animateFish(fish, fishElement);
+            }
+            
+            // Animate fish movement
+            function animateFish(fish, element) {
+                if (!state.isFishing) return;
+                
+                // Update position
+                fish.x += fish.speed * fish.direction;
+                
+                // Change direction at edges
+                if (fish.x > 90 || fish.x < 10) {
+                    fish.direction *= -1;
+                    element.style.transform = `scaleX(${fish.direction})`;
+                }
+                
+                // Random vertical movement
+                fish.y += (Math.random() - 0.5) * 2;
+                fish.y = Math.max(10, Math.min(80, fish.y));
+                
+                // Apply position
+                element.style.left = `${fish.x}%`;
+                element.style.top = `${fish.y}%`;
+                
+                // Check distance to bobber
+                const bobberX = parseFloat(elements.bobber.style.left || '50');
+                const bobberY = parseFloat(elements.bobber.style.top || '30');
+                
+                const distance = Math.sqrt(Math.pow(fish.x - bobberX, 2) + Math.pow(fish.y - bobberY, 2));
+                
+                // If fish is close to bobber and matches bait/depth, it might bite
+                if (distance < 15 && fish.type.bait.includes(state.currentBait) && fish.type.depth === state.currentDepth) {
+                    if (Math.random() > 0.97) {
+                        fishBite(fish);
+                    }
+                }
+                
+                // Continue animation
+                requestAnimationFrame(() => animateFish(fish, element));
+            }
+            
+            // Wait for a fish to bite
+            function waitForBite() {
+                if (!state.isFishing || state.hasBite) return;
+                
+                // Base chance increases with level
+                const baseChance = 0.005 + (state.level * 0.001);
+                
+                if (Math.random() < baseChance) {
+                    // Find a fish that matches our bait and depth
+                    const potentialBiters = state.fishInArea.filter(fish => 
+                        fish.type.bait.includes(state.currentBait) && 
+                        fish.type.depth === state.currentDepth
+                    );
+                    
+                    if (potentialBiters.length > 0) {
+                        const biter = potentialBiters[Math.floor(Math.random() * potentialBiters.length)];
+                        fishBite(biter);
+                        return;
+                    }
+                }
+                
+                // Keep waiting with decreasing interval based on level
+                setTimeout(waitForBite, 1000 - (state.level * 50));
+            }
+            
+            // Fish bites the hook
+            function fishBite(fish) {
+                if (state.hasBite) return;
+                
+                state.hasBite = true;
+                state.bitingFish = fish;
+                
+                // Animate bobber
+                elements.bobber.style.animation = 'bobberBounce 0.5s infinite alternate';
+                
+                // Fish follows bobber
+                const fishElement = document.querySelector(`.fish[data-id="${fish.id}"]`);
+                if (fishElement) {
+                    fishElement.style.transition = 'all 0.3s ease';
+                    fishElement.style.left = `${parseFloat(elements.bobber.style.left) - 5}%`;
+                    fishElement.style.top = `${parseFloat(elements.bobber.style.top) + 5}%`;
+                }
+                
+                // Set timeout for fish to get away (shorter at higher levels)
+                state.biteTimeout = setTimeout(() => {
+                    if (state.hasBite) {
+                        fishGotAway();
+                    }
+                }, 3000 - (state.level * 100));
+            }
+            
+            // Fish got away
+            function fishGotAway() {
+                if (!state.hasBite) return;
+                
+                state.hasBite = false;
+                clearTimeout(state.biteTimeout);
+                
+                // Stop bobber animation
+                elements.bobber.style.animation = 'none';
+                
+                // Show message
+                showTooltip(elements.bobber, "The fish got away!");
+                setTimeout(hideTooltip, 2000);
+                
+                // Continue fishing
+                if (state.isFishing) {
+                    setTimeout(waitForBite, 2000);
+                }
+            }
+            
+            // Catch the fish
+            function catchFish() {
+                if (!state.hasBite || !state.bitingFish) return;
+                
+                clearTimeout(state.biteTimeout);
+                state.hasBite = false;
+                state.isFishing = false;
+                
+                const fish = state.bitingFish;
+                const fishType = fish.type;
+                
+                // Remove fish from area
+                state.fishInArea = state.fishInArea.filter(f => f.id !== fish.id);
+                document.querySelector(`.fish[data-id="${fish.id}"]`)?.remove();
+                
+                // Add to caught fish
+                state.caughtFish.push(fishType);
+                state.money += fishType.value;
+                state.score += fishType.value;
+                state.xp += fishType.xp;
+                
+                // Check for level up
+                checkLevelUp();
+                
+                // Show catch modal
+                showCatchModal(fishType);
+                
+                // Reset fishing
+                resetFishing();
+            }
+            
+            // Check if player leveled up
+            function checkLevelUp() {
+                if (state.xp >= state.xpToNextLevel) {
+                    state.level++;
+                    state.xp -= state.xpToNextLevel;
+                    state.xpToNextLevel = Math.floor(state.xpToNextLevel * 1.5);
+                    state.difficulty = Math.min(state.level, 10); // Cap difficulty at 10
+                    
+                    // Show level up message
+                    alert(`Level Up! You are now level ${state.level}`);
+                    updateUI();
+                }
+            }
+            
+            // Show catch modal with animation
+            function showCatchModal(fishType) {
+                elements.fishName.textContent = fishType.name;
+                elements.fishSize.textContent = `Size: ${fishType.size}`;
+                elements.fishValue.querySelector('span').textContent = fishType.value;
+                elements.xpGain.textContent = `+${fishType.xp} XP`;
+                
+                // Style the caught fish display
+                elements.caughtFish.className = `fish w-32 h-16 ${fishType.color}`;
+                elements.caughtFish.style.width = `${fishType.size === 'tiny' ? 60 : fishType.size === 'small' ? 80 : fishType.size === 'medium' ? 100 : fishType.size === 'large' ? 120 : 140}px`;
+                elements.caughtFish.style.height = `${fishType.size === 'tiny' ? 30 : fishType.size === 'small' ? 40 : fishType.size === 'medium' ? 50 : fishType.size === 'large' ? 60 : 70}px`;
+                elements.caughtFish.innerHTML = `
+                    <div class="fish-body">
+                        <div class="absolute top-1/2 left-0 w-3/4 h-2/3 rounded-full"></div>
+                        <div class="fish-tail"></div>
+                        <div class="fish-eye">
+                            <div class="fish-pupil"></div>
+                        </div>
+                        <div class="fish-fin"></div>
+                    </div>
+                `;
+                
+                // Show modal with animation
+                elements.catchModal.classList.remove('hidden');
+                setTimeout(() => {
+                    elements.catchModal.querySelector('div').classList.remove('scale-95', 'opacity-0');
+                    elements.catchModal.querySelector('div').classList.add('scale-100', 'opacity-100');
+                }, 10);
+                
+                // Update fish log
+                updateFishLog();
+            }
+            
+            // Update fish log
+            function updateFishLog() {
+                if (state.caughtFish.length === 0) return;
+                
+                // Clear placeholder if exists
+                const placeholder = elements.fishLog.querySelector('.text-gray-500');
+                if (placeholder) placeholder.remove();
+                
+                // Clear log if more than 15 fish
+                if (state.caughtFish.length > 15) {
+                    state.caughtFish = state.caughtFish.slice(-15);
+                }
+                
+                // Add new fish
+                elements.fishLog.innerHTML = '';
+                
+                // Show last 6 unique fish with counts
+                const uniqueFish = {};
+                state.caughtFish.forEach(fish => {
+                    const key = fish.name;
+                    uniqueFish[key] = (uniqueFish[key] || 0) + 1;
+                });
+                
+                const displayFish = Object.entries(uniqueFish)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 6);
+                
+                displayFish.forEach(([name, count]) => {
+                    const fishType = fishTypes.find(f => f.name === name);
+                    if (fishType) {
+                        const fishElement = document.createElement('div');
+                        fishElement.className = 'text-center p-4 border rounded-xl bg-white hover:bg-gray-50 transition cursor-pointer';
+                        fishElement.innerHTML = `
+                            <div class="flex justify-center mb-2">
+                                <div class="fish w-20 h-10 ${fishType.color}">
+                                    <div class="fish-body">
+                                        <div class="absolute top-1/2 left-0 w-3/4 h-2/3 rounded-full"></div>
+                                        <div class="fish-tail"></div>
+                                        <div class="fish-eye">
+                                            <div class="fish-pupil"></div>
+                                        </div>
+                                        <div class="fish-fin"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="font-bold text-gray-800">${name}</div>
+                            <div class="text-sm text-gray-600 mb-1">Size: ${fishType.size}</div>
+                            <div class="text-xs bg-gray-100 rounded-full py-1 px-2 inline-block">Caught: ${count}</div>
+                            <div class="text-xs text-green-600 mt-1">Value: $${fishType.value}</div>
+                        `;
+                        
+                        // Show tooltip on hover
+                        fishElement.addEventListener('mouseenter', function() {
+                            showTooltip(this, `Best with: ${fishType.bait.join(', ')}`);
+                        });
+                        
+                        fishElement.addEventListener('mouseleave', function() {
+                            hideTooltip();
+                        });
+                        
+                        elements.fishLog.appendChild(fishElement);
+                    }
+                });
+            }
+            
+            // Reel in the line
+            function reelIn() {
+                if (!state.isFishing) return;
+                
+                state.isFishing = false;
+                state.hasBite = false;
+                clearTimeout(state.biteTimeout);
+                
+                // Reset bobber and line
+                elements.bobber.style.left = '50%';
+                elements.bobber.style.top = '0%';
+                elements.bobber.style.animation = 'none';
+                elements.fishingLine.style.height = '0';
+                elements.fishingLine.style.transform = 'rotate(0)';
+                
+                // Clear fish
+                state.fishInArea = [];
+                document.querySelectorAll('.fish').forEach(f => f.remove());
+                
+                // Disable reel button
+                elements.reelButton.disabled = true;
+            }
+            
+            // Reset fishing state
+            function resetFishing() {
+                state.isFishing = false;
+                state.hasBite = false;
+                clearTimeout(state.biteTimeout);
+                
+                // Reset bobber and line
+                elements.bobber.style.left = '50%';
+                elements.bobber.style.top = '0%';
+                elements.bobber.style.animation = 'none';
+                elements.fishingLine.style.height = '0';
+                elements.fishingLine.style.transform = 'rotate(0)';
+                
+                // Disable reel button
+                elements.reelButton.disabled = true;
+                
+                // Clear fish
+                state.fishInArea = [];
+                document.querySelectorAll('.fish').forEach(f => f.remove());
+                
+                // Change wind for next cast
+                state.windDirection = Math.random() > 0.5 ? 1 : -1;
+                state.windStrength = Math.floor(Math.random() * 3);
+                updateWindDisplay();
+            }
+            
+            // Initialize the game
+            init();
+        });
+    </script>
+</body>
+</html>
