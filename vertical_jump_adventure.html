@@ -3,11 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vertical Jump Adventure</title>
+    <title>Vertical Jump Adventure PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        :root {
+            --primary-color: #fbbf24;
+            --secondary-color: #1a1a2e;
+            --platform-colors: #10b981, #3b82f6, #8b5cf6, #ec4899, #f59e0b, #6366f1;
+        }
         
         body {
             font-family: 'Press Start 2P', cursive;
@@ -15,6 +21,7 @@
             background: linear-gradient(to bottom, #1a1a2e, #16213e);
             height: 100vh;
             margin: 0;
+            touch-action: manipulation;
         }
         
         #game-container {
@@ -32,7 +39,7 @@
             height: 100%;
         }
         
-        #start-screen, #game-over-screen {
+        #start-screen, #game-over-screen, #pause-screen {
             position: absolute;
             top: 0;
             left: 0;
@@ -42,12 +49,13 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 20;
             color: white;
+            backdrop-filter: blur(5px);
         }
         
-        #game-over-screen {
+        #game-over-screen, #pause-screen {
             display: none;
         }
         
@@ -56,6 +64,7 @@
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             transition: transform 0.1s ease;
+            border-bottom: 3px solid rgba(255,255,255,0.2);
         }
         
         .platform:hover {
@@ -67,6 +76,8 @@
             border-radius: 50%;
             transition: transform 0.1s ease;
             z-index: 5;
+            background: radial-gradient(circle at 30% 30%, #f87171, #ef4444);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.7);
         }
         
         .coin {
@@ -74,12 +85,31 @@
             border-radius: 50%;
             animation: spin 2s linear infinite;
             z-index: 4;
+            background: radial-gradient(circle at 30% 30%, #fcd34d, #fbbf24);
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.7);
         }
         
         .spring {
             position: absolute;
             border-radius: 50%;
             z-index: 3;
+            background: radial-gradient(ellipse at center, #e5e7eb, #9ca3af);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        .jetpack {
+            position: absolute;
+            z-index: 2;
+            background: linear-gradient(to right, #3b82f6, #6366f1);
+            border-radius: 4px;
+        }
+        
+        .jetpack-flame {
+            position: absolute;
+            z-index: 1;
+            background: linear-gradient(to top, #f59e0b, #ef4444);
+            border-radius: 50%;
+            filter: blur(2px);
         }
         
         @keyframes spin {
@@ -113,21 +143,41 @@
             font-size: 1.5rem;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
             z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 12px;
+            border-radius: 8px;
         }
         
         #high-score-display {
             position: absolute;
             top: 50px;
             left: 20px;
-            color: #fbbf24;
+            color: var(--primary-color);
             font-size: 1rem;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
             z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 6px 10px;
+            border-radius: 8px;
+        }
+        
+        #jetpack-fuel-display {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            color: #3b82f6;
+            font-size: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 6px 10px;
+            border-radius: 8px;
+            display: none;
         }
         
         .btn {
-            background-color: #fbbf24;
-            color: #1a1a2e;
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
             border: none;
             padding: 12px 24px;
             margin: 10px;
@@ -137,6 +187,8 @@
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         
         .btn:hover {
@@ -150,30 +202,55 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         
+        .btn-secondary {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+        }
+        
         .title {
             font-size: 3rem;
             margin-bottom: 2rem;
-            color: #fbbf24;
+            color: var(--primary-color);
             text-shadow: 4px 4px 0px #7c2d12;
             letter-spacing: 2px;
+            text-align: center;
+            line-height: 1.2;
         }
         
         .subtitle {
             font-size: 1.5rem;
             margin-bottom: 2rem;
             color: #ffffff;
+            text-align: center;
         }
         
-        #sound-toggle {
+        #sound-toggle, #pause-btn {
             position: absolute;
             bottom: 20px;
             right: 20px;
-            background: none;
-            border: none;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid white;
             color: white;
             font-size: 1.5rem;
             cursor: pointer;
             z-index: 20;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        #pause-btn {
+            right: 90px;
+            display: none;
+        }
+        
+        #sound-toggle:hover, #pause-btn:hover {
+            transform: scale(1.1);
+            background: rgba(255,255,255,0.2);
         }
         
         #controls-info {
@@ -183,32 +260,215 @@
             color: white;
             font-size: 0.8rem;
             z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+        
+        #mobile-controls {
+            position: absolute;
+            bottom: 100px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 40px;
+            z-index: 10;
+            display: none;
+        }
+        
+        .mobile-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            color: white;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(to right, #3b82f6, #6366f1);
+            transition: width 0.3s ease;
+        }
+        
+        .powerup-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+        }
+        
+        .powerup-display {
+            position: absolute;
+            top: 110px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .powerup-timer {
+            font-size: 0.8rem;
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            #mobile-controls {
+                display: flex;
+            }
+            
+            #controls-info {
+                display: none;
+            }
+        }
+        
+        /* New animations */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        
+        .shake-animation {
+            animation: shake 0.3s ease;
+        }
+        
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        /* Parallax background */
+        .parallax-layer {
+            position: absolute;
+            width: 100%;
+            height: 200%;
+            top: 0;
+            left: 0;
+            background-repeat: repeat;
+            z-index: -1;
+        }
+        
+        #layer-1 {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="30" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="30" cy="70" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="70" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+            background-size: 100px 100px;
+            animation: parallax 200s linear infinite;
+        }
+        
+        #layer-2 {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><circle cx="40" cy="40" r="2" fill="rgba(255,255,255,0.05)"/><circle cx="100" cy="60" r="2" fill="rgba(255,255,255,0.05)"/><circle cx="160" cy="40" r="2" fill="rgba(255,255,255,0.05)"/><circle cx="60" cy="140" r="2" fill="rgba(255,255,255,0.05)"/><circle cx="140" cy="160" r="2" fill="rgba(255,255,255,0.05)"/></svg>');
+            background-size: 200px 200px;
+            animation: parallax 100s linear infinite;
+        }
+        
+        @keyframes parallax {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-50%); }
         }
     </style>
 </head>
 <body>
     <div id="game-container">
+        <!-- Parallax background layers -->
+        <div id="layer-1" class="parallax-layer"></div>
+        <div id="layer-2" class="parallax-layer"></div>
+        
         <div id="score-display">Score: 0</div>
         <div id="high-score-display">High Score: 0</div>
+        <div id="jetpack-fuel-display">
+            <div>Jetpack Fuel</div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" style="width: 100%"></div>
+            </div>
+        </div>
+        <div id="powerup-display" class="powerup-display">
+            <div class="powerup-icon">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <div class="powerup-timer">0s</div>
+        </div>
         
-        <div id="start-screen">
-            <h1 class="title">VERTICAL JUMP ADVENTURE</h1>
-            <p class="subtitle">Reach for the stars!</p>
+        <div id="start-screen" class="float-animation">
+            <h1 class="title">VERTICAL JUMP<br>ADVENTURE PRO</h1>
+            <p class="subtitle">By Geoffroy Streit - Hylst</p>
             <button id="start-btn" class="btn">START GAME</button>
+            <button id="how-to-play-btn" class="btn btn-secondary">HOW TO PLAY</button>
         </div>
         
         <div id="game-over-screen">
             <h1 class="title">GAME OVER</h1>
             <p id="final-score" class="subtitle">Score: 0</p>
             <button id="restart-btn" class="btn">PLAY AGAIN</button>
+            <button id="menu-btn" class="btn btn-secondary">MAIN MENU</button>
+        </div>
+        
+        <div id="pause-screen">
+            <h1 class="title">GAME PAUSED</h1>
+            <button id="resume-btn" class="btn">RESUME</button>
+            <button id="quit-btn" class="btn btn-secondary">QUIT</button>
         </div>
         
         <button id="sound-toggle">
             <i class="fas fa-volume-up"></i>
         </button>
         
+        <button id="pause-btn">
+            <i class="fas fa-pause"></i>
+        </button>
+        
         <div id="controls-info">
-            <p>CONTROLS: SPACE or CLICK to JUMP</p>
+            <p>CONTROLS: SPACE/CLICK/TOUCH to JUMP</p>
+            <p>HOLD SPACE/TOUCH for JETPACK</p>
+        </div>
+        
+        <div id="mobile-controls">
+            <div id="left-btn" class="mobile-btn">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <div id="right-btn" class="mobile-btn">
+                <i class="fas fa-arrow-right"></i>
+            </div>
+            <div id="jump-btn" class="mobile-btn">
+                <i class="fas fa-arrow-up"></i>
+            </div>
         </div>
     </div>
 
@@ -217,6 +477,8 @@
     <audio id="spring-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3"></audio>
     <audio id="game-over-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3"></audio>
     <audio id="bg-music" loop src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-668.mp3"></audio>
+    <audio id="jetpack-sound" loop src="https://assets.mixkit.co/sfx/preview/mixkit-sci-fi-jetpack-loop-1703.mp3"></audio>
+    <audio id="powerup-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3"></audio>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -224,12 +486,27 @@
             const gameContainer = document.getElementById('game-container');
             const startScreen = document.getElementById('start-screen');
             const gameOverScreen = document.getElementById('game-over-screen');
+            const pauseScreen = document.getElementById('pause-screen');
             const startBtn = document.getElementById('start-btn');
             const restartBtn = document.getElementById('restart-btn');
+            const menuBtn = document.getElementById('menu-btn');
+            const howToPlayBtn = document.getElementById('how-to-play-btn');
+            const resumeBtn = document.getElementById('resume-btn');
+            const quitBtn = document.getElementById('quit-btn');
             const scoreDisplay = document.getElementById('score-display');
             const highScoreDisplay = document.getElementById('high-score-display');
             const finalScoreDisplay = document.getElementById('final-score');
             const soundToggle = document.getElementById('sound-toggle');
+            const pauseBtn = document.getElementById('pause-btn');
+            const jetpackFuelDisplay = document.getElementById('jetpack-fuel-display');
+            const powerupDisplay = document.getElementById('powerup-display');
+            const powerupTimer = document.querySelector('.powerup-timer');
+            const progressBarFill = document.querySelector('.progress-bar-fill');
+            
+            // Mobile controls
+            const leftBtn = document.getElementById('left-btn');
+            const rightBtn = document.getElementById('right-btn');
+            const jumpBtn = document.getElementById('jump-btn');
             
             // Audio elements
             const jumpSound = document.getElementById('jump-sound');
@@ -237,9 +514,12 @@
             const springSound = document.getElementById('spring-sound');
             const gameOverSound = document.getElementById('game-over-sound');
             const bgMusic = document.getElementById('bg-music');
+            const jetpackSound = document.getElementById('jetpack-sound');
+            const powerupSound = document.getElementById('powerup-sound');
             
             // Game state
             let gameRunning = false;
+            let gamePaused = false;
             let score = 0;
             let highScore = localStorage.getItem('highScore') || 0;
             let soundEnabled = true;
@@ -248,14 +528,33 @@
             let springs = [];
             let particles = [];
             let player;
+            let jetpack;
+            let jetpackFlame;
             let gravity = 0.5;
             let velocity = 0;
             let playerY = 0;
+            let playerX = 0;
+            let playerWidth = 24;
+            let playerHeight = 24;
             let scrollOffset = 0;
             let gameSpeed = 2;
             let platformGap = 150;
             let lastPlatformY = 0;
             let animationId;
+            let isJumping = false;
+            let isJetpackActive = false;
+            let jetpackFuel = 100;
+            let maxJetpackFuel = 100;
+            let jetpackFuelConsumption = 0.5;
+            let jetpackFuelRegen = 0.2;
+            let jetpackForce = -0.8;
+            let moveDirection = 0; // -1 for left, 0 for none, 1 for right
+            let moveSpeed = 5;
+            let powerupActive = false;
+            let powerupEndTime = 0;
+            let powerupType = '';
+            let touchStartY = 0;
+            let touchStartTime = 0;
             
             // Update high score display
             highScoreDisplay.textContent = `High Score: ${highScore}`;
@@ -265,43 +564,218 @@
                 soundEnabled = !soundEnabled;
                 if (soundEnabled) {
                     soundToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
-                    bgMusic.play();
+                    if (gameRunning && !gamePaused) {
+                        bgMusic.play();
+                    }
                 } else {
                     soundToggle.innerHTML = '<i class="fas fa-volume-mute"></i>';
                     bgMusic.pause();
+                    jetpackSound.pause();
                 }
             });
+            
+            // Pause toggle
+            pauseBtn.addEventListener('click', togglePause);
             
             // Start game
             startBtn.addEventListener('click', startGame);
             restartBtn.addEventListener('click', startGame);
+            menuBtn.addEventListener('click', showMenu);
+            howToPlayBtn.addEventListener('click', showHowToPlay);
+            resumeBtn.addEventListener('click', togglePause);
+            quitBtn.addEventListener('click', showMenu);
+            
+            // Mobile controls
+            jumpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startJump();
+            });
+            
+            jumpBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                endJump();
+            });
+            
+            leftBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                moveDirection = -1;
+            });
+            
+            leftBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                if (moveDirection === -1) moveDirection = 0;
+            });
+            
+            rightBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                moveDirection = 1;
+            });
+            
+            rightBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                if (moveDirection === 1) moveDirection = 0;
+            });
             
             // Keyboard controls
             document.addEventListener('keydown', (e) => {
-                if (e.code === 'Space' && gameRunning) {
-                    e.preventDefault();
-                    jump();
+                if (!gameRunning || gamePaused) return;
+                
+                switch(e.code) {
+                    case 'Space':
+                        startJump();
+                        break;
+                    case 'ArrowLeft':
+                        moveDirection = -1;
+                        break;
+                    case 'ArrowRight':
+                        moveDirection = 1;
+                        break;
+                    case 'KeyP':
+                        togglePause();
+                        break;
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (!gameRunning || gamePaused) return;
+                
+                switch(e.code) {
+                    case 'Space':
+                        endJump();
+                        break;
+                    case 'ArrowLeft':
+                        if (moveDirection === -1) moveDirection = 0;
+                        break;
+                    case 'ArrowRight':
+                        if (moveDirection === 1) moveDirection = 0;
+                        break;
                 }
             });
             
             // Mouse/touch controls
-            gameContainer.addEventListener('click', () => {
-                if (gameRunning) {
-                    jump();
+            gameContainer.addEventListener('mousedown', startJump);
+            gameContainer.addEventListener('mouseup', endJump);
+            gameContainer.addEventListener('mouseleave', endJump);
+            
+            gameContainer.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
+                startJump();
+            });
+            
+            gameContainer.addEventListener('touchend', (e) => {
+                endJump();
+                
+                // Check for swipe down to activate jetpack (alternative control)
+                if (e.changedTouches[0] && touchStartY - e.changedTouches[0].clientY > 50 && 
+                    Date.now() - touchStartTime < 300) {
+                    activateJetpack();
                 }
             });
+            
+            function startJump() {
+                if (!gameRunning || gamePaused) return;
+                
+                isJumping = true;
+                
+                if (velocity >= 0) { // Can only jump when falling or stationary
+                    velocity = -12;
+                    player.classList.add('jump-animation');
+                    
+                    if (soundEnabled) {
+                        jumpSound.currentTime = 0;
+                        jumpSound.play();
+                    }
+                    
+                    setTimeout(() => {
+                        player.classList.remove('jump-animation');
+                    }, 500);
+                }
+            }
+            
+            function endJump() {
+                isJumping = false;
+                isJetpackActive = false;
+                jetpackSound.pause();
+            }
+            
+            function activateJetpack() {
+                if (jetpackFuel > 0) {
+                    isJetpackActive = true;
+                    if (soundEnabled && !jetpackSound.paused) {
+                        jetpackSound.currentTime = 0;
+                        jetpackSound.play();
+                    }
+                }
+            }
+            
+            function togglePause() {
+                if (!gameRunning) return;
+                
+                gamePaused = !gamePaused;
+                
+                if (gamePaused) {
+                    pauseScreen.style.display = 'flex';
+                    pauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                    bgMusic.pause();
+                    cancelAnimationFrame(animationId);
+                } else {
+                    pauseScreen.style.display = 'none';
+                    pauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                    if (soundEnabled) {
+                        bgMusic.play();
+                    }
+                    gameLoop();
+                }
+            }
+            
+            function showMenu() {
+                gameRunning = false;
+                cancelAnimationFrame(animationId);
+                startScreen.style.display = 'flex';
+                gameOverScreen.style.display = 'none';
+                pauseScreen.style.display = 'none';
+                
+                if (soundEnabled) {
+                    bgMusic.currentTime = 0;
+                    bgMusic.play();
+                }
+            }
+            
+            function showHowToPlay() {
+                alert(`HOW TO PLAY:
+                
+- Tap/Click or press SPACE to jump
+- Hold to activate jetpack (consumes fuel)
+- Collect coins for points
+- Jump on springs for extra high jumps
+- Avoid falling off the bottom of the screen
+- The higher you go, the faster the game gets!
+
+MOBILE CONTROLS:
+- Use the arrow buttons at the bottom
+- Swipe down quickly to activate jetpack`);
+            }
             
             function startGame() {
                 // Reset game state
                 gameRunning = true;
+                gamePaused = false;
                 score = 0;
                 scoreDisplay.textContent = `Score: ${score}`;
+                jetpackFuel = maxJetpackFuel;
+                updateJetpackFuelDisplay();
+                powerupActive = false;
+                powerupDisplay.style.display = 'none';
                 
                 // Clear all game elements
                 clearGameElements();
                 
                 // Create player
                 createPlayer();
+                
+                // Create jetpack visuals
+                createJetpack();
                 
                 // Create initial platforms
                 createInitialPlatforms();
@@ -312,6 +786,9 @@
                 // Hide screens
                 startScreen.style.display = 'none';
                 gameOverScreen.style.display = 'none';
+                pauseScreen.style.display = 'none';
+                pauseBtn.style.display = 'flex';
+                jetpackFuelDisplay.style.display = 'block';
                 
                 // Play background music
                 if (soundEnabled) {
@@ -322,7 +799,7 @@
             
             function clearGameElements() {
                 // Remove all platforms, coins, springs, and particles
-                document.querySelectorAll('.platform, .coin, .spring, .particle').forEach(el => el.remove());
+                document.querySelectorAll('.platform, .coin, .spring, .particle, .jetpack, .jetpack-flame').forEach(el => el.remove());
                 platforms = [];
                 coins = [];
                 springs = [];
@@ -331,19 +808,66 @@
             
             function createPlayer() {
                 player = document.createElement('div');
-                player.className = 'player bg-red-500 w-12 h-12';
+                player.className = 'player';
+                player.style.width = `${playerWidth}px`;
+                player.style.height = `${playerHeight}px`;
                 player.style.left = '50%';
                 player.style.transform = 'translateX(-50%)';
                 player.style.bottom = '100px';
                 gameContainer.appendChild(player);
                 
+                playerX = window.innerWidth / 2 - playerWidth / 2;
                 playerY = window.innerHeight - 100;
+            }
+            
+            function createJetpack() {
+                jetpack = document.createElement('div');
+                jetpack.className = 'jetpack';
+                jetpack.style.width = '20px';
+                jetpack.style.height = '30px';
+                jetpack.style.left = `${playerX + playerWidth - 15}px`;
+                jetpack.style.bottom = `${window.innerHeight - playerY + 10}px`;
+                gameContainer.appendChild(jetpack);
+                
+                jetpackFlame = document.createElement('div');
+                jetpackFlame.className = 'jetpack-flame';
+                jetpackFlame.style.width = '15px';
+                jetpackFlame.style.height = '0px';
+                jetpackFlame.style.left = `${playerX + playerWidth - 12.5}px`;
+                jetpackFlame.style.bottom = `${window.innerHeight - playerY - 10}px`;
+                gameContainer.appendChild(jetpackFlame);
+            }
+            
+            function updateJetpackVisuals() {
+                if (jetpack && jetpackFlame) {
+                    jetpack.style.left = `${playerX + playerWidth - 15}px`;
+                    jetpack.style.bottom = `${window.innerHeight - playerY + 10}px`;
+                    
+                    if (isJetpackActive && jetpackFuel > 0) {
+                        jetpackFlame.style.height = '30px';
+                        jetpackFlame.style.left = `${playerX + playerWidth - 12.5}px`;
+                        jetpackFlame.style.bottom = `${window.innerHeight - playerY - 30}px`;
+                    } else {
+                        jetpackFlame.style.height = '0px';
+                    }
+                }
+            }
+            
+            function updateJetpackFuelDisplay() {
+                const percentage = (jetpackFuel / maxJetpackFuel) * 100;
+                progressBarFill.style.width = `${percentage}%`;
+                
+                if (percentage < 20) {
+                    progressBarFill.style.background = 'linear-gradient(to right, #ef4444, #f59e0b)';
+                } else {
+                    progressBarFill.style.background = 'linear-gradient(to right, #3b82f6, #6366f1)';
+                }
             }
             
             function createInitialPlatforms() {
                 // Create ground platform
                 const ground = document.createElement('div');
-                ground.className = 'platform bg-green-500 w-64 h-8';
+                ground.className = 'platform bg-green-500 w-64 h-6';
                 ground.style.left = '50%';
                 ground.style.transform = 'translateX(-50%)';
                 ground.style.bottom = '50px';
@@ -354,7 +878,8 @@
                     x: window.innerWidth / 2 - 128,
                     y: window.innerHeight - 50,
                     width: 256,
-                    height: 16
+                    height: 16,
+                    type: 'normal'
                 });
                 
                 // Create some starting platforms above
@@ -372,16 +897,21 @@
                 const platform = document.createElement('div');
                 
                 // Random platform type (color)
-                const platformTypes = [
-                    'bg-green-500', 'bg-blue-500', 'bg-purple-500', 
-                    'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500'
-                ];
+                const platformTypes = ['bg-green-500', 'bg-blue-500', 'bg-purple-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500'];
                 const type = platformTypes[Math.floor(Math.random() * platformTypes.length)];
+                
+                // 5% chance to be a moving platform
+                const isMoving = Math.random() < 0.05;
                 
                 platform.className = `platform ${type} h-6`;
                 platform.style.width = `${width}px`;
                 platform.style.left = `${x}px`;
                 platform.style.top = `${y}px`;
+                
+                if (isMoving) {
+                    platform.classList.add('moving');
+                }
+                
                 gameContainer.appendChild(platform);
                 
                 platforms.push({
@@ -389,7 +919,10 @@
                     x: x,
                     y: y,
                     width: width,
-                    height: 16
+                    height: 16,
+                    type: isMoving ? 'moving' : 'normal',
+                    direction: isMoving ? (Math.random() > 0.5 ? 1 : -1) : 0,
+                    speed: isMoving ? 1 + Math.random() * 2 : 0
                 });
                 
                 // 20% chance to spawn a coin on this platform
@@ -402,12 +935,17 @@
                     createSpring(x + width / 2 - 15, y - 15);
                 }
                 
+                // 5% chance to spawn a jetpack powerup
+                if (Math.random() < 0.05) {
+                    createJetpackPowerup(x + width / 2 - 15, y - 30);
+                }
+                
                 return platform;
             }
             
             function createCoin(x, y) {
                 const coin = document.createElement('div');
-                coin.className = 'coin bg-yellow-400 w-6 h-6';
+                coin.className = 'coin w-6 h-6';
                 coin.style.left = `${x}px`;
                 coin.style.top = `${y}px`;
                 gameContainer.appendChild(coin);
@@ -423,7 +961,7 @@
             
             function createSpring(x, y) {
                 const spring = document.createElement('div');
-                spring.className = 'spring bg-gray-300 w-8 h-4';
+                spring.className = 'spring w-8 h-4';
                 spring.style.left = `${x}px`;
                 spring.style.top = `${y}px`;
                 gameContainer.appendChild(spring);
@@ -434,6 +972,26 @@
                     y: y,
                     width: 16,
                     height: 8
+                });
+            }
+            
+            function createJetpackPowerup(x, y) {
+                const powerup = document.createElement('div');
+                powerup.className = 'coin w-8 h-8';
+                powerup.style.left = `${x}px`;
+                powerup.style.top = `${y}px`;
+                powerup.style.background = 'radial-gradient(circle at 30% 30%, #3b82f6, #6366f1)';
+                powerup.innerHTML = '<i class="fas fa-rocket" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 12px; color: white;"></i>';
+                gameContainer.appendChild(powerup);
+                
+                coins.push({
+                    element: powerup,
+                    x: x,
+                    y: y,
+                    width: 16,
+                    height: 16,
+                    isPowerup: true,
+                    powerupType: 'jetpack'
                 });
             }
             
@@ -463,22 +1021,6 @@
                 }
             }
             
-            function jump() {
-                if (velocity >= 0) { // Can only jump when falling or stationary
-                    velocity = -12;
-                    player.classList.add('jump-animation');
-                    
-                    if (soundEnabled) {
-                        jumpSound.currentTime = 0;
-                        jumpSound.play();
-                    }
-                    
-                    setTimeout(() => {
-                        player.classList.remove('jump-animation');
-                    }, 500);
-                }
-            }
-            
             function springJump() {
                 velocity = -20;
                 
@@ -490,8 +1032,8 @@
                 // Spring animation
                 const spring = document.createElement('div');
                 spring.className = 'absolute bg-gray-300 w-8 h-2';
-                spring.style.left = `${parseInt(player.style.left) + 12}px`;
-                spring.style.bottom = `${parseInt(player.style.bottom) - 12}px`;
+                spring.style.left = `${playerX + playerWidth / 2 - 15}px`;
+                spring.style.bottom = `${window.innerHeight - playerY - 12}px`;
                 gameContainer.appendChild(spring);
                 
                 setTimeout(() => {
@@ -499,12 +1041,76 @@
                 }, 200);
             }
             
+            function activatePowerup(type, duration) {
+                powerupActive = true;
+                powerupType = type;
+                powerupEndTime = Date.now() + duration * 1000;
+                powerupDisplay.style.display = 'flex';
+                
+                if (soundEnabled) {
+                    powerupSound.currentTime = 0;
+                    powerupSound.play();
+                }
+                
+                if (type === 'jetpack') {
+                    jetpackFuel = maxJetpackFuel;
+                    updateJetpackFuelDisplay();
+                }
+            }
+            
+            function updatePowerupTimer() {
+                if (powerupActive) {
+                    const remaining = Math.max(0, (powerupEndTime - Date.now()) / 1000);
+                    powerupTimer.textContent = `${remaining.toFixed(1)}s`;
+                    
+                    if (remaining <= 0) {
+                        powerupActive = false;
+                        powerupDisplay.style.display = 'none';
+                    }
+                }
+            }
+            
             function gameLoop() {
-                if (!gameRunning) return;
+                if (!gameRunning || gamePaused) return;
                 
                 // Apply gravity
                 velocity += gravity;
+                
+                // Apply jetpack if active and has fuel
+                if (isJetpackActive && jetpackFuel > 0) {
+                    velocity += jetpackForce;
+                    jetpackFuel -= jetpackFuelConsumption;
+                    updateJetpackFuelDisplay();
+                    
+                    if (jetpackFuel <= 0) {
+                        jetpackFuel = 0;
+                        isJetpackActive = false;
+                        jetpackSound.pause();
+                    }
+                } else if (jetpackFuel < maxJetpackFuel && !isJetpackActive) {
+                    // Regenerate fuel when not using jetpack
+                    jetpackFuel = Math.min(maxJetpackFuel, jetpackFuel + jetpackFuelRegen);
+                    updateJetpackFuelDisplay();
+                }
+                
+                // Apply horizontal movement
+                if (moveDirection !== 0) {
+                    playerX += moveDirection * moveSpeed;
+                    
+                    // Keep player within screen bounds
+                    playerX = Math.max(0, Math.min(window.innerWidth - playerWidth, playerX));
+                }
+                
+                // Update player position
                 playerY += velocity;
+                player.style.left = `${playerX}px`;
+                player.style.bottom = `${window.innerHeight - playerY}px`;
+                
+                // Update jetpack visuals
+                updateJetpackVisuals();
+                
+                // Update powerup timer
+                updatePowerupTimer();
                 
                 // Check if player hits the bottom
                 if (playerY > window.innerHeight - 50) {
@@ -512,19 +1118,31 @@
                     velocity = 0;
                 }
                 
-                // Update player position
-                player.style.bottom = `${window.innerHeight - playerY}px`;
-                
                 // Check platform collisions
                 let onPlatform = false;
                 const playerRect = {
-                    x: window.innerWidth / 2 - 24,
-                    y: playerY - 24,
-                    width: 24,
-                    height: 24
+                    x: playerX,
+                    y: playerY - playerHeight,
+                    width: playerWidth,
+                    height: playerHeight
                 };
                 
                 for (const platform of platforms) {
+                    // Update moving platforms
+                    if (platform.type === 'moving') {
+                        platform.x += platform.direction * platform.speed;
+                        
+                        // Reverse direction at screen edges
+                        if (platform.x <= 0) {
+                            platform.direction = 1;
+                        } else if (platform.x + platform.width >= window.innerWidth) {
+                            platform.direction = -1;
+                        }
+                        
+                        platform.element.style.left = `${platform.x}px`;
+                    }
+                    
+                    // Check collision
                     if (
                         playerRect.x + playerRect.width > platform.x &&
                         playerRect.x < platform.x + platform.width &&
@@ -563,7 +1181,14 @@
                         playerRect.y < coinRect.y + coinRect.height
                     ) {
                         // Collect coin
-                        score += 10;
+                        if (coin.isPowerup) {
+                            // Activate powerup
+                            activatePowerup(coin.powerupType, 10); // 10 seconds duration
+                            score += 50; // Bonus points for powerup
+                        } else {
+                            score += 10;
+                        }
+                        
                         scoreDisplay.textContent = `Score: ${score}`;
                         
                         if (soundEnabled) {
@@ -575,7 +1200,7 @@
                         createParticles(
                             coinRect.x + coinRect.width / 2,
                             coinRect.y + coinRect.height / 2,
-                            'bg-yellow-400'
+                            coin.isPowerup ? 'bg-blue-400' : 'bg-yellow-400'
                         );
                         
                         // Remove coin
@@ -714,9 +1339,12 @@
                 // Show game over screen
                 finalScoreDisplay.textContent = `Score: ${score}`;
                 gameOverScreen.style.display = 'flex';
+                pauseBtn.style.display = 'none';
+                jetpackFuelDisplay.style.display = 'none';
                 
                 if (soundEnabled) {
                     bgMusic.pause();
+                    jetpackSound.pause();
                     gameOverSound.currentTime = 0;
                     gameOverSound.play();
                 }
@@ -724,6 +1352,7 @@
             
             // Initialize game
             bgMusic.volume = 0.3;
+            jetpackSound.volume = 0.2;
         });
     </script>
 </body>
