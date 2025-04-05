@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galactic Catcher | by Geoffroy Streit - Hylst</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+        .game-container {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="10" cy="10" r="0.5" fill="white" opacity="0.7"/><circle cx="30" cy="20" r="0.8" fill="white" opacity="0.7"/><circle cx="70" cy="15" r="0.7" fill="white" opacity="0.7"/><circle cx="90" cy="30" r="0.6" fill="white" opacity="0.7"/><circle cx="20" cy="50" r="0.9" fill="white" opacity="0.7"/><circle cx="60" cy="60" r="0.5" fill="white" opacity="0.7"/><circle cx="80" cy="80" r="0.8" fill="white" opacity="0.7"/><circle cx="40" cy="90" r="0.7" fill="white" opacity="0.7"/></svg>');
+            opacity: 0.5;
+            animation: twinkle 3s infinite alternate;
+        }
+        .basket {
+            transition: transform 0.1s ease-out;
+            z-index: 10;
+        }
+        .object {
+            position: absolute;
+            will-change: transform;
+            z-index: 5;
+        }
+        .caught {
+            animation: pulse 0.3s ease-out, fadeOut 0.5s ease-out forwards;
+        }
+        .missed {
+            animation: shake 0.3s ease-out, fadeOut 0.5s ease-out forwards;
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateY(10px); }
+        }
+        .level-up {
+            animation: float 2s ease-in-out infinite, pulse 1.5s ease-in-out infinite;
+        }
+        .bomb {
+            animation: spin 2s linear infinite;
+        }
+        .power-up {
+            animation: float 3s ease-in-out infinite;
+        }
+        .shield {
+            position: absolute;
+            width: 100px;
+            height: 30px;
+            background: rgba(0, 191, 255, 0.3);
+            border-radius: 50%;
+            filter: blur(5px);
+            z-index: 8;
+            pointer-events: none;
+        }
+        .combo-meter {
+            height: 6px;
+            background: linear-gradient(to right, #4ade80, #f59e0b, #ef4444);
+            border-radius: 3px;
+            transition: width 0.2s ease;
+        }
+        .combo-active {
+            animation: pulse 0.5s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+    <div class="text-center mb-6">
+        <h1 class="text-4xl md:text-5xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500">
+            Galactic Catcher
+        </h1>
+        <p class="text-gray-300 text-sm md:text-base">by Geoffroy Streit - Hylst</p>
+    </div>
+
+    <div class="relative game-container w-full max-w-md h-96 rounded-xl overflow-hidden border-2 border-gray-700 mb-6">
+        <div id="basket" class="basket absolute bottom-4 left-1/2 transform -translate-x-1/2 w-24 h-10 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg flex items-center justify-center">
+            <div class="w-20 h-2 bg-yellow-700 rounded-full absolute -top-1"></div>
+            <div class="w-5 h-5 bg-yellow-700 rounded-full absolute -top-4 left-5"></div>
+            <div class="w-5 h-5 bg-yellow-700 rounded-full absolute -top-4 right-5"></div>
+            <div id="shield" class="shield hidden"></div>
+        </div>
+        <div id="objects-container"></div>
+        <div id="effects-container"></div>
+    </div>
+
+    <div class="flex justify-between w-full max-w-md mb-4">
+        <div class="bg-gray-800 p-3 rounded-lg text-center flex-1 mr-2">
+            <div class="text-gray-400 text-xs">Score</div>
+            <div id="score" class="text-xl font-bold text-green-400">0</div>
+        </div>
+        <div class="bg-gray-800 p-3 rounded-lg text-center flex-1 mx-2">
+            <div class="text-gray-400 text-xs">Level</div>
+            <div id="level" class="text-xl font-bold text-blue-400">1</div>
+        </div>
+        <div class="bg-gray-800 p-3 rounded-lg text-center flex-1 ml-2">
+            <div class="text-gray-400 text-xs">Lives</div>
+            <div id="lives" class="text-xl font-bold text-red-400">3</div>
+        </div>
+    </div>
+
+    <div class="w-full max-w-md mb-4">
+        <div class="flex justify-between text-xs text-gray-400 mb-1">
+            <span>Combo</span>
+            <span id="combo-count">0x</span>
+        </div>
+        <div class="combo-meter w-full" id="combo-meter"></div>
+    </div>
+
+    <div class="flex space-x-4 mb-6">
+        <button id="start-btn" class="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg">
+            <i class="fas fa-play mr-2"></i>Start Game
+        </button>
+        <button id="pause-btn" class="px-6 py-3 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg" disabled>
+            <i class="fas fa-pause mr-2"></i>Pause
+        </button>
+    </div>
+
+    <div class="bg-gray-800 p-4 rounded-lg w-full max-w-md mb-6 border border-gray-700">
+        <h3 class="font-semibold mb-3 text-gray-300 flex items-center">
+            <i class="fas fa-gamepad mr-2 text-purple-400"></i> How to Play
+        </h3>
+        <ul class="text-sm text-gray-400 space-y-2">
+            <li class="flex items-center"><i class="fas fa-arrow-left mr-2 w-4 text-center"></i> Move left with Left Arrow or 'A' key</li>
+            <li class="flex items-center"><i class="fas fa-arrow-right mr-2 w-4 text-center"></i> Move right with Right Arrow or 'D' key</li>
+            <li class="flex items-center"><i class="fas fa-star mr-2 w-4 text-center text-yellow-400"></i> Stars: 10 points</li>
+            <li class="flex items-center"><i class="fas fa-gem mr-2 w-4 text-center text-blue-400"></i> Gems: 25 points</li>
+            <li class="flex items-center"><i class="fas fa-bolt mr-2 w-4 text-center text-purple-400"></i> Power-ups: Special abilities</li>
+            <li class="flex items-center"><i class="fas fa-bomb mr-2 w-4 text-center text-red-400"></i> Bombs: Lose a life</li>
+        </ul>
+    </div>
+
+    <div class="text-xs text-gray-500 text-center">
+        &copy; 2023 Geoffroy Streit - Hylst. All rights reserved.
+    </div>
+
+    <script>
+        // Enhanced Game State
+        const gameState = {
+            score: 0,
+            highScore: localStorage.getItem('highScore') || 0,
+            level: 1,
+            lives: 3,
+            isRunning: false,
+            isPaused: false,
+            basketPosition: 0.5,
+            objects: [],
+            powerUps: [],
+            lastObjectTime: 0,
+            objectInterval: 1500,
+            speedMultiplier: 1,
+            comboCount: 0,
+            comboTimeout: null,
+            lastComboTime: 0,
+            hasShield: false,
+            shieldEndTime: 0,
+            gameArea: null,
+            basket: null,
+            shieldElement: null,
+            objectsContainer: null,
+            effectsContainer: null,
+            scoreElement: null,
+            levelElement: null,
+            livesElement: null,
+            comboCountElement: null,
+            comboMeterElement: null,
+            startButton: null,
+            pauseButton: null,
+            gameWidth: 0,
+            gameHeight: 0,
+            basketWidth: 96,
+            keys: {
+                left: false,
+                right: false
+            }
+        };
+
+        // Enhanced Object Types
+        const objectTypes = [
+            { 
+                name: 'star', 
+                color: 'text-yellow-400', 
+                icon: 'fa-star', 
+                points: 10, 
+                speed: 2,
+                probability: 0.5,
+                size: 'text-xl'
+            },
+            { 
+                name: 'gem', 
+                color: 'text-blue-400', 
+                icon: 'fa-gem', 
+                points: 25, 
+                speed: 3,
+                probability: 0.25,
+                size: 'text-xl'
+            },
+            { 
+                name: 'bomb', 
+                color: 'text-red-400', 
+                icon: 'fa-bomb', 
+                points: -1,
+                speed: 4,
+                probability: 0.15,
+                size: 'text-xl',
+                class: 'bomb'
+            },
+            { 
+                name: 'power-up', 
+                color: 'text-purple-400', 
+                icon: 'fa-bolt', 
+                points: 0,
+                speed: 3,
+                probability: 0.1,
+                size: 'text-xl',
+                class: 'power-up'
+            }
+        ];
+
+        // Power-up Types
+        const powerUpTypes = [
+            {
+                name: 'shield',
+                duration: 10000, // 10 seconds
+                effect: 'Grants temporary invincibility'
+            },
+            {
+                name: 'multiplier',
+                duration: 15000, // 15 seconds
+                effect: 'Doubles points for caught objects'
+            },
+            {
+                name: 'slow-mo',
+                duration: 8000, // 8 seconds
+                effect: 'Slows down falling objects'
+            }
+        ];
+
+        // Initialize game
+        function initGame() {
+            gameState.gameArea = document.querySelector('.game-container');
+            gameState.basket = document.getElementById('basket');
+            gameState.shieldElement = document.getElementById('shield');
+            gameState.objectsContainer = document.getElementById('objects-container');
+            gameState.effectsContainer = document.getElementById('effects-container');
+            gameState.scoreElement = document.getElementById('score');
+            gameState.levelElement = document.getElementById('level');
+            gameState.livesElement = document.getElementById('lives');
+            gameState.comboCountElement = document.getElementById('combo-count');
+            gameState.comboMeterElement = document.getElementById('combo-meter');
+            gameState.startButton = document.getElementById('start-btn');
+            gameState.pauseButton = document.getElementById('pause-btn');
+
+            gameState.gameWidth = gameState.gameArea.offsetWidth;
+            gameState.gameHeight = gameState.gameArea.offsetHeight;
+
+            // Event listeners
+            gameState.startButton.addEventListener('click', startGame);
+            gameState.pauseButton.addEventListener('click', togglePause);
+
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (!gameState.isRunning || gameState.isPaused) return;
+                
+                if (e.key === 'ArrowLeft' || e.key === 'a') {
+                    gameState.keys.left = true;
+                    gameState.keys.right = false;
+                } else if (e.key === 'ArrowRight' || e.key === 'd') {
+                    gameState.keys.right = true;
+                    gameState.keys.left = false;
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if (e.key === 'ArrowLeft' || e.key === 'a') {
+                    gameState.keys.left = false;
+                } else if (e.key === 'ArrowRight' || e.key === 'd') {
+                    gameState.keys.right = false;
+                }
+            });
+
+            // Touch controls for mobile
+            let touchStartX = 0;
+            let touchMoveThreshold = 20;
+            
+            gameState.gameArea.addEventListener('touchstart', (e) => {
+                if (!gameState.isRunning || gameState.isPaused) return;
+                touchStartX = e.touches[0].clientX;
+                e.preventDefault();
+            });
+
+            gameState.gameArea.addEventListener('touchmove', (e) => {
+                if (!gameState.isRunning || gameState.isPaused) return;
+                const touchX = e.touches[0].clientX;
+                const touchDiff = touchX - touchStartX;
+                
+                if (Math.abs(touchDiff) > touchMoveThreshold) {
+                    if (touchDiff > 0) {
+                        gameState.keys.right = true;
+                        gameState.keys.left = false;
+                    } else {
+                        gameState.keys.left = true;
+                        gameState.keys.right = false;
+                    }
+                    touchStartX = touchX;
+                }
+                e.preventDefault();
+            });
+
+            gameState.gameArea.addEventListener('touchend', () => {
+                gameState.keys.left = false;
+                gameState.keys.right = false;
+            });
+
+            // Show high score in the UI
+            if (gameState.highScore > 0) {
+                const highScoreElement = document.createElement('div');
+                highScoreElement.className = 'text-xs text-gray-400 mt-2';
+                highScoreElement.innerHTML = `<i class="fas fa-trophy mr-1 text-yellow-400"></i> High Score: ${gameState.highScore}`;
+                document.querySelector('.text-center').appendChild(highScoreElement);
+            }
+        }
+
+        // Start game
+        function startGame() {
+            if (gameState.isRunning) return;
+            
+            // Reset game state
+            gameState.score = 0;
+            gameState.level = 1;
+            gameState.lives = 3;
+            gameState.isRunning = true;
+            gameState.isPaused = false;
+            gameState.basketPosition = 0.5;
+            gameState.objects = [];
+            gameState.powerUps = [];
+            gameState.lastObjectTime = 0;
+            gameState.objectInterval = 1500;
+            gameState.speedMultiplier = 1;
+            gameState.comboCount = 0;
+            gameState.hasShield = false;
+            gameState.shieldEndTime = 0;
+            
+            // Clear containers
+            gameState.objectsContainer.innerHTML = '';
+            gameState.effectsContainer.innerHTML = '';
+            
+            // Update UI
+            updateUI();
+            updateComboMeter();
+            
+            // Enable/disable buttons
+            gameState.startButton.disabled = true;
+            gameState.pauseButton.disabled = false;
+            
+            // Position basket
+            updateBasketPosition();
+            
+            // Start game loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Toggle pause
+        function togglePause() {
+            gameState.isPaused = !gameState.isPaused;
+            gameState.pauseButton.innerHTML = gameState.isPaused 
+                ? '<i class="fas fa-play mr-2"></i>Resume' 
+                : '<i class="fas fa-pause mr-2"></i>Pause';
+            
+            if (gameState.isPaused) {
+                gameState.pauseButton.classList.remove('from-yellow-600', 'to-yellow-700');
+                gameState.pauseButton.classList.add('from-blue-600', 'to-blue-700');
+            } else {
+                gameState.pauseButton.classList.remove('from-blue-600', 'to-blue-700');
+                gameState.pauseButton.classList.add('from-yellow-600', 'to-yellow-700');
+            }
+        }
+
+        // Game loop
+        function gameLoop(timestamp) {
+            if (!gameState.isRunning) return;
+            if (gameState.isPaused) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
+            // Move basket based on key states
+            if (gameState.keys.left) {
+                gameState.basketPosition = Math.max(0, gameState.basketPosition - 0.02);
+            }
+            if (gameState.keys.right) {
+                gameState.basketPosition = Math.min(1, gameState.basketPosition + 0.02);
+            }
+            
+            // Update basket position
+            updateBasketPosition();
+            
+            // Spawn new objects
+            if (timestamp - gameState.lastObjectTime > gameState.objectInterval) {
+                spawnObject();
+                gameState.lastObjectTime = timestamp;
+            }
+            
+            // Move objects and check collisions
+            moveObjects();
+            checkCollisions();
+            
+            // Check active power-ups
+            checkPowerUps(timestamp);
+            
+            // Remove caught/missed objects
+            cleanupObjects();
+            
+            // Check game over
+            if (gameState.lives <= 0) {
+                gameOver();
+                return;
+            }
+            
+            // Continue game loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Update basket position
+        function updateBasketPosition() {
+            const basketX = (gameState.gameWidth - gameState.basketWidth) * gameState.basketPosition;
+            gameState.basket.style.left = `${basketX}px`;
+            
+            // Update shield position if active
+            if (gameState.hasShield) {
+                gameState.shieldElement.style.left = `${basketX - 10}px`;
+            }
+        }
+
+        // Spawn a new falling object
+        function spawnObject() {
+            // Randomly select object type based on probabilities
+            const rand = Math.random();
+            let cumulativeProbability = 0;
+            let selectedType = null;
+            
+            for (const type of objectTypes) {
+                cumulativeProbability += type.probability;
+                if (rand <= cumulativeProbability) {
+                    selectedType = type;
+                    break;
+                }
+            }
+            
+            // Create object element
+            const object = document.createElement('div');
+            object.className = `object ${selectedType.color} ${selectedType.size} ${selectedType.class || ''}`;
+            object.innerHTML = `<i class="fas ${selectedType.icon}"></i>`;
+            
+            // Set random horizontal position
+            const x = Math.random() * (gameState.gameWidth - 30);
+            object.style.left = `${x}px`;
+            object.style.top = '-30px';
+            
+            // Add to DOM
+            gameState.objectsContainer.appendChild(object);
+            
+            // Add to game state
+            gameState.objects.push({
+                element: object,
+                type: selectedType,
+                x: x,
+                y: -30,
+                speed: selectedType.speed * gameState.speedMultiplier,
+                caught: false,
+                missed: false
+            });
+        }
+
+        // Move all active objects
+        function moveObjects() {
+            for (const obj of gameState.objects) {
+                if (obj.caught || obj.missed) continue;
+                
+                obj.y += obj.speed;
+                obj.element.style.top = `${obj.y}px`;
+                
+                // Check if object missed the basket
+                if (obj.y > gameState.gameHeight) {
+                    obj.missed = true;
+                    if (obj.type.name !== 'bomb' && obj.type.name !== 'power-up') {
+                        // Small penalty for missing regular objects
+                        gameState.score = Math.max(0, gameState.score - 5);
+                        updateUI();
+                    }
+                    obj.element.classList.add('missed');
+                    
+                    // Reset combo if missed
+                    if (gameState.comboCount > 0) {
+                        resetCombo();
+                    }
+                }
+            }
+        }
+
+        // Check for collisions with basket
+        function checkCollisions() {
+            const basketRect = gameState.basket.getBoundingClientRect();
+            const gameRect = gameState.gameArea.getBoundingClientRect();
+            
+            const basketLeft = basketRect.left - gameRect.left;
+            const basketRight = basketRect.right - gameRect.left;
+            const basketTop = basketRect.top - gameRect.top;
+            
+            for (const obj of gameState.objects) {
+                if (obj.caught || obj.missed) continue;
+                
+                const objRect = obj.element.getBoundingClientRect();
+                const objLeft = objRect.left - gameRect.left;
+                const objRight = objRect.right - gameRect.left;
+                const objBottom = objRect.bottom - gameRect.top;
+                
+                // Simple collision detection
+                if (objBottom >= basketTop && 
+                    objLeft < basketRight && 
+                    objRight > basketLeft) {
+                    
+                    obj.caught = true;
+                    obj.element.classList.add('caught');
+                    
+                    // Handle different object types
+                    switch(obj.type.name) {
+                        case 'bomb':
+                            handleBombCollision(obj);
+                            break;
+                        case 'power-up':
+                            handlePowerUpCollision(obj);
+                            break;
+                        default:
+                            handleRegularCollision(obj);
+                            break;
+                    }
+                    
+                    updateUI();
+                }
+            }
+        }
+
+        // Handle bomb collision
+        function handleBombCollision(obj) {
+            if (gameState.hasShield) {
+                // Shield protects from bomb
+                createEffect(obj.x + 15, obj.y + 15, 'shield-protect');
+            } else {
+                // Bomb - lose a life
+                gameState.lives--;
+                createEffect(obj.x + 15, obj.y + 15, 'explosion');
+                
+                // Reset combo if hit by bomb
+                if (gameState.comboCount > 0) {
+                    resetCombo();
+                }
+            }
+        }
+
+        // Handle power-up collision
+        function handlePowerUpCollision(obj) {
+            const powerUpType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+            activatePowerUp(powerUpType);
+            createEffect(obj.x + 15, obj.y + 15, 'power-up', 'text-purple-400');
+        }
+
+        // Handle regular object collision
+        function handleRegularCollision(obj) {
+            // Calculate points (double if in multiplier power-up)
+            let points = obj.type.points;
+            const isMultiplierActive = gameState.powerUps.some(p => p.type.name === 'multiplier' && p.endTime > performance.now());
+            if (isMultiplierActive) {
+                points *= 2;
+            }
+            
+            gameState.score += points;
+            createEffect(obj.x + 15, obj.y + 15, 'catch', obj.type.color);
+            
+            // Increase combo
+            increaseCombo();
+            
+            // Check for level up
+            if (gameState.score >= gameState.level * 100) {
+                levelUp();
+            }
+        }
+
+        // Activate a power-up
+        function activatePowerUp(powerUpType) {
+            const now = performance.now();
+            const endTime = now + powerUpType.duration;
+            
+            // Add to active power-ups
+            gameState.powerUps.push({
+                type: powerUpType,
+                endTime: endTime
+            });
+            
+            // Apply power-up effect
+            switch(powerUpType.name) {
+                case 'shield':
+                    gameState.hasShield = true;
+                    gameState.shieldEndTime = endTime;
+                    gameState.shieldElement.classList.remove('hidden');
+                    break;
+                case 'slow-mo':
+                    // Reduce speed of all objects
+                    for (const obj of gameState.objects) {
+                        obj.speed *= 0.5;
+                    }
+                    break;
+            }
+            
+            // Show power-up notification
+            createPowerUpNotification(powerUpType);
+        }
+
+        // Check active power-ups
+        function checkPowerUps(timestamp) {
+            // Filter out expired power-ups
+            gameState.powerUps = gameState.powerUps.filter(powerUp => {
+                if (powerUp.endTime <= timestamp) {
+                    // Remove power-up effect
+                    switch(powerUp.type.name) {
+                        case 'shield':
+                            if (gameState.shieldEndTime <= timestamp) {
+                                gameState.hasShield = false;
+                                gameState.shieldElement.classList.add('hidden');
+                            }
+                            break;
+                        case 'slow-mo':
+                            // Restore original speed of all objects
+                            for (const obj of gameState.objects) {
+                                obj.speed = obj.type.speed * gameState.speedMultiplier;
+                            }
+                            break;
+                    }
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        // Create visual effects
+        function createEffect(x, y, type, color = 'text-red-500') {
+            const effect = document.createElement('div');
+            effect.className = 'absolute text-2xl z-20';
+            effect.style.left = `${x}px`;
+            effect.style.top = `${y}px`;
+            
+            switch(type) {
+                case 'catch':
+                    effect.className += ` ${color} animate-ping`;
+                    effect.innerHTML = `<i class="fas fa-plus-circle"></i>`;
+                    setTimeout(() => effect.remove(), 500);
+                    break;
+                case 'explosion':
+                    effect.className += ' text-red-500 text-3xl';
+                    effect.innerHTML = `<i class="fas fa-explosion"></i>`;
+                    setTimeout(() => effect.remove(), 1000);
+                    break;
+                case 'shield-protect':
+                    effect.className += ' text-blue-300 text-3xl';
+                    effect.innerHTML = `<i class="fas fa-shield-alt"></i>`;
+                    setTimeout(() => effect.remove(), 800);
+                    break;
+                case 'power-up':
+                    effect.className += ` ${color} text-3xl`;
+                    effect.innerHTML = `<i class="fas fa-bolt"></i>`;
+                    setTimeout(() => effect.remove(), 800);
+                    break;
+            }
+            
+            gameState.effectsContainer.appendChild(effect);
+        }
+
+        // Create power-up notification
+        function createPowerUpNotification(powerUpType) {
+            const notification = document.createElement('div');
+            notification.className = 'absolute top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 bg-opacity-90 px-4 py-2 rounded-lg text-sm flex items-center';
+            
+            let iconClass = '';
+            switch(powerUpType.name) {
+                case 'shield':
+                    iconClass = 'text-blue-400';
+                    break;
+                case 'multiplier':
+                    iconClass = 'text-green-400';
+                    break;
+                case 'slow-mo':
+                    iconClass = 'text-purple-400';
+                    break;
+            }
+            
+            notification.innerHTML = `
+                <i class="fas fa-bolt mr-2 ${iconClass}"></i>
+                <span class="mr-2">${powerUpType.name.toUpperCase()} ACTIVATED!</span>
+                <span class="text-gray-400">${powerUpType.effect}</span>
+            `;
+            
+            gameState.effectsContainer.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                setTimeout(() => notification.remove(), 500);
+            }, 2000);
+        }
+
+        // Increase combo count
+        function increaseCombo() {
+            gameState.comboCount++;
+            gameState.lastComboTime = performance.now();
+            
+            // Add bonus points for combos
+            if (gameState.comboCount >= 5) {
+                const bonus = Math.floor(gameState.comboCount / 5) * 10;
+                gameState.score += bonus;
+                
+                // Show bonus effect
+                const bonusEffect = document.createElement('div');
+                bonusEffect.className = 'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xl font-bold text-yellow-300';
+                bonusEffect.textContent = `+${bonus} COMBO BONUS!`;
+                gameState.effectsContainer.appendChild(bonusEffect);
+                
+                setTimeout(() => {
+                    bonusEffect.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                    setTimeout(() => bonusEffect.remove(), 500);
+                }, 1000);
+            }
+            
+            // Start/restart combo timeout
+            if (gameState.comboTimeout) {
+                clearTimeout(gameState.comboTimeout);
+            }
+            gameState.comboTimeout = setTimeout(resetCombo, 3000);
+            
+            updateComboMeter();
+        }
+
+        // Reset combo count
+        function resetCombo() {
+            if (gameState.comboCount > 0) {
+                // Show combo ended effect
+                if (gameState.comboCount >= 5) {
+                    const comboEndEffect = document.createElement('div');
+                    comboEndEffect.className = 'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-lg font-bold text-gray-400';
+                    comboEndEffect.textContent = `${gameState.comboCount}x COMBO ENDED`;
+                    gameState.effectsContainer.appendChild(comboEndEffect);
+                    
+                    setTimeout(() => {
+                        comboEndEffect.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                        setTimeout(() => comboEndEffect.remove(), 500);
+                    }, 1000);
+                }
+                
+                gameState.comboCount = 0;
+                updateComboMeter();
+            }
+        }
+
+        // Update combo meter UI
+        function updateComboMeter() {
+            gameState.comboCountElement.textContent = `${gameState.comboCount}x`;
+            
+            // Calculate meter width based on combo count
+            let meterWidth = 0;
+            if (gameState.comboCount > 0) {
+                meterWidth = Math.min(100, (gameState.comboCount / 10) * 100);
+            }
+            gameState.comboMeterElement.style.width = `${meterWidth}%`;
+            
+            // Add/remove active class
+            if (gameState.comboCount >= 5) {
+                gameState.comboMeterElement.classList.add('combo-active');
+            } else {
+                gameState.comboMeterElement.classList.remove('combo-active');
+            }
+        }
+
+        // Level up the game
+        function levelUp() {
+            gameState.level++;
+            gameState.speedMultiplier += 0.2;
+            gameState.objectInterval = Math.max(500, gameState.objectInterval - 100);
+            
+            // Show level up effect
+            const levelUpEffect = document.createElement('div');
+            levelUpEffect.className = 'level-up absolute inset-0 flex items-center justify-center text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 z-30';
+            levelUpEffect.textContent = `LEVEL ${gameState.level}!`;
+            gameState.effectsContainer.appendChild(levelUpEffect);
+            
+            setTimeout(() => {
+                levelUpEffect.remove();
+            }, 2000);
+            
+            updateUI();
+        }
+
+        // Remove caught or missed objects
+        function cleanupObjects() {
+            gameState.objects = gameState.objects.filter(obj => {
+                if (obj.caught || obj.missed) {
+                    setTimeout(() => {
+                        obj.element.remove();
+                    }, 500);
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        // Update UI elements
+        function updateUI() {
+            gameState.scoreElement.textContent = gameState.score;
+            gameState.levelElement.textContent = gameState.level;
+            gameState.livesElement.textContent = gameState.lives;
+            
+            // Pulse score when increased
+            gameState.scoreElement.classList.add('animate-pulse');
+            setTimeout(() => {
+                gameState.scoreElement.classList.remove('animate-pulse');
+            }, 200);
+        }
+
+        // Game over
+        function gameOver() {
+            gameState.isRunning = false;
+            
+            // Update high score if needed
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem('highScore', gameState.highScore);
+            }
+            
+            // Show game over message
+            const gameOverEffect = document.createElement('div');
+            gameOverEffect.className = 'absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 text-3xl font-bold z-40';
+            gameOverEffect.innerHTML = `
+                <div class="text-red-500 mb-4 text-4xl">GAME OVER</div>
+                <div class="text-xl mb-2">Score: ${gameState.score}</div>
+                ${gameState.highScore > 0 ? `<div class="text-lg mb-6 text-yellow-400"><i class="fas fa-trophy mr-2"></i>High Score: ${gameState.highScore}</div>` : ''}
+                <button id="restart-btn" class="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg mt-4">
+                    <i class="fas fa-redo mr-2"></i>Play Again
+                </button>
+            `;
+            gameState.effectsContainer.appendChild(gameOverEffect);
+            
+            // Add restart button event
+            document.getElementById('restart-btn').addEventListener('click', () => {
+                gameOverEffect.remove();
+                startGame();
+            });
+            
+            // Enable/disable buttons
+            gameState.startButton.disabled = false;
+            gameState.pauseButton.disabled = true;
+        }
+
+        // Initialize game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
