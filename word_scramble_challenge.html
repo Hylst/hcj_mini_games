@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Scramble Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        
+        @keyframes hintReveal {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes letterPop {
+            0% { transform: scale(0); opacity: 0; }
+            80% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes correctGlow {
+            0% { box-shadow: 0 0 5px rgba(74, 222, 128, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(74, 222, 128, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(74, 222, 128, 0.5); }
+        }
+        
+        @keyframes incorrectGlow {
+            0% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
+        }
+        
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        .pulse {
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+        
+        .float {
+            animation: float 2s ease-in-out infinite;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            opacity: 0;
+        }
+        
+        .timer-bar {
+            transition: width 1s linear;
+        }
+        
+        .letter-tile {
+            transition: all 0.3s ease;
+            animation: letterPop 0.3s ease-out forwards;
+        }
+        
+        .letter-tile:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+        
+        .hint-reveal {
+            animation: hintReveal 0.5s forwards;
+        }
+        
+        .correct-glow {
+            animation: correctGlow 1s ease-in-out infinite;
+        }
+        
+        .incorrect-glow {
+            animation: incorrectGlow 1s ease-in-out infinite;
+        }
+        
+        .word-length-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            margin: 0 2px;
+        }
+        
+        .word-length-indicator.active {
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .streak-counter {
+            position: absolute;
+            right: -10px;
+            top: -10px;
+            background-color: #f59e0b;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .progress-ring {
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.35s;
+            stroke-linecap: round;
+        }
+        
+        .theme-selector {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        .theme-option {
+            transition: all 0.3s ease;
+        }
+        
+        .theme-option:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+        
+        .theme-option.active {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+        
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            animation: modalFadeIn 0.3s ease-out;
+        }
+        
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .difficulty-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-900 to-purple-900 min-h-screen text-white font-sans transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8 max-w-4xl relative">
+        <!-- Theme Selector Button -->
+        <button id="theme-toggle" class="absolute top-4 right-4 bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
+            <i class="fas fa-palette text-xl"></i>
+        </button>
+        
+        <!-- Theme Selector Modal -->
+        <div id="theme-modal" class="fixed inset-0 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity">
+            <div class="modal-overlay absolute inset-0"></div>
+            <div class="modal-content theme-selector rounded-xl p-6 max-w-md w-full relative z-10">
+                <h3 class="text-xl font-bold mb-4 text-center">Select Theme</h3>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="theme-option bg-gradient-to-br from-blue-900 to-purple-900 rounded-lg p-4 cursor-pointer active" data-theme="blue-purple">
+                        <div class="w-full h-16 rounded"></div>
+                        <p class="text-center mt-2">Default</p>
+                    </div>
+                    <div class="theme-option bg-gradient-to-br from-emerald-900 to-blue-900 rounded-lg p-4 cursor-pointer" data-theme="emerald-blue">
+                        <div class="w-full h-16 rounded"></div>
+                        <p class="text-center mt-2">Ocean</p>
+                    </div>
+                    <div class="theme-option bg-gradient-to-br from-rose-900 to-amber-900 rounded-lg p-4 cursor-pointer" data-theme="rose-amber">
+                        <div class="w-full h-16 rounded"></div>
+                        <p class="text-center mt-2">Sunset</p>
+                    </div>
+                    <div class="theme-option bg-gradient-to-br from-violet-900 to-pink-900 rounded-lg p-4 cursor-pointer" data-theme="violet-pink">
+                        <div class="w-full h-16 rounded"></div>
+                        <p class="text-center mt-2">Berry</p>
+                    </div>
+                    <div class="theme-option bg-gradient-to-br from-slate-900 to-gray-900 rounded-lg p-4 cursor-pointer" data-theme="slate-gray">
+                        <div class="w-full h-16 rounded"></div>
+                        <p class="text-center mt-2">Dark</p>
+                    </div>
+                    <div class="theme-option bg-gradient-to-br from-cyan-900 to-teal-900 rounded-lg p-4 cursor-pointer" data-theme="cyan-teal">
+                        <div class="w-full h-16 rounded"></div>
+                        <p class="text-center mt-2">Aqua</p>
+                    </div>
+                </div>
+                <button id="close-theme" class="mt-6 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors">
+                    Close
+                </button>
+            </div>
+        </div>
+        
+        <!-- Game Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-yellow-300 to-pink-400 float">
+                Word Scramble Challenge
+            </h1>
+            <p class="text-lg text-blue-200">Unscramble the letters to form a valid word!</p>
+        </header>
+
+        <!-- Main Game Area -->
+        <div class="bg-white/10 backdrop-blur-md rounded-xl shadow-2xl p-6 mb-8 border border-white/20 relative">
+            <!-- Difficulty Badge -->
+            <div id="difficulty-badge" class="difficulty-badge bg-blue-500">Easy</div>
+            
+            <!-- Score and Timer Area -->
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-blue-600/30 px-4 py-2 rounded-lg relative">
+                        <span class="font-bold text-blue-200">Score:</span>
+                        <span id="score" class="ml-2 text-2xl font-bold text-yellow-300">0</span>
+                        <div id="streak-counter" class="streak-counter hidden">0</div>
+                    </div>
+                    <div class="bg-purple-600/30 px-4 py-2 rounded-lg">
+                        <span class="font-bold text-purple-200">Level:</span>
+                        <span id="level" class="ml-2 text-2xl font-bold text-pink-300">1</span>
+                    </div>
+                </div>
+                
+                <!-- Circular Timer -->
+                <div class="relative w-16 h-16">
+                    <svg class="progress-ring w-full h-full" viewBox="0 0 100 100">
+                        <circle class="progress-ring-circle" stroke="rgba(255, 255, 255, 0.1)" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                        <circle id="timer-circle" class="progress-ring-circle" stroke="url(#timer-gradient)" stroke-width="8" fill="transparent" r="40" cx="50" cy="50" stroke-dasharray="251.2" stroke-dashoffset="0"/>
+                    </svg>
+                    <svg width="0" height="0">
+                        <defs>
+                            <linearGradient id="timer-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#4ade80" />
+                                <stop offset="100%" stop-color="#3b82f6" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span id="time-left" class="text-xl font-bold">30</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Word Length Indicator -->
+            <div class="flex justify-center mb-4">
+                <div id="word-length-indicator" class="flex">
+                    <!-- Indicators will be added here -->
+                </div>
+            </div>
+
+            <!-- Game Content -->
+            <div class="mb-8 text-center">
+                <!-- Hint Area -->
+                <div class="bg-black/20 p-4 rounded-lg mb-4 min-h-16 flex items-center justify-center">
+                    <p id="hint" class="text-lg text-blue-100 italic opacity-0 transition-opacity duration-300">Hint will appear here</p>
+                </div>
+                
+                <!-- Scrambled Letters -->
+                <div id="scrambled-letters" class="flex flex-wrap justify-center gap-3 mb-6 min-h-20">
+                    <!-- Letters will appear here -->
+                </div>
+                
+                <!-- User Input -->
+                <div class="relative max-w-md mx-auto">
+                    <input type="text" id="user-input" 
+                           class="w-full px-6 py-3 rounded-full bg-white/20 border border-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-400 text-lg text-center placeholder-blue-200" 
+                           placeholder="Type your answer here..." autocomplete="off">
+                    <button id="submit-btn" class="absolute right-0 top-0 h-full px-6 bg-gradient-to-r from-green-500 to-blue-500 rounded-r-full font-bold hover:opacity-90 transition-opacity">
+                        Submit
+                    </button>
+                </div>
+                
+                <!-- Word Definition (shown after correct answer) -->
+                <div id="word-definition" class="mt-4 text-sm text-blue-200 hidden">
+                    <p><span class="font-bold">Definition:</span> <span id="definition-text"></span></p>
+                    <p class="mt-1"><span class="font-bold">Example:</span> <span id="example-text"></span></p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-center space-x-4">
+                <button id="hint-btn" class="flex items-center px-4 py-2 bg-yellow-600/70 hover:bg-yellow-600 rounded-lg transition-colors">
+                    <i class="fas fa-lightbulb mr-2"></i> Hint (<span id="hint-count">3</span> left)
+                </button>
+                <button id="shuffle-btn" class="flex items-center px-4 py-2 bg-purple-600/70 hover:bg-purple-600 rounded-lg transition-colors">
+                    <i class="fas fa-random mr-2"></i> Shuffle
+                </button>
+                <button id="new-word-btn" class="flex items-center px-4 py-2 bg-blue-600/70 hover:bg-blue-600 rounded-lg transition-colors">
+                    <i class="fas fa-sync-alt mr-2"></i> New Word
+                </button>
+            </div>
+        </div>
+
+        <!-- Message Popup -->
+        <div id="message" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 px-8 py-4 rounded-lg shadow-xl text-center z-50 opacity-0 transition-opacity pointer-events-none">
+            <p class="text-2xl font-bold"></p>
+        </div>
+        
+        <!-- Game Stats Modal -->
+        <div id="stats-modal" class="fixed inset-0 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity">
+            <div class="modal-overlay absolute inset-0"></div>
+            <div class="modal-content bg-gradient-to-br from-blue-900 to-purple-900 rounded-xl p-6 max-w-md w-full relative z-10 border border-white/20">
+                <h3 class="text-2xl font-bold mb-4 text-center">Game Statistics</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span>Total Score:</span>
+                        <span id="stats-score" class="font-bold text-yellow-300">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Highest Level:</span>
+                        <span id="stats-level" class="font-bold text-pink-300">1</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Correct Answers:</span>
+                        <span id="stats-correct" class="font-bold text-green-300">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Current Streak:</span>
+                        <span id="stats-streak" class="font-bold text-blue-300">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Hints Used:</span>
+                        <span id="stats-hints" class="font-bold text-amber-300">0</span>
+                    </div>
+                </div>
+                <div class="mt-6 flex space-x-4">
+                    <button id="restart-game" class="flex-1 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                        <i class="fas fa-redo mr-2"></i> Restart
+                    </button>
+                    <button id="close-stats" class="flex-1 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors">
+                        <i class="fas fa-times mr-2"></i> Close
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stats Button -->
+        <button id="stats-btn" class="fixed bottom-4 right-4 bg-white/10 hover:bg-white/20 p-3 rounded-full transition-colors shadow-lg">
+            <i class="fas fa-chart-bar text-xl"></i>
+        </button>
+    </div>
+
+    <script>
+        // Enhanced Game variables
+        let score = 0;
+        let level = 1;
+        let timer;
+        let timeLeft = 30;
+        let currentWord = '';
+        let scrambledLetters = [];
+        let hintCount = 3;
+        let streak = 0;
+        let correctAnswers = 0;
+        let hintsUsed = 0;
+        let maxStreak = 0;
+        let maxLevel = 1;
+        
+        // Enhanced word database with definitions and examples
+        const words = [
+            { word: "javascript", hint: "A programming language used for web development", 
+              definition: "A high-level, interpreted programming language that conforms to the ECMAScript specification.", 
+              example: "JavaScript can update and change both HTML and CSS." },
+            { word: "algorithm", hint: "A set of rules to solve a problem in a finite number of steps", 
+              definition: "A process or set of rules to be followed in calculations or other problem-solving operations.", 
+              example: "Search engines use algorithms to find the most relevant results." },
+            { word: "variable", hint: "A container for storing data values", 
+              definition: "A named storage location that holds a value which can be changed during program execution.", 
+              example: "In programming, you might create a variable called 'count' to track iterations." },
+            { word: "function", hint: "A block of code designed to perform a particular task", 
+              definition: "A named section of a program that performs a specific task and can be called from other parts of the program.", 
+              example: "A function called 'calculateTotal' might add up prices in a shopping cart." },
+            { word: "database", hint: "An organized collection of structured information", 
+              definition: "A structured set of data held in a computer, especially one that is accessible in various ways.", 
+              example: "User information is often stored in a database for websites." },
+            { word: "framework", hint: "A platform for developing software applications", 
+              definition: "A reusable set of libraries or classes for a software system (or subsystem).", 
+              example: "React and Angular are popular JavaScript frameworks for building user interfaces." },
+            { word: "responsive", hint: "Design that adapts to different screen sizes", 
+              definition: "Referring to web design that adapts the layout to the viewing environment.", 
+              example: "A responsive website will look good on both mobile phones and desktop computers." },
+            { word: "syntax", hint: "The set of rules that defines the combinations of symbols", 
+              definition: "The set of rules that defines the combinations of symbols that are considered to be correctly structured in a language.", 
+              example: "In JavaScript, forgetting a semicolon is a syntax error." },
+            { word: "debugging", hint: "The process of finding and resolving defects", 
+              definition: "The process of finding and resolving defects or problems within a computer program.", 
+              example: "Developers spend a lot of time debugging their code before release." },
+            { word: "iteration", hint: "The repetition of a process in programming", 
+              definition: "The repetition of a process or utterance in programming, often with slight modifications.", 
+              example: "A 'for' loop is a common way to handle iteration in code." },
+            { word: "recursion", hint: "A function that calls itself", 
+              definition: "A method where the solution to a problem depends on solutions to smaller instances of the same problem.", 
+              example: "Calculating factorial numbers is often done using recursion." },
+            { word: "asynchronous", hint: "Operations that can run independently of the main program flow", 
+              definition: "Occurring at different times, not simultaneously; in computing, operations that can run independently.", 
+              example: "Fetching data from a server is typically an asynchronous operation." },
+            { word: "inheritance", hint: "A concept in object-oriented programming", 
+              definition: "A mechanism in object-oriented programming where one class acquires the properties of another class.", 
+              example: "A 'Car' class might inherit from a more general 'Vehicle' class." },
+            { word: "encapsulation", hint: "The bundling of data with the methods that operate on that data", 
+              definition: "The bundling of data with the methods that operate on that data, restricting direct access to some components.", 
+              example: "Using private variables in a class is an example of encapsulation." },
+            { word: "polymorphism", hint: "The ability to present the same interface for different data types", 
+              definition: "The ability of different objects to respond to the same message in different ways.", 
+              example: "A 'draw' method might behave differently for 'Circle' and 'Square' objects." },
+            { word: "abstraction", hint: "The concept of hiding complex implementation details", 
+              definition: "The concept of hiding the complex implementation details and showing only the necessary features.", 
+              example: "You don't need to know how a car engine works to drive it - that's abstraction." },
+            { word: "compiler", hint: "A program that translates code from one language to another", 
+              definition: "A computer program that translates code written in a high-level language to a lower-level language.", 
+              example: "The Java compiler converts Java code into bytecode." },
+            { word: "deployment", hint: "The process of making software available for use", 
+              definition: "The process of making software available for use in a particular environment.", 
+              example: "After testing, the team scheduled the deployment of the new feature." },
+            { word: "metadata", hint: "Data that provides information about other data", 
+              definition: "Data that provides information about other data, such as the author or creation date of a file.", 
+              example: "The metadata of a photo might include when and where it was taken." },
+            { word: "paradigm", hint: "A fundamental style of computer programming", 
+              definition: "A fundamental style of computer programming, such as object-oriented or functional programming.", 
+              example: "JavaScript supports multiple programming paradigms." }
+        ];
+
+        // DOM elements
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const timerCircle = document.getElementById('timer-circle');
+        const timeLeftElement = document.getElementById('time-left');
+        const scrambledLettersElement = document.getElementById('scrambled-letters');
+        const userInput = document.getElementById('user-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const hintBtn = document.getElementById('hint-btn');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const newWordBtn = document.getElementById('new-word-btn');
+        const hintElement = document.getElementById('hint');
+        const messageElement = document.getElementById('message');
+        const wordDefinitionElement = document.getElementById('word-definition');
+        const definitionText = document.getElementById('definition-text');
+        const exampleText = document.getElementById('example-text');
+        const wordLengthIndicator = document.getElementById('word-length-indicator');
+        const streakCounter = document.getElementById('streak-counter');
+        const difficultyBadge = document.getElementById('difficulty-badge');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeModal = document.getElementById('theme-modal');
+        const closeTheme = document.getElementById('close-theme');
+        const themeOptions = document.querySelectorAll('.theme-option');
+        const statsBtn = document.getElementById('stats-btn');
+        const statsModal = document.getElementById('stats-modal');
+        const closeStats = document.getElementById('close-stats');
+        const restartGame = document.getElementById('restart-game');
+        const statsScore = document.getElementById('stats-score');
+        const statsLevel = document.getElementById('stats-level');
+        const statsCorrect = document.getElementById('stats-correct');
+        const statsStreak = document.getElementById('stats-streak');
+        const statsHints = document.getElementById('stats-hints');
+        const hintCountElement = document.getElementById('hint-count');
+
+        // Initialize game
+        function initGame() {
+            score = 0;
+            level = 1;
+            hintCount = 3;
+            streak = 0;
+            correctAnswers = 0;
+            hintsUsed = 0;
+            updateUI();
+            getNewWord();
+            startTimer();
+            updateStats();
+            streakCounter.classList.add('hidden');
+        }
+
+        // Get a new random word with difficulty based on level
+        function getNewWord() {
+            // Filter words by level difficulty
+            const filteredWords = words.filter(w => {
+                if (level <= 3) return w.word.length <= 6;
+                if (level <= 6) return w.word.length <= 8;
+                if (level <= 9) return w.word.length <= 10;
+                return true;
+            });
+            
+            const randomIndex = Math.floor(Math.random() * filteredWords.length);
+            currentWord = filteredWords[randomIndex].word.toLowerCase();
+            hintElement.textContent = filteredWords[randomIndex].hint;
+            definitionText.textContent = filteredWords[randomIndex].definition;
+            exampleText.textContent = filteredWords[randomIndex].example;
+            hintElement.style.opacity = '0';
+            wordDefinitionElement.classList.add('hidden');
+            
+            // Update difficulty badge
+            updateDifficultyBadge();
+            
+            // Create word length indicators
+            createWordLengthIndicators();
+            
+            scrambleLetters();
+            renderLetters();
+            userInput.value = '';
+            userInput.focus();
+            
+            // Adjust timer based on level
+            timeLeft = Math.max(10, 30 - level * 2);
+            timerCircle.style.strokeDashoffset = '0';
+            timeLeftElement.textContent = timeLeft;
+            clearInterval(timer);
+            startTimer();
+            
+            updateHintButton();
+        }
+
+        // Create word length indicators
+        function createWordLengthIndicators() {
+            wordLengthIndicator.innerHTML = '';
+            for (let i = 0; i < currentWord.length; i++) {
+                const indicator = document.createElement('div');
+                indicator.className = 'word-length-indicator';
+                wordLengthIndicator.appendChild(indicator);
+            }
+        }
+
+        // Update word length indicators based on input
+        function updateWordLengthIndicators() {
+            const inputLength = userInput.value.length;
+            const indicators = wordLengthIndicator.querySelectorAll('.word-length-indicator');
+            
+            indicators.forEach((indicator, index) => {
+                if (index < inputLength) {
+                    indicator.classList.add('active');
+                } else {
+                    indicator.classList.remove('active');
+                }
+            });
+        }
+
+        // Update difficulty badge
+        function updateDifficultyBadge() {
+            let difficulty = '';
+            let color = '';
+            
+            if (level <= 3) {
+                difficulty = 'Easy';
+                color = 'bg-blue-500';
+            } else if (level <= 6) {
+                difficulty = 'Medium';
+                color = 'bg-yellow-500';
+            } else if (level <= 9) {
+                difficulty = 'Hard';
+                color = 'bg-orange-500';
+            } else {
+                difficulty = 'Expert';
+                color = 'bg-red-500';
+            }
+            
+            difficultyBadge.textContent = difficulty;
+            difficultyBadge.className = `difficulty-badge ${color}`;
+        }
+
+        // Scramble the letters of the current word
+        function scrambleLetters() {
+            scrambledLetters = currentWord.split('');
+            
+            // Fisher-Yates shuffle algorithm
+            for (let i = scrambledLetters.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [scrambledLetters[i], scrambledLetters[j]] = [scrambledLetters[j], scrambledLetters[i]];
+            }
+            
+            // Ensure the word isn't accidentally correct
+            if (scrambledLetters.join('') === currentWord) {
+                scrambleLetters();
+            }
+        }
+
+        // Render scrambled letters as clickable tiles
+        function renderLetters() {
+            scrambledLettersElement.innerHTML = '';
+            
+            scrambledLetters.forEach((letter, index) => {
+                const tile = document.createElement('div');
+                tile.className = 'letter-tile flex items-center justify-center w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg shadow-md text-2xl font-bold cursor-pointer hover:shadow-lg';
+                tile.textContent = letter.toUpperCase();
+                tile.dataset.index = index;
+                tile.style.animationDelay = `${index * 0.1}s`;
+                
+                tile.addEventListener('click', () => {
+                    userInput.value += letter;
+                    tile.classList.add('opacity-30', 'scale-90');
+                    tile.classList.remove('hover:shadow-lg');
+                    tile.style.pointerEvents = 'none';
+                    updateWordLengthIndicators();
+                });
+                
+                scrambledLettersElement.appendChild(tile);
+            });
+        }
+
+        // Start the countdown timer
+        function startTimer() {
+            clearInterval(timer);
+            const circumference = 251.2; // 2 * π * r (where r=40)
+            const decrement = circumference / timeLeft;
+            let offset = 0;
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                offset += decrement;
+                timerCircle.style.strokeDashoffset = offset;
+                timeLeftElement.textContent = timeLeft;
+                
+                // Change color based on time left
+                if (timeLeft <= 5) {
+                    timerCircle.style.stroke = '#ef4444';
+                    timerCircle.classList.add('pulse');
+                } else if (timeLeft <= 10) {
+                    timerCircle.style.stroke = '#f59e0b';
+                    timerCircle.classList.remove('pulse');
+                } else if (timeLeft <= 20) {
+                    timerCircle.style.stroke = 'url(#timer-gradient)';
+                }
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    streak = 0;
+                    streakCounter.classList.add('hidden');
+                    showMessage('Time\'s up!', 'text-red-400');
+                    setTimeout(() => {
+                        getNewWord();
+                    }, 1500);
+                }
+            }, 1000);
+        }
+
+        // Check user's answer
+        function checkAnswer() {
+            const userAnswer = userInput.value.trim().toLowerCase();
+            
+            if (userAnswer === currentWord) {
+                // Correct answer
+                correctAnswers++;
+                streak++;
+                if (streak > maxStreak) maxStreak = streak;
+                
+                // Show streak counter if streak > 1
+                if (streak > 1) {
+                    streakCounter.textContent = streak;
+                    streakCounter.classList.remove('hidden');
+                } else {
+                    streakCounter.classList.add('hidden');
+                }
+                
+                score += level * 10;
+                if (timeLeft > 20) score += 5; // Bonus for quick answers
+                
+                // Level up every 3 correct answers
+                if (correctAnswers >= level * 3) {
+                    level++;
+                    if (level > maxLevel) maxLevel = level;
+                    showMessage(`Level ${level}!`, 'text-yellow-300');
+                } else {
+                    showMessage('Correct!', 'text-green-400');
+                }
+                
+                // Show word definition
+                wordDefinitionElement.classList.remove('hidden');
+                
+                createConfetti();
+                updateUI();
+                updateStats();
+                
+                // Reset timer and get new word
+                clearInterval(timer);
+                setTimeout(() => {
+                    getNewWord();
+                }, 2500);
+            } else if (userAnswer.length === currentWord.length) {
+                // Incorrect answer (but correct length)
+                streak = 0;
+                streakCounter.classList.add('hidden');
+                userInput.classList.add('shake', 'incorrect-glow');
+                showMessage('Try again!', 'text-red-400');
+                setTimeout(() => {
+                    userInput.classList.remove('shake', 'incorrect-glow');
+                }, 1000);
+            } else {
+                // Incorrect length
+                userInput.classList.add('shake');
+                showMessage('Wrong length!', 'text-red-400');
+                setTimeout(() => {
+                    userInput.classList.remove('shake');
+                }, 500);
+            }
+        }
+
+        // Show hint
+        function showHint() {
+            if (hintCount > 0) {
+                hintCount--;
+                hintsUsed++;
+                hintElement.style.opacity = '1';
+                updateHintButton();
+                updateStats();
+                
+                // Animate hint reveal
+                hintElement.classList.add('hint-reveal');
+                setTimeout(() => {
+                    hintElement.classList.remove('hint-reveal');
+                }, 500);
+            }
+        }
+
+        // Update UI elements
+        function updateUI() {
+            scoreElement.textContent = score;
+            levelElement.textContent = level;
+            hintCountElement.textContent = hintCount;
+            updateHintButton();
+        }
+
+        // Update game statistics
+        function updateStats() {
+            statsScore.textContent = score;
+            statsLevel.textContent = maxLevel;
+            statsCorrect.textContent = correctAnswers;
+            statsStreak.textContent = maxStreak;
+            statsHints.textContent = hintsUsed;
+        }
+
+        // Update hint button text
+        function updateHintButton() {
+            hintBtn.innerHTML = `<i class="fas fa-lightbulb mr-2"></i> Hint (${hintCount} left)`;
+            hintBtn.disabled = hintCount <= 0;
+            if (hintCount <= 0) {
+                hintBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                hintBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // Show message with animation
+        function showMessage(text, colorClass) {
+            const messageText = messageElement.querySelector('p');
+            messageText.textContent = text;
+            messageText.className = `text-2xl font-bold ${colorClass}`;
+            messageElement.style.opacity = '1';
+            
+            setTimeout(() => {
+                messageElement.style.opacity = '0';
+            }, 1500);
+        }
+
+        // Create confetti effect
+        function createConfetti() {
+            const colors = ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+            
+            for (let i = 0; i < 75; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                confetti.style.width = `${Math.random() * 10 + 5}px`;
+                confetti.style.height = `${Math.random() * 10 + 5}px`;
+                confetti.style.animation = `confetti ${Math.random() * 3 + 2}s ease-out forwards`;
+                confetti.style.animationDelay = `${Math.random() * 0.5}s`;
+                
+                document.body.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
+        }
+
+        // Event listeners
+        submitBtn.addEventListener('click', checkAnswer);
+        
+        userInput.addEventListener('input', updateWordLengthIndicators);
+        
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+        
+        hintBtn.addEventListener('click', showHint);
+        
+        shuffleBtn.addEventListener('click', () => {
+            scrambleLetters();
+            renderLetters();
+            userInput.value = '';
+            updateWordLengthIndicators();
+            showMessage('Letters shuffled!', 'text-purple-300');
+        });
+        
+        newWordBtn.addEventListener('click', () => {
+            streak = 0;
+            streakCounter.classList.add('hidden');
+            clearInterval(timer);
+            getNewWord();
+            showMessage('New word!', 'text-blue-300');
+        });
+        
+        // Theme selector
+        themeToggle.addEventListener('click', () => {
+            themeModal.classList.remove('opacity-0', 'pointer-events-none');
+        });
+        
+        closeTheme.addEventListener('click', () => {
+            themeModal.classList.add('opacity-0', 'pointer-events-none');
+        });
+        
+        themeOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const theme = option.dataset.theme;
+                
+                // Remove active class from all options
+                themeOptions.forEach(opt => opt.classList.remove('active'));
+                
+                // Add active class to selected option
+                option.classList.add('active');
+                
+                // Change body class based on theme
+                document.body.className = `min-h-screen text-white font-sans transition-colors duration-300 ${getThemeClasses(theme)}`;
+            });
+        });
+        
+        // Stats modal
+        statsBtn.addEventListener('click', () => {
+            statsModal.classList.remove('opacity-0', 'pointer-events-none');
+        });
+        
+        closeStats.addEventListener('click', () => {
+            statsModal.classList.add('opacity-0', 'pointer-events-none');
+        });
+        
+        restartGame.addEventListener('click', () => {
+            statsModal.classList.add('opacity-0', 'pointer-events-none');
+            initGame();
+        });
+
+        // Helper function to get theme classes
+        function getThemeClasses(theme) {
+            switch(theme) {
+                case 'blue-purple':
+                    return 'bg-gradient-to-br from-blue-900 to-purple-900';
+                case 'emerald-blue':
+                    return 'bg-gradient-to-br from-emerald-900 to-blue-900';
+                case 'rose-amber':
+                    return 'bg-gradient-to-br from-rose-900 to-amber-900';
+                case 'violet-pink':
+                    return 'bg-gradient-to-br from-violet-900 to-pink-900';
+                case 'slate-gray':
+                    return 'bg-gradient-to-br from-slate-900 to-gray-900';
+                case 'cyan-teal':
+                    return 'bg-gradient-to-br from-cyan-900 to-teal-900';
+                default:
+                    return 'bg-gradient-to-br from-blue-900 to-purple-900';
+            }
+        }
+
+        // Initialize the game
+        initGame();
+    </script>
+</body>
+</html>
