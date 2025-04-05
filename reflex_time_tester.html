@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reflex Time Tester Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes successFlash {
+            0% { background-color: #4ade80; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(74, 222, 128, 0); }
+            100% { background-color: #4ade80; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+        }
+        
+        @keyframes failFlash {
+            0% { background-color: #f87171; box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(248, 113, 113, 0); }
+            100% { background-color: #f87171; box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
+        }
+        
+        @keyframes targetAppear {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes targetPulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+        }
+        
+        @keyframes progressGlow {
+            0% { box-shadow: 0 0 5px 0 rgba(99, 102, 241, 0.7); }
+            50% { box-shadow: 0 0 15px 5px rgba(99, 102, 241, 0.7); }
+            100% { box-shadow: 0 0 5px 0 rgba(99, 102, 241, 0.7); }
+        }
+        
+        @keyframes levelUp {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .shake-animation {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        .success-flash {
+            animation: successFlash 0.8s ease-out;
+        }
+        
+        .fail-flash {
+            animation: failFlash 0.8s ease-out;
+        }
+        
+        .target-appear {
+            animation: targetAppear 0.2s ease-out forwards;
+        }
+        
+        .target-pulse {
+            animation: targetPulse 1.5s infinite;
+        }
+        
+        .progress-glow {
+            animation: progressGlow 2s infinite;
+        }
+        
+        .level-up {
+            animation: levelUp 0.5s ease-out;
+        }
+        
+        .target-area {
+            transition: all 0.2s ease-out;
+            perspective: 1000px;
+        }
+        
+        .target-active {
+            transform-style: preserve-3d;
+        }
+        
+        .progress-bar {
+            transition: width 0.2s cubic-bezier(0.65, 0, 0.35, 1);
+        }
+        
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .has-tooltip:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .game-card {
+            transform-style: preserve-3d;
+            transition: all 0.3s ease;
+        }
+        
+        .game-card:hover {
+            transform: translateY(-5px) rotateX(5deg);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .difficulty-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        
+        .mode-selector {
+            transition: all 0.3s ease;
+        }
+        
+        .mode-selector:hover {
+            transform: scale(1.02);
+        }
+        
+        .mode-selector.active {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5);
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+        }
+        
+        .floating-target {
+            position: absolute;
+            will-change: transform;
+            z-index: 10;
+        }
+        
+        .gradient-text {
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+    <header class="bg-gradient-to-r from-gray-800 to-gray-900 py-4 px-6 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold gradient-text bg-gradient-to-r from-blue-400 to-purple-500 flex items-center">
+                <i class="fas fa-bolt mr-2"></i> Reflex Time Tester Pro
+            </h1>
+            <div class="flex items-center space-x-4">
+                <button id="soundToggle" class="bg-gray-700 hover:bg-gray-600 p-2 rounded-full transition transform hover:scale-110">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                <button id="infoBtn" class="bg-gray-700 hover:bg-gray-600 p-2 rounded-full transition transform hover:scale-110">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+                <button id="statsBtn" class="bg-gray-700 hover:bg-gray-600 p-2 rounded-full transition transform hover:scale-110">
+                    <i class="fas fa-chart-line"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-8 flex flex-col items-center justify-center">
+        <!-- Game Selection Screen -->
+        <div id="gameSelection" class="w-full max-w-4xl fade-in">
+            <div class="text-center mb-10">
+                <h2 class="text-2xl font-bold mb-2 gradient-text bg-gradient-to-r from-blue-400 to-purple-500">Select Game Mode</h2>
+                <p class="text-gray-400">Choose your reflex challenge</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div id="classicMode" class="mode-selector game-card bg-gray-800 rounded-xl p-6 cursor-pointer active">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-bullseye text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold">Classic</h3>
+                    </div>
+                    <p class="text-gray-400 mb-4">Click the target as soon as it appears. Test your basic reaction time.</p>
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-500 mr-2">Difficulty:</span>
+                        <span class="difficulty-dot bg-green-500"></span>
+                        <span class="difficulty-dot bg-green-500"></span>
+                        <span class="difficulty-dot bg-gray-700"></span>
+                    </div>
+                </div>
+                
+                <div id="movingTargetMode" class="mode-selector game-card bg-gray-800 rounded-xl p-6 cursor-pointer">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-arrows-alt text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold">Moving Target</h3>
+                    </div>
+                    <p class="text-gray-400 mb-4">Hit the moving target. Challenges your hand-eye coordination.</p>
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-500 mr-2">Difficulty:</span>
+                        <span class="difficulty-dot bg-yellow-500"></span>
+                        <span class="difficulty-dot bg-yellow-500"></span>
+                        <span class="difficulty-dot bg-yellow-500"></span>
+                    </div>
+                </div>
+                
+                <div id="colorSwitchMode" class="mode-selector game-card bg-gray-800 rounded-xl p-6 cursor-pointer">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-palette text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold">Color Switch</h3>
+                    </div>
+                    <p class="text-gray-400 mb-4">Only click when the color changes. Tests your selective attention.</p>
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-500 mr-2">Difficulty:</span>
+                        <span class="difficulty-dot bg-red-500"></span>
+                        <span class="difficulty-dot bg-red-500"></span>
+                        <span class="difficulty-dot bg-red-500"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-center">
+                <button id="startGameBtn" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg">
+                    Start Challenge
+                </button>
+            </div>
+        </div>
+        
+        <!-- Classic Game Screen -->
+        <div id="classicGame" class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-xl p-6 mb-8 hidden fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-semibold">Classic Reflex Test</h2>
+                    <div class="text-sm text-gray-400">Level <span id="currentLevel">1</span></div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-400">Round:</span>
+                    <span id="roundCounter" class="font-bold">0/5</span>
+                </div>
+            </div>
+            
+            <div class="relative mb-6">
+                <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                    <div id="progressBar" class="progress-bar h-full bg-gradient-to-r from-blue-500 to-purple-500 progress-glow" style="width: 0%"></div>
+                </div>
+                <div class="absolute top-0 right-0 text-xs text-gray-400 mt-1">
+                    <span id="progressText">0%</span>
+                </div>
+            </div>
+            
+            <div id="targetArea" class="target-area bg-gray-700 rounded-lg h-64 flex items-center justify-center cursor-pointer transition-all duration-300 mb-6 relative overflow-hidden">
+                <div id="targetContent" class="text-center">
+                    <i class="fas fa-hand-pointer text-4xl text-blue-400 mb-2"></i>
+                    <p class="text-lg">Click when the target appears</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-sm text-gray-400 mb-1">Best Time</div>
+                    <div id="bestTime" class="text-2xl font-bold">0.000s</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-sm text-gray-400 mb-1">Average</div>
+                    <div id="averageTime" class="text-2xl font-bold">0.000s</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-sm text-gray-400 mb-1">Last Time</div>
+                    <div id="lastTime" class="text-2xl font-bold">0.000s</div>
+                </div>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <button id="pauseBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition hidden">
+                    <i class="fas fa-pause mr-2"></i> Pause
+                </button>
+                <button id="classicRestartBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition">
+                    <i class="fas fa-redo mr-2"></i> Restart
+                </button>
+                <button id="mainMenuBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition">
+                    <i class="fas fa-home mr-2"></i> Menu
+                </button>
+            </div>
+        </div>
+        
+        <!-- Moving Target Game Screen -->
+        <div id="movingTargetGame" class="w-full max-w-4xl bg-gray-800 rounded-xl shadow-xl p-6 mb-8 hidden fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-semibold">Moving Target Challenge</h2>
+                    <div class="text-sm text-gray-400">Level <span id="movingCurrentLevel">1</span></div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-400">Hits:</span>
+                    <span id="movingRoundCounter" class="font-bold">0/10</span>
+                </div>
+            </div>
+            
+            <div class="relative mb-6">
+                <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                    <div id="movingProgressBar" class="progress-bar h-full bg-gradient-to-r from-purple-500 to-pink-500 progress-glow" style="width: 0%"></div>
+                </div>
+                <div class="absolute top-0 right-0 text-xs text-gray-400 mt-1">
+                    <span id="movingProgressText">0%</span>
+                </div>
+            </div>
+            
+            <div id="movingTargetArea" class="target-area bg-gray-700 rounded-lg h-96 flex items-center justify-center cursor-pointer transition-all duration-300 mb-6 relative overflow-hidden">
+                <div id="movingTargetContent" class="text-center">
+                    <i class="fas fa-arrows-alt text-4xl text-purple-400 mb-2"></i>
+                    <p class="text-lg">Click the moving targets as they appear</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-sm text-gray-400 mb-1">Best Time</div>
+                    <div id="movingBestTime" class="text-xl font-bold">0.000s</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-sm text-gray-400 mb-1">Average</div>
+                    <div id="movingAverageTime" class="text-xl font-bold">0.000s</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-sm text-gray-400 mb-1">Last Time</div>
+                    <div id="movingLastTime" class="text-xl font-bold">0.000s</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-sm text-gray-400 mb-1">Speed</div>
+                    <div id="targetSpeed" class="text-xl font-bold">1x</div>
+                </div>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <button id="movingPauseBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition hidden">
+                    <i class="fas fa-pause mr-2"></i> Pause
+                </button>
+                <button id="movingRestartBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition">
+                    <i class="fas fa-redo mr-2"></i> Restart
+                </button>
+                <button id="movingMainMenuBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition">
+                    <i class="fas fa-home mr-2"></i> Menu
+                </button>
+            </div>
+        </div>
+        
+        <!-- Color Switch Game Screen -->
+        <div id="colorSwitchGame" class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-xl p-6 mb-8 hidden fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-semibold">Color Switch Challenge</h2>
+                    <div class="text-sm text-gray-400">Level <span id="colorCurrentLevel">1</span></div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-400">Correct:</span>
+                    <span id="colorRoundCounter" class="font-bold">0/10</span>
+                </div>
+            </div>
+            
+            <div class="relative mb-6">
+                <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                    <div id="colorProgressBar" class="progress-bar h-full bg-gradient-to-r from-red-500 to-orange-500 progress-glow" style="width: 0%"></div>
+                </div>
+                <div class="absolute top-0 right-0 text-xs text-gray-400 mt-1">
+                    <span id="colorProgressText">0%</span>
+                </div>
+            </div>
+            
+            <div id="colorTargetArea" class="target-area bg-gray-700 rounded-lg h-64 flex items-center justify-center cursor-pointer transition-all duration-300 mb-6">
+                <div id="colorTargetContent" class="text-center">
+                    <i class="fas fa-palette text-4xl text-red-400 mb-2"></i>
+                    <p class="text-lg">Click only when the color changes</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-sm text-gray-400 mb-1">Correct</div>
+                    <div id="colorCorrectCount" class="text-2xl font-bold">0</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-sm text-gray-400 mb-1">Wrong</div>
+                    <div id="colorWrongCount" class="text-2xl font-bold">0</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-sm text-gray-400 mb-1">Accuracy</div>
+                    <div id="colorAccuracy" class="text-2xl font-bold">0%</div>
+                </div>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <button id="colorPauseBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition hidden">
+                    <i class="fas fa-pause mr-2"></i> Pause
+                </button>
+                <button id="colorRestartBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition">
+                    <i class="fas fa-redo mr-2"></i> Restart
+                </button>
+                <button id="colorMainMenuBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition">
+                    <i class="fas fa-home mr-2"></i> Menu
+                </button>
+            </div>
+        </div>
+        
+        <!-- Results Panel -->
+        <div id="resultsPanel" class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-xl p-6 hidden fade-in">
+            <h2 class="text-xl font-semibold mb-4">Your Results</h2>
+            
+            <div class="mb-6">
+                <div class="flex justify-between text-sm text-gray-400 mb-1">
+                    <span>Performance Summary</span>
+                    <span id="testCount">5 tests</span>
+                </div>
+                <div class="h-4 bg-gray-700 rounded-full overflow-hidden">
+                    <div id="timeDistribution" class="h-full bg-gradient-to-r from-blue-500 to-green-500" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="text-sm text-gray-400 mb-1">Fastest Reaction</div>
+                    <div id="resultBest" class="text-2xl font-bold">0.000s</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="text-sm text-gray-400 mb-1">Slowest Reaction</div>
+                    <div id="resultWorst" class="text-2xl font-bold">0.000s</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="text-sm text-gray-400 mb-1">Average</div>
+                    <div id="resultAverage" class="text-2xl font-bold">0.000s</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="text-sm text-gray-400 mb-1">Consistency</div>
+                    <div id="resultConsistency" class="text-2xl font-bold">0.000s</div>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Reaction Times</h3>
+                <div id="timeList" class="space-y-2">
+                    <!-- Times will be added here -->
+                </div>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <button id="retryBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-full transition transform hover:scale-105">
+                    Try Again
+                </button>
+                <button id="shareBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition transform hover:scale-105">
+                    Share Results
+                </button>
+            </div>
+        </div>
+        
+        <!-- Stats Panel -->
+        <div id="statsPanel" class="w-full max-w-4xl bg-gray-800 rounded-xl shadow-xl p-6 hidden fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Your Statistics</h2>
+                <button id="closeStatsBtn" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="text-sm text-gray-400 mb-2">Classic Mode</div>
+                    <div class="text-3xl font-bold mb-1 gradient-text bg-gradient-to-r from-blue-400 to-purple-500" id="classicBestStat">0.000s</div>
+                    <div class="text-sm text-gray-400">Best Time</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="text-sm text-gray-400 mb-2">Moving Target</div>
+                    <div class="text-3xl font-bold mb-1 gradient-text bg-gradient-to-r from-purple-400 to-pink-500" id="movingBestStat">0.000s</div>
+                    <div class="text-sm text-gray-400">Best Average</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="text-sm text-gray-400 mb-2">Color Switch</div>
+                    <div class="text-3xl font-bold mb-1 gradient-text bg-gradient-to-r from-red-400 to-orange-500" id="colorBestStat">0%</div>
+                    <div class="text-sm text-gray-400">Best Accuracy</div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-700 rounded-lg p-4 mb-6">
+                <h3 class="text-lg font-medium mb-3">Performance History</h3>
+                <canvas id="performanceChart" height="200"></canvas>
+            </div>
+            
+            <div class="flex justify-center">
+                <button id="resetStatsBtn" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-full transition">
+                    <i class="fas fa-trash-alt mr-2"></i> Reset Stats
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Info Modal -->
+    <div id="infoModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-xl max-w-md w-full mx-4 p-6 fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold gradient-text bg-gradient-to-r from-blue-400 to-purple-500">About Reflex Time Tester Pro</h3>
+                <button id="closeInfoModal" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="space-y-4 text-gray-300">
+                <p>Test and improve your reaction time with three different challenge modes, each with progressive difficulty levels.</p>
+                
+                <div class="bg-gray-700 p-3 rounded-lg">
+                    <h4 class="font-medium mb-2"><i class="fas fa-bullseye mr-2 text-blue-400"></i> Classic Mode</h4>
+                    <p class="text-sm">Click the target as soon as it appears. The delay before target appearance decreases as you level up.</p>
+                </div>
+                
+                <div class="bg-gray-700 p-3 rounded-lg">
+                    <h4 class="font-medium mb-2"><i class="fas fa-arrows-alt mr-2 text-purple-400"></i> Moving Target</h4>
+                    <p class="text-sm">Hit moving targets that appear randomly on screen. Targets move faster at higher levels.</p>
+                </div>
+                
+                <div class="bg-gray-700 p-3 rounded-lg">
+                    <h4 class="font-medium mb-2"><i class="fas fa-palette mr-2 text-red-400"></i> Color Switch</h4>
+                    <p class="text-sm">Only click when the color changes. The color changes more frequently at higher levels.</p>
+                </div>
+                
+                <div class="bg-gray-700 p-3 rounded-lg">
+                    <h4 class="font-medium mb-2">Reaction Time Benchmarks:</h4>
+                    <ul class="space-y-1 text-sm">
+                        <li class="flex items-center"><span class="w-24">Under 150ms:</span> <span class="text-green-400">Exceptional</span></li>
+                        <li class="flex items-center"><span class="w-24">150-200ms:</span> <span class="text-blue-400">Excellent</span></li>
+                        <li class="flex items-center"><span class="w-24">200-250ms:</span> <span class="text-yellow-400">Average</span></li>
+                        <li class="flex items-center"><span class="w-24">Over 250ms:</span> <span class="text-orange-400">Needs practice</span></li>
+                    </ul>
+                </div>
+                <p class="text-xs text-gray-500 text-center">Created by Geoffroy Streit - Hylst</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level Up Modal -->
+    <div id="levelUpModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-gradient-to-br from-blue-600 to-purple-700 rounded-xl max-w-sm w-full mx-4 p-8 text-center fade-in">
+            <div class="text-6xl mb-4 level-up">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-2">Level Up!</h3>
+            <p id="levelUpMessage" class="mb-6">You've reached level 2</p>
+            <button id="continueBtn" class="bg-white text-blue-600 hover:bg-gray-100 font-bold py-2 px-6 rounded-full transition transform hover:scale-105">
+                Continue Challenge
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="fixed top-4 right-4 bg-gray-800 rounded-lg shadow-lg px-4 py-3 flex items-center hidden z-50 fade-in">
+        <i id="notificationIcon" class="fas fa-check-circle mr-2"></i>
+        <span id="notificationText">Notification message</span>
+    </div>
+
+    <!-- Confetti Container -->
+    <div id="confettiContainer" class="fixed inset-0 pointer-events-none z-40 overflow-hidden hidden"></div>
+
+    <!-- Audio Elements -->
+    <audio id="clickSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3" preload="auto"></audio>
+    <audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" preload="auto"></audio>
+    <audio id="failSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-retro-game-over-213.mp3" preload="auto"></audio>
+    <audio id="countdownSound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3" preload="auto"></audio>
+    <audio id="levelUpSound" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" preload="auto"></audio>
+    <audio id="movingTargetSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-1699.mp3" preload="auto"></audio>
+    <audio id="colorChangeSound" src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3" preload="auto"></audio>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // DOM Elements
+        const gameSelection = document.getElementById('gameSelection');
+        const classicGame = document.getElementById('classicGame');
+        const movingTargetGame = document.getElementById('movingTargetGame');
+        const colorSwitchGame = document.getElementById('colorSwitchGame');
+        const resultsPanel = document.getElementById('resultsPanel');
+        const statsPanel = document.getElementById('statsPanel');
+        
+        // Game mode selectors
+        const classicMode = document.getElementById('classicMode');
+        const movingTargetMode = document.getElementById('movingTargetMode');
+        const colorSwitchMode = document.getElementById('colorSwitchMode');
+        const startGameBtn = document.getElementById('startGameBtn');
+        
+        // Classic game elements
+        const roundCounter = document.getElementById('roundCounter');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const targetArea = document.getElementById('targetArea');
+        const targetContent = document.getElementById('targetContent');
+        const bestTime = document.getElementById('bestTime');
+        const averageTime = document.getElementById('averageTime');
+        const lastTime = document.getElementById('lastTime');
+        const currentLevel = document.getElementById('currentLevel');
+        const classicRestartBtn = document.getElementById('classicRestartBtn');
+        const mainMenuBtn = document.getElementById('mainMenuBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        
+        // Moving target game elements
+        const movingRoundCounter = document.getElementById('movingRoundCounter');
+        const movingProgressBar = document.getElementById('movingProgressBar');
+        const movingProgressText = document.getElementById('movingProgressText');
+        const movingTargetArea = document.getElementById('movingTargetArea');
+        const movingTargetContent = document.getElementById('movingTargetContent');
+        const movingBestTime = document.getElementById('movingBestTime');
+        const movingAverageTime = document.getElementById('movingAverageTime');
+        const movingLastTime = document.getElementById('movingLastTime');
+        const movingCurrentLevel = document.getElementById('movingCurrentLevel');
+        const targetSpeed = document.getElementById('targetSpeed');
+        const movingRestartBtn = document.getElementById('movingRestartBtn');
+        const movingMainMenuBtn = document.getElementById('movingMainMenuBtn');
+        const movingPauseBtn = document.getElementById('movingPauseBtn');
+        
+        // Color switch game elements
+        const colorRoundCounter = document.getElementById('colorRoundCounter');
+        const colorProgressBar = document.getElementById('colorProgressBar');
+        const colorProgressText = document.getElementById('colorProgressText');
+        const colorTargetArea = document.getElementById('colorTargetArea');
+        const colorTargetContent = document.getElementById('colorTargetContent');
+        const colorCorrectCount = document.getElementById('colorCorrectCount');
+        const colorWrongCount = document.getElementById('colorWrongCount');
+        const colorAccuracy = document.getElementById('colorAccuracy');
+        const colorCurrentLevel = document.getElementById('colorCurrentLevel');
+        const colorRestartBtn = document.getElementById('colorRestartBtn');
+        const colorMainMenuBtn = document.getElementById('colorMainMenuBtn');
+        const colorPauseBtn = document.getElementById('colorPauseBtn');
+        
+        // Results panel elements
+        const resultBest = document.getElementById('resultBest');
+        const resultWorst = document.getElementById('resultWorst');
+        const resultAverage = document.getElementById('resultAverage');
+        const resultConsistency = document.getElementById('resultConsistency');
+        const timeList = document.getElementById('timeList');
+        const timeDistribution = document.getElementById('timeDistribution');
+        const testCount = document.getElementById('testCount');
+        const retryBtn = document.getElementById('retryBtn');
+        const shareBtn = document.getElementById('shareBtn');
+        
+        // Stats panel elements
+        const classicBestStat = document.getElementById('classicBestStat');
+        const movingBestStat = document.getElementById('movingBestStat');
+        const colorBestStat = document.getElementById('colorBestStat');
+        const performanceChart = document.getElementById('performanceChart');
+        const resetStatsBtn = document.getElementById('resetStatsBtn');
+        const statsBtn = document.getElementById('statsBtn');
+        const closeStatsBtn = document.getElementById('closeStatsBtn');
+        
+        // Modals and notifications
+        const infoModal = document.getElementById('infoModal');
+        const infoBtn = document.getElementById('infoBtn');
+        const closeInfoModal = document.getElementById('closeInfoModal');
+        const levelUpModal = document.getElementById('levelUpModal');
+        const levelUpMessage = document.getElementById('levelUpMessage');
+        const continueBtn = document.getElementById('continueBtn');
+        const notification = document.getElementById('notification');
+        const notificationIcon = document.getElementById('notificationIcon');
+        const notificationText = document.getElementById('notificationText');
+        const confettiContainer = document.getElementById('confettiContainer');
+        
+        // Audio elements
+        const clickSound = document.getElementById('clickSound');
+        const successSound = document.getElementById('successSound');
+        const failSound = document.getElementById('failSound');
+        const countdownSound = document.getElementById('countdownSound');
+        const levelUpSound = document.getElementById('levelUpSound');
+        const movingTargetSound = document.getElementById('movingTargetSound');
+        const colorChangeSound = document.getElementById('colorChangeSound');
+        
+        // Game state
+        let currentGameMode = 'classic';
+        let isTesting = false;
+        let isPaused = false;
+        let soundEnabled = true;
+        
+        // Classic game state
+        let classicRound = 0;
+        const classicTotalRounds = 5;
+        let classicReactionTimes = [];
+        let classicStartTime = 0;
+        let classicTargetTimeout = null;
+        let classicLevel = 1;
+        let classicBestTimes = [];
+        
+        // Moving target game state
+        let movingRound = 0;
+        const movingTotalRounds = 10;
+        let movingReactionTimes = [];
+        let movingTargets = [];
+        let movingLevel = 1;
+        let movingTargetInterval = null;
+        let movingTargetSpeed = 1;
+        let movingBestAverages = [];
+        
+        // Color switch game state
+        let colorRound = 0;
+        const colorTotalRounds = 10;
+        let colorCorrect = 0;
+        let colorWrong = 0;
+        let colorLevel = 1;
+        let colorChangeInterval = null;
+        let colorTimeout = null;
+        let isColorChanged = false;
+        let colorBestAccuracies = [];
+        
+        // Stats
+        let stats = {
+            classic: { bestTime: 0, history: [] },
+            moving: { bestAverage: 0, history: [] },
+            color: { bestAccuracy: 0, history: [] }
+        };
+        
+        // Load stats from localStorage
+        function loadStats() {
+            const savedStats = localStorage.getItem('reflexStats');
+            if (savedStats) {
+                stats = JSON.parse(savedStats);
+                updateStatsDisplay();
+            }
+        }
+        
+        // Save stats to localStorage
+        function saveStats() {
+            localStorage.setItem('reflexStats', JSON.stringify(stats));
+        }
+        
+        // Initialize
+        function init() {
+            loadStats();
+            setupEventListeners();
+            setupGameModeSelection();
+            
+            // Initialize chart
+            initPerformanceChart();
+        }
+        
+        function setupEventListeners() {
+            // Game mode selection
+            classicMode.addEventListener('click', () => selectGameMode('classic'));
+            movingTargetMode.addEventListener('click', () => selectGameMode('moving'));
+            colorSwitchMode.addEventListener('click', () => selectGameMode('color'));
+            startGameBtn.addEventListener('click', startSelectedGame);
+            
+            // Classic game
+            targetArea.addEventListener('click', handleClassicTargetClick);
+            classicRestartBtn.addEventListener('click', resetClassicGame);
+            mainMenuBtn.addEventListener('click', returnToMainMenu);
+            pauseBtn.addEventListener('click', togglePause);
+            
+            // Moving target game
+            movingTargetArea.addEventListener('click', handleMovingTargetClick);
+            movingRestartBtn.addEventListener('click', resetMovingGame);
+            movingMainMenuBtn.addEventListener('click', returnToMainMenu);
+            movingPauseBtn.addEventListener('click', togglePause);
+            
+            // Color switch game
+            colorTargetArea.addEventListener('click', handleColorTargetClick);
+            colorRestartBtn.addEventListener('click', resetColorGame);
+            colorMainMenuBtn.addEventListener('click', returnToMainMenu);
+            colorPauseBtn.addEventListener('click', togglePause);
+            
+            // Results panel
+            retryBtn.addEventListener('click', retryGame);
+            shareBtn.addEventListener('click', shareResults);
+            
+            // Stats panel
+            statsBtn.addEventListener('click', showStatsPanel);
+            closeStatsBtn.addEventListener('click', hideStatsPanel);
+            resetStatsBtn.addEventListener('click', resetStats);
+            
+            // Info modal
+            infoBtn.addEventListener('click', showInfoModal);
+            closeInfoModal.addEventListener('click', hideInfoModal);
+            
+            // Level up modal
+            continueBtn.addEventListener('click', hideLevelUpModal);
+            
+            // Sound toggle
+            soundToggle.addEventListener('click', toggleSound);
+        }
+        
+        function setupGameModeSelection() {
+            selectGameMode('classic');
+        }
+        
+        function selectGameMode(mode) {
+            currentGameMode = mode;
+            
+            // Remove active class from all modes
+            classicMode.classList.remove('active');
+            movingTargetMode.classList.remove('active');
+            colorSwitchMode.classList.remove('active');
+            
+            // Add active class to selected mode
+            if (mode === 'classic') {
+                classicMode.classList.add('active');
+            } else if (mode === 'moving') {
+                movingTargetMode.classList.add('active');
+            } else if (mode === 'color') {
+                colorSwitchMode.classList.add('active');
+            }
+        }
+        
+        function startSelectedGame() {
+            if (currentGameMode === 'classic') {
+                startClassicGame();
+            } else if (currentGameMode === 'moving') {
+                startMovingGame();
+            } else if (currentGameMode === 'color') {
+                startColorGame();
+            }
+        }
+        
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            soundToggle.innerHTML = soundEnabled ? '<i class="fas fa-volume-up"></i>' : '<i class="fas fa-volume-mute"></i>';
+            showNotification(soundEnabled ? 'Sound enabled' : 'Sound disabled');
+        }
+        
+        function playSound(sound) {
+            if (!soundEnabled) return;
+            sound.currentTime = 0;
+            sound.play().catch(e => console.log("Audio play failed:", e));
+        }
+        
+        function showNotification(message, isSuccess = true) {
+            notificationIcon.className = isSuccess ? 'fas fa-check-circle mr-2 text-green-400' : 'fas fa-exclamation-circle mr-2 text-red-400';
+            notificationText.textContent = message;
+            notification.className = `fixed top-4 right-4 bg-gray-800 rounded-lg shadow-lg px-4 py-3 flex items-center z-50 fade-in ${isSuccess ? 'border-l-4 border-green-500' : 'border-l-4 border-red-500'}`;
+            
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 3000);
+        }
+        
+        function showInfoModal() {
+            infoModal.classList.remove('hidden');
+        }
+        
+        function hideInfoModal() {
+            infoModal.classList.add('hidden');
+        }
+        
+        function showStatsPanel() {
+            updateStatsDisplay();
+            statsPanel.classList.remove('hidden');
+        }
+        
+        function hideStatsPanel() {
+            statsPanel.classList.add('hidden');
+        }
+        
+        function showLevelUpModal(level, message = '') {
+            levelUpMessage.textContent = message || `You've reached level ${level}`;
+            levelUpModal.classList.remove('hidden');
+            playSound(levelUpSound);
+            createConfetti();
+        }
+        
+        function hideLevelUpModal() {
+            levelUpModal.classList.add('hidden');
+            clearConfetti();
+        }
+        
+        function createConfetti() {
+            confettiContainer.innerHTML = '';
+            confettiContainer.classList.remove('hidden');
+            
+            const colors = ['#f87171', '#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#f472b6'];
+            
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.top = `${Math.random() * 100}%`;
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                confetti.style.opacity = '1';
+                
+                // Random shape
+                if (Math.random() > 0.5) {
+                    confetti.style.borderRadius = '50%';
+                }
+                
+                // Animation
+                const animation = confetti.animate([
+                    { transform: `translate(0, 0) rotate(0deg)`, opacity: 1 },
+                    { transform: `translate(${Math.random() * 200 - 100}px, ${window.innerHeight}px) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+                ], {
+                    duration: Math.random() * 3000 + 2000,
+                    easing: 'cubic-bezier(0.1, 0.8, 0.3, 1)'
+                });
+                
+                confettiContainer.appendChild(confetti);
+                
+                animation.onfinish = () => {
+                    confetti.remove();
+                };
+            }
+        }
+        
+        function clearConfetti() {
+            confettiContainer.classList.add('hidden');
+        }
+        
+        function initPerformanceChart() {
+            const ctx = performanceChart.getContext('2d');
+            
+            // Sample data for the chart
+            const labels = [];
+            const classicData = [];
+            const movingData = [];
+            const colorData = [];
+            
+            // Generate sample data for the last 7 days
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                
+                // Random sample data
+                classicData.push(Math.floor(Math.random() * 100) + 100);
+                movingData.push(Math.floor(Math.random() * 100) + 150);
+                colorData.push(Math.floor(Math.random() * 20) + 70);
+            }
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Classic (ms)',
+                            data: classicData,
+                            borderColor: '#60a5fa',
+                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Moving (ms)',
+                            data: movingData,
+                            borderColor: '#a78bfa',
+                            backgroundColor: 'rgba(167, 139, 250, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Color (%)',
+                            data: colorData,
+                            borderColor: '#f87171',
+                            backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#e5e7eb'
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#1f2937',
+                            titleColor: '#e5e7eb',
+                            bodyColor: '#e5e7eb',
+                            borderColor: '#4b5563',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: '#4b5563'
+                            },
+                            ticks: {
+                                color: '#9ca3af'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: '#4b5563'
+                            },
+                            ticks: {
+                                color: '#9ca3af'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+        
+        function updateStatsDisplay() {
+            classicBestStat.textContent = stats.classic.bestTime > 0 ? `${stats.classic.bestTime.toFixed(0)}ms` : 'N/A';
+            movingBestStat.textContent = stats.moving.bestAverage > 0 ? `${stats.moving.bestAverage.toFixed(0)}ms` : 'N/A';
+            colorBestStat.textContent = stats.color.bestAccuracy > 0 ? `${stats.color.bestAccuracy.toFixed(0)}%` : 'N/A';
+        }
+        
+        function resetStats() {
+            if (confirm('Are you sure you want to reset all your statistics? This cannot be undone.')) {
+                stats = {
+                    classic: { bestTime: 0, history: [] },
+                    moving: { bestAverage: 0, history: [] },
+                    color: { bestAccuracy: 0, history: [] }
+                };
+                saveStats();
+                updateStatsDisplay();
+                showNotification('Statistics reset successfully');
+            }
+        }
+        
+        function returnToMainMenu() {
+            // Hide all game screens
+            classicGame.classList.add('hidden');
+            movingTargetGame.classList.add('hidden');
+            colorSwitchGame.classList.add('hidden');
+            resultsPanel.classList.add('hidden');
+            
+            // Show game selection
+            gameSelection.classList.remove('hidden');
+            
+            // Reset any ongoing games
+            resetClassicGame();
+            resetMovingGame();
+            resetColorGame();
+        }
+        
+        function togglePause() {
+            isPaused = !isPaused;
+            
+            if (currentGameMode === 'classic') {
+                pauseBtn.innerHTML = isPaused ? '<i class="fas fa-play mr-2"></i> Resume' : '<i class="fas fa-pause mr-2"></i> Pause';
+                
+                if (isPaused) {
+                    clearTimeout(classicTargetTimeout);
+                } else {
+                    nextClassicRound();
+                }
+            } else if (currentGameMode === 'moving') {
+                movingPauseBtn.innerHTML = isPaused ? '<i class="fas fa-play mr-2"></i> Resume' : '<i class="fas fa-pause mr-2"></i> Pause';
+                
+                if (isPaused) {
+                    clearInterval(movingTargetInterval);
+                    movingTargets.forEach(target => {
+                        clearInterval(target.moveInterval);
+                    });
+                } else {
+                    startMovingTargets();
+                }
+            } else if (currentGameMode === 'color') {
+                colorPauseBtn.innerHTML = isPaused ? '<i class="fas fa-play mr-2"></i> Resume' : '<i class="fas fa-pause mr-2"></i> Pause';
+                
+                if (isPaused) {
+                    clearInterval(colorChangeInterval);
+                    clearTimeout(colorTimeout);
+                } else {
+                    nextColorRound();
+                }
+            }
+        }
+        
+        // Classic Game Functions
+        function startClassicGame() {
+            gameSelection.classList.add('hidden');
+            classicGame.classList.remove('hidden');
+            resultsPanel.classList.add('hidden');
+            
+            isTesting = true;
+            isPaused = false;
+            classicRound = 0;
+            classicReactionTimes = [];
+            classicBestTimes = [];
+            pauseBtn.classList.add('hidden');
+            
+            currentLevel.textContent = '1';
+            classicLevel = 1;
+            
+            targetContent.innerHTML = '<i class="fas fa-hourglass-half text-4xl text-yellow-400 mb-2 pulse-animation"></i><p class="text-lg">Get ready...</p>';
+            playSound(countdownSound);
+            
+            setTimeout(() => {
+                nextClassicRound();
+            }, 2000);
+        }
+        
+        function nextClassicRound() {
+            if (classicRound >= classicTotalRounds) {
+                endClassicGame();
+                return;
+            }
+            
+            classicRound++;
+            updateRoundCounter();
+            updateProgress((classicRound / classicTotalRounds) * 100);
+            
+            // Reset target area
+            targetArea.classList.remove('target-active', 'success-flash', 'fail-flash');
+            targetContent.innerHTML = '<i class="fas fa-spinner fa-spin text-4xl text-blue-400 mb-2"></i><p class="text-lg">Waiting for target...</p>';
+            
+            // Calculate delay based on level (decreases with higher levels)
+            const baseDelay = 3000 - (classicLevel * 200);
+            const delay = Math.max(500, Math.random() * baseDelay + 500);
+            
+            classicTargetTimeout = setTimeout(() => {
+                showClassicTarget();
+            }, delay);
+        }
+        
+        function showClassicTarget() {
+            // Change target appearance
+            targetArea.classList.add('target-active');
+            targetContent.innerHTML = '<div class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xl target-appear target-pulse">CLICK</div>';
+            
+            // Record start time
+            classicStartTime = performance.now();
+            
+            // Show pause button
+            pauseBtn.classList.remove('hidden');
+        }
+        
+        function handleClassicTargetClick() {
+            if (!isTesting || isPaused || !targetArea.classList.contains('target-active')) {
+                if (isTesting && !isPaused) {
+                    // Clicked too early
+                    clearTimeout(classicTargetTimeout);
+                    targetArea.classList.remove('target-active');
+                    targetArea.classList.add('fail-flash');
+                    targetContent.innerHTML = '<i class="fas fa-times-circle text-4xl text-red-400 mb-2"></i><p class="text-lg">Too early!</p>';
+                    playSound(failSound);
+                    
+                    // Add penalty time
+                    classicReactionTimes.push(999);
+                    updateClassicStats();
+                    
+                    setTimeout(() => {
+                        nextClassicRound();
+                    }, 1500);
+                }
+                return;
+            }
+            
+            // Calculate reaction time
+            const endTime = performance.now();
+            const reactionTime = endTime - classicStartTime;
+            
+            // Store reaction time
+            classicReactionTimes.push(reactionTime);
+            updateClassicStats();
+            
+            // Visual feedback
+            targetArea.classList.remove('target-active');
+            
+            if (reactionTime < 50) {
+                // Impossible reaction time (likely cheating)
+                targetArea.classList.add('fail-flash');
+                targetContent.innerHTML = '<i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-2"></i><p class="text-lg">Too fast to be real!</p>';
+                playSound(failSound);
+            } else {
+                // Valid reaction
+                targetArea.classList.add('success-flash');
+                targetContent.innerHTML = `<i class="fas fa-check-circle text-4xl text-green-400 mb-2"></i><p class="text-lg">${reactionTime.toFixed(0)}ms</p>`;
+                playSound(successSound);
+                
+                // Track best times for level progression
+                if (reactionTime < 250) {
+                    classicBestTimes.push(reactionTime);
+                    
+                    // Level up if 3 good times in a row
+                    if (classicBestTimes.length >= 3 && classicLevel < 5) {
+                        classicLevel++;
+                        currentLevel.textContent = classicLevel;
+                        classicBestTimes = [];
+                        
+                        const message = `Level ${classicLevel}! Targets will appear faster.`;
+                        showLevelUpModal(classicLevel, message);
+                        
+                        // Don't proceed to next round immediately
+                        return;
+                    }
+                }
+            }
+            
+            playSound(clickSound);
+            
+            // Move to next round after delay
+            setTimeout(() => {
+                nextClassicRound();
+            }, 1500);
+        }
+        
+        function updateClassicStats() {
+            if (classicReactionTimes.length === 0) return;
+            
+            const lastTimeValue = classicReactionTimes[classicReactionTimes.length - 1];
+            lastTime.textContent = lastTimeValue === 999 ? 'Too early!' : `${(lastTimeValue).toFixed(0)}ms`;
+            
+            const validTimes = classicReactionTimes.filter(t => t !== 999);
+            
+            if (validTimes.length > 0) {
+                const best = Math.min(...validTimes);
+                const avg = validTimes.reduce((a, b) => a + b, 0) / validTimes.length;
+                
+                bestTime.textContent = `${best.toFixed(0)}ms`;
+                averageTime.textContent = `${avg.toFixed(0)}ms`;
+            }
+        }
+        
+        function updateRoundCounter() {
+            roundCounter.textContent = `${classicRound}/${classicTotalRounds}`;
+        }
+        
+        function updateProgress(percent) {
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = `${Math.round(percent)}%`;
+        }
+        
+        function endClassicGame() {
+            isTesting = false;
+            isPaused = false;
+            
+            // Filter out penalty times
+            const validTimes = classicReactionTimes.filter(t => t !== 999);
+            
+            // Calculate stats
+            const best = validTimes.length > 0 ? Math.min(...validTimes) : 0;
+            const worst = validTimes.length > 0 ? Math.max(...validTimes) : 0;
+            const avg = validTimes.length > 0 ? validTimes.reduce((a, b) => a + b, 0) / validTimes.length : 0;
+            
+            // Calculate consistency (standard deviation)
+            let consistency = 0;
+            if (validTimes.length > 1) {
+                const squaredDifferences = validTimes.map(t => Math.pow(t - avg, 2));
+                const variance = squaredDifferences.reduce((a, b) => a + b, 0) / validTimes.length;
+                consistency = Math.sqrt(variance);
+            }
+            
+            // Update stats
+            if (validTimes.length > 0 && (stats.classic.bestTime === 0 || best < stats.classic.bestTime)) {
+                stats.classic.bestTime = best;
+                stats.classic.history.push({
+                    date: new Date().toISOString(),
+                    time: best,
+                    level: classicLevel
+                });
+                saveStats();
+            }
+            
+            // Update results panel
+            resultBest.textContent = `${best.toFixed(0)}ms`;
+            resultWorst.textContent = `${worst.toFixed(0)}ms`;
+            resultAverage.textContent = `${avg.toFixed(0)}ms`;
+            resultConsistency.textContent = `${consistency.toFixed(0)}ms`;
+            testCount.textContent = `${validTimes.length} valid tests`;
+            
+            // Update time distribution (scaled to 400ms max)
+            const distributionPercent = Math.min(100, (avg / 400) * 100);
+            timeDistribution.style.width = `${distributionPercent}%`;
+            
+            // Populate time list
+            timeList.innerHTML = '';
+            classicReactionTimes.forEach((time, index) => {
+                const timeItem = document.createElement('div');
+                timeItem.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-lg';
+                
+                const roundText = document.createElement('span');
+                roundText.className = 'font-medium';
+                roundText.textContent = `Round ${index + 1}`;
+                
+                const timeText = document.createElement('span');
+                timeText.className = time === 999 ? 'text-red-400' : 'text-blue-400';
+                timeText.textContent = time === 999 ? 'Clicked too early!' : `${time.toFixed(0)}ms`;
+                
+                timeItem.appendChild(roundText);
+                timeItem.appendChild(timeText);
+                timeList.appendChild(timeItem);
+            });
+            
+            // Show results panel
+            resultsPanel.classList.remove('hidden');
+            
+            // Scroll to results
+            setTimeout(() => {
+                resultsPanel.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+            
+            // Show notification based on performance
+            if (validTimes.length > 0) {
+                let message = '';
+                let isGood = true;
+                
+                if (avg < 150) {
+                    message = 'Exceptional reflexes!';
+                } else if (avg < 200) {
+                    message = 'Excellent reaction time!';
+                } else if (avg < 250) {
+                    message = 'Average reaction time';
+                } else {
+                    message = 'Keep practicing!';
+                    isGood = false;
+                }
+                
+                showNotification(`${message} (Avg: ${avg.toFixed(0)}ms)`, isGood);
+            }
+        }
+        
+        function resetClassicGame() {
+            clearTimeout(classicTargetTimeout);
+            isTesting = false;
+            isPaused = false;
+            
+            targetArea.classList.remove('target-active', 'success-flash', 'fail-flash');
+            targetContent.innerHTML = '<i class="fas fa-hand-pointer text-4xl text-blue-400 mb-2"></i><p class="text-lg">Click when the target appears</p>';
+            
+            bestTime.textContent = '0ms';
+            averageTime.textContent = '0ms';
+            lastTime.textContent = '0ms';
+            
+            updateProgress(0);
+            updateRoundCounter();
+            
+            pauseBtn.classList.add('hidden');
+            resultsPanel.classList.add('hidden');
+        }
+        
+        // Moving Target Game Functions
+        function startMovingGame() {
+            gameSelection.classList.add('hidden');
+            movingTargetGame.classList.remove('hidden');
+            resultsPanel.classList.add('hidden');
+            
+            isTesting = true;
+            isPaused = false;
+            movingRound = 0;
+            movingReactionTimes = [];
+            movingTargets = [];
+            movingLevel = 1;
+            movingTargetSpeed = 1;
+            
+            movingCurrentLevel.textContent = '1';
+            targetSpeed.textContent = '1x';
+            movingPauseBtn.classList.add('hidden');
+            
+            movingTargetContent.innerHTML = '<i class="fas fa-hourglass-half text-4xl text-yellow-400 mb-2 pulse-animation"></i><p class="text-lg">Get ready...</p>';
+            playSound(countdownSound);
+            
+            setTimeout(() => {
+                nextMovingRound();
+            }, 2000);
+        }
+        
+        function nextMovingRound() {
+            if (movingRound >= movingTotalRounds) {
+                endMovingGame();
+                return;
+            }
+            
+            movingRound++;
+            movingRoundCounter.textContent = `${movingRound}/${movingTotalRounds}`;
+            movingProgressBar.style.width = `${(movingRound / movingTotalRounds) * 100}%`;
+            movingProgressText.textContent = `${Math.round((movingRound / movingTotalRounds) * 100)}%`;
+            
+            // Clear any existing targets
+            movingTargets.forEach(target => {
+                clearInterval(target.moveInterval);
+                target.element.remove();
+            });
+            movingTargets = [];
+            
+            // Show waiting message
+            movingTargetContent.innerHTML = '<i class="fas fa-spinner fa-spin text-4xl text-purple-400 mb-2"></i><p class="text-lg">Target incoming...</p>';
+            
+            // Create a new target after a delay
+            setTimeout(() => {
+                createMovingTarget();
+                movingPauseBtn.classList.remove('hidden');
+            }, 1000);
+        }
+        
+        function createMovingTarget() {
+            const targetSize = 50;
+            const target = document.createElement('div');
+            target.className = 'floating-target w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold cursor-pointer target-appear';
+            target.textContent = 'HIT';
+            
+            // Random starting position (within bounds)
+            const maxX = movingTargetArea.clientWidth - targetSize;
+            const maxY = movingTargetArea.clientHeight - targetSize;
+            let x = Math.random() * maxX;
+            let y = Math.random() * maxY;
+            
+            // Random direction
+            let dx = (Math.random() - 0.5) * 5 * movingTargetSpeed;
+            let dy = (Math.random() - 0.5) * 5 * movingTargetSpeed;
+            
+            target.style.left = `${x}px`;
+            target.style.top = `${y}px`;
+            
+            movingTargetArea.appendChild(target);
+            
+            // Record creation time
+            const createTime = performance.now();
+            
+            // Movement interval
+            const moveInterval = setInterval(() => {
+                x += dx;
+                y += dy;
+                
+                // Bounce off walls
+                if (x <= 0 || x >= maxX) {
+                    dx = -dx;
+                    playSound(movingTargetSound);
+                }
+                if (y <= 0 || y >= maxY) {
+                    dy = -dy;
+                    playSound(movingTargetSound);
+                }
+                
+                target.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+                target.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+            }, 16);
+            
+            movingTargets.push({
+                element: target,
+                moveInterval: moveInterval,
+                createTime: createTime
+            });
+        }
+        
+        function handleMovingTargetClick(e) {
+            if (!isTesting || isPaused) return;
+            
+            // Check if clicked on a target
+            const clickedTarget = movingTargets.find(target => target.element === e.target);
+            if (clickedTarget) {
+                // Calculate reaction time
+                const clickTime = performance.now();
+                const reactionTime = clickTime - clickedTarget.createTime;
+                
+                // Store reaction time
+                movingReactionTimes.push(reactionTime);
+                updateMovingStats();
+                
+                // Remove target
+                clearInterval(clickedTarget.moveInterval);
+                clickedTarget.element.remove();
+                
+                // Visual feedback
+                const feedback = document.createElement('div');
+                feedback.className = 'absolute text-green-400 font-bold text-xl';
+                feedback.textContent = `${reactionTime.toFixed(0)}ms`;
+                feedback.style.left = `${e.clientX - movingTargetArea.getBoundingClientRect().left}px`;
+                feedback.style.top = `${e.clientY - movingTargetArea.getBoundingClientRect().top}px`;
+                movingTargetArea.appendChild(feedback);
+                
+                // Animate feedback
+                setTimeout(() => {
+                    feedback.style.transform = 'translateY(-30px)';
+                    feedback.style.opacity = '0';
+                    setTimeout(() => feedback.remove(), 500);
+                }, 50);
+                
+                playSound(clickSound);
+                
+                // Check for level progression
+                if (movingReactionTimes.length >= 3) {
+                    const lastThree = movingReactionTimes.slice(-3);
+                    const avg = lastThree.reduce((a, b) => a + b, 0) / 3;
+                    
+                    if (avg < 300 && movingLevel < 5) {
+                        movingLevel++;
+                        movingTargetSpeed += 0.5;
+                        movingCurrentLevel.textContent = movingLevel;
+                        targetSpeed.textContent = `${movingTargetSpeed.toFixed(1)}x`;
+                        
+                        const message = `Level ${movingLevel}! Targets move faster now.`;
+                        showLevelUpModal(movingLevel, message);
+                        
+                        // Don't proceed to next round immediately
+                        return;
+                    }
+                }
+                
+                // Move to next round after delay
+                setTimeout(() => {
+                    nextMovingRound();
+                }, 500);
+            }
+        }
+        
+        function updateMovingStats() {
+            if (movingReactionTimes.length === 0) return;
+            
+            const lastTimeValue = movingReactionTimes[movingReactionTimes.length - 1];
+            movingLastTime.textContent = `${lastTimeValue.toFixed(0)}ms`;
+            
+            const avg = movingReactionTimes.reduce((a, b) => a + b, 0) / movingReactionTimes.length;
+            const best = Math.min(...movingReactionTimes);
+            
+            movingAverageTime.textContent = `${avg.toFixed(0)}ms`;
+            movingBestTime.textContent = `${best.toFixed(0)}ms`;
+        }
+        
+        function endMovingGame() {
+            isTesting = false;
+            isPaused = false;
+            
+            // Clear any targets
+            movingTargets.forEach(target => {
+                clearInterval(target.moveInterval);
+                target.element.remove();
+            });
+            movingTargets = [];
+            
+            // Calculate stats
+            const best = movingReactionTimes.length > 0 ? Math.min(...movingReactionTimes) : 0;
+            const worst = movingReactionTimes.length > 0 ? Math.max(...movingReactionTimes) : 0;
+            const avg = movingReactionTimes.length > 0 ? movingReactionTimes.reduce((a, b) => a + b, 0) / movingReactionTimes.length : 0;
+            
+            // Calculate consistency (standard deviation)
+            let consistency = 0;
+            if (movingReactionTimes.length > 1) {
+                const squaredDifferences = movingReactionTimes.map(t => Math.pow(t - avg, 2));
+                const variance = squaredDifferences.reduce((a, b) => a + b, 0) / movingReactionTimes.length;
+                consistency = Math.sqrt(variance);
+            }
+            
+            // Update stats
+            if (movingReactionTimes.length > 0 && (stats.moving.bestAverage === 0 || avg < stats.moving.bestAverage)) {
+                stats.moving.bestAverage = avg;
+                stats.moving.history.push({
+                    date: new Date().toISOString(),
+                    average: avg,
+                    level: movingLevel
+                });
+                saveStats();
+            }
+            
+            // Update results panel
+            resultBest.textContent = `${best.toFixed(0)}ms`;
+            resultWorst.textContent = `${worst.toFixed(0)}ms`;
+            resultAverage.textContent = `${avg.toFixed(0)}ms`;
+            resultConsistency.textContent = `${consistency.toFixed(0)}ms`;
+            testCount.textContent = `${movingReactionTimes.length} hits`;
+            
+            // Update time distribution (scaled to 600ms max)
+            const distributionPercent = Math.min(100, (avg / 600) * 100);
+            timeDistribution.style.width = `${distributionPercent}%`;
+            
+            // Populate time list
+            timeList.innerHTML = '';
+            movingReactionTimes.forEach((time, index) => {
+                const timeItem = document.createElement('div');
+                timeItem.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-lg';
+                
+                const roundText = document.createElement('span');
+                roundText.className = 'font-medium';
+                roundText.textContent = `Hit
+</html>
