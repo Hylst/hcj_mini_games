@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platformer Jump Quest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes jump {
+            0% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-100px) scale(0.9); }
+            100% { transform: translateY(0) scale(1); }
+        }
+        
+        @keyframes land {
+            0% { transform: scale(1.1, 0.9); }
+            100% { transform: scale(1); }
+        }
+        
+        .jump-animation {
+            animation: jump 0.5s ease-out;
+        }
+        
+        .land-animation {
+            animation: land 0.2s ease-out;
+        }
+        
+        .platform {
+            transition: transform 0.2s ease;
+        }
+        
+        .platform:hover {
+            transform: scale(1.05);
+        }
+        
+        .bounce-platform {
+            animation: bounce 0.5s infinite alternate;
+        }
+        
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-5px); }
+        }
+        
+        .moving-platform {
+            animation: move 3s infinite alternate linear;
+        }
+        
+        @keyframes move {
+            from { transform: translateX(0); }
+            to { transform: translateX(200px); }
+        }
+        
+        .fragile-platform {
+            animation: fragile 2s infinite alternate;
+        }
+        
+        @keyframes fragile {
+            from { opacity: 0.8; }
+            to { opacity: 1; }
+        }
+        
+        .hidden-area {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .hidden-area.revealed {
+            opacity: 1;
+        }
+        
+        .coin {
+            animation: spin 2s infinite linear;
+        }
+        
+        @keyframes spin {
+            from { transform: rotateY(0); }
+            to { transform: rotateY(360deg); }
+        }
+        
+        .enemy {
+            animation: enemyMove 3s infinite alternate linear;
+        }
+        
+        @keyframes enemyMove {
+            from { transform: translateX(0); }
+            to { transform: translateX(150px); }
+        }
+        
+        .game-container {
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .parallax-bg {
+            background-image: url('https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?q=80&w=1000');
+            background-size: cover;
+            background-position: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.3;
+        }
+        
+        .game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .player {
+            transition: transform 0.1s ease;
+        }
+        
+        .damage-effect {
+            animation: damage 0.3s ease;
+        }
+        
+        @keyframes damage {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.5); }
+            100% { filter: brightness(1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 flex justify-center items-center h-screen">
+    <div class="game-container w-full max-w-4xl h-96 rounded-lg shadow-lg relative" id="gameContainer">
+        <div class="parallax-bg"></div>
+        
+        <!-- Player Character -->
+        <div class="player absolute w-8 h-8 bg-blue-600 rounded-full shadow-md z-10" id="player"></div>
+        
+        <!-- Platforms -->
+        <div class="platform absolute w-32 h-4 bg-green-600 rounded-sm bottom-10 left-32 z-5" id="platform1"></div>
+        <div class="platform absolute w-24 h-4 bg-yellow-500 rounded-sm bottom-40 left-64 z-5" id="platform2"></div>
+        <div class="platform absolute w-28 h-4 bg-purple-600 rounded-sm bottom-70 left-96 z-5" id="platform3"></div>
+        <div class="platform absolute w-20 h-4 bg-red-500 rounded-sm bottom-100 left-128 z-5" id="platform4"></div>
+        <div class="platform absolute w-24 h-4 bg-blue-500 rounded-sm bottom-130 left-160 z-5" id="platform5"></div>
+        
+        <!-- Special Platforms -->
+        <div class="platform bounce-platform absolute w-24 h-4 bg-pink-500 rounded-sm bottom-160 left-64 z-5" id="bouncePlatform"></div>
+        <div class="platform moving-platform absolute w-24 h-4 bg-orange-500 rounded-sm bottom-190 left-32 z-5" id="movingPlatform"></div>
+        <div class="platform fragile-platform absolute w-20 h-4 bg-gray-400 rounded-sm bottom-220 left-96 z-5" id="fragilePlatform"></div>
+        
+        <!-- Hidden Area (revealed when player collects a special item) -->
+        <div class="hidden-area absolute w-24 h-24 bg-yellow-200 rounded-lg bottom-40 right-32 z-5" id="hiddenArea">
+            <div class="absolute inset-0 flex justify-center items-center">
+                <i class="fas fa-star text-yellow-500 text-2xl"></i>
+            </div>
+        </div>
+        
+        <!-- Collectible Items -->
+        <div class="coin absolute w-6 h-6 bg-yellow-400 rounded-full shadow-md z-10 top-40 left-48" id="coin1">
+            <div class="absolute inset-0 flex justify-center items-center">
+                <i class="fas fa-coins text-yellow-600"></i>
+            </div>
+        </div>
+        <div class="coin absolute w-6 h-6 bg-yellow-400 rounded-full shadow-md z-10 top-70 left-112" id="coin2">
+            <div class="absolute inset-0 flex justify-center items-center">
+                <i class="fas fa-coins text-yellow-600"></i>
+            </div>
+        </div>
+        <div class="coin absolute w-6 h-6 bg-yellow-400 rounded-full shadow-md z-10 top-100 left-176" id="coin3">
+            <div class="absolute inset-0 flex justify-center items-center">
+                <i class="fas fa-coins text-yellow-600"></i>
+            </div>
+        </div>
+        <div class="coin absolute w-6 h-6 bg-yellow-400 rounded-full shadow-md z-10 top-130 left-240" id="coin4">
+            <div class="absolute inset-0 flex justify-center items-center">
+                <i class="fas fa-coins text-yellow-600"></i>
+            </div>
+        </div>
+        <div class="coin absolute w-6 h-6 bg-yellow-400 rounded-full shadow-md z-10 top-160 left-304" id="coin5">
+            <div class="absolute inset-0 flex justify-center items-center">
+                <i class="fas fa-coins text-yellow-600"></i>
+            </div>
+        </div>
+        
+        <!-- Special Collectible (reveals hidden area) -->
+        <div class="absolute w-8 h-8 bg-purple-500 rounded-full shadow-md z-10 top-70 left-400" id="specialCollectible">
+            <div class="absolute inset-0 flex justify-center items-center">
+                <i class="fas fa-gem text-white"></i>
+            </div>
+        </div>
+        
+        <!-- Enemies -->
+        <div class="enemy absolute w-8 h-8 bg-red-600 rounded-full shadow-md z-10 top-100 left-500" id="enemy1">
+            <div class="absolute inset-0 flex justify-center items-center">
+                <i class="fas fa-skull text-white text-xs"></i>
+            </div>
+        </div>
+        
+        <!-- UI Elements -->
+        <div class="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-lg z-20">
+            <span class="font-bold">Score:</span> <span id="score">0</span>
+        </div>
+        <div class="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-lg z-20">
+            <span class="font-bold">Lives:</span> <span id="lives">3</span>
+        </div>
+        
+        <!-- Game Over Screen (initially hidden) -->
+        <div class="game-overlay hidden" id="gameOverlay">
+            <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+                <h2 class="text-3xl font-bold mb-4">Game Over</h2>
+                <p class="text-xl mb-6">Your final score: <span id="finalScore">0</span></p>
+                <button class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-bold" id="restartButton">
+                    Play Again
+                </button>
+            </div>
+        </div>
+        
+        <!-- Start Screen -->
+        <div class="game-overlay" id="startScreen">
+            <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+                <h2 class="text-3xl font-bold mb-4">Platformer Jump Quest</h2>
+                <p class="text-lg mb-6">Collect coins, avoid enemies, and find hidden areas!</p>
+                <div class="mb-6">
+                    <p class="mb-2"><i class="fas fa-arrow-left mr-2"></i> <i class="fas fa-arrow-right mr-4"></i> Move</p>
+                    <p class="mb-2"><i class="fas fa-arrow-up mr-4"></i> Jump</p>
+                    <p class="mb-2"><i class="fas fa-star mr-2 text-yellow-500"></i> Find hidden areas</p>
+                </div>
+                <button class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-bold" id="startButton">
+                    Start Game
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Audio Elements -->
+    <audio id="jumpSound" src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3"></audio>
+    <audio id="coinSound" src="https://assets.mixkit.co/sfx/preview/mixkit-coin-win-notification-919.mp3"></audio>
+    <audio id="damageSound" src="https://assets.mixkit.co/sfx/preview/mixkit-player-losing-or-failing-2042.mp3"></audio>
+    <audio id="bounceSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3"></audio>
+    <audio id="breakSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wooden-hit-2182.mp3"></audio>
+    <audio id="hiddenSound" src="https://assets.mixkit.co/sfx/preview/mixkit-magic-sparkle-902.mp3"></audio>
+    <audio id="gameOverSound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3"></audio>
+    <audio id="backgroundMusic" loop src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-668.mp3"></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game elements
+            const player = document.getElementById('player');
+            const gameContainer = document.getElementById('gameContainer');
+            const scoreDisplay = document.getElementById('score');
+            const livesDisplay = document.getElementById('lives');
+            const gameOverlay = document.getElementById('gameOverlay');
+            const finalScoreDisplay = document.getElementById('finalScore');
+            const restartButton = document.getElementById('restartButton');
+            const startScreen = document.getElementById('startScreen');
+            const startButton = document.getElementById('startButton');
+            
+            // Platforms
+            const platforms = [
+                document.getElementById('platform1'),
+                document.getElementById('platform2'),
+                document.getElementById('platform3'),
+                document.getElementById('platform4'),
+                document.getElementById('platform5'),
+                document.getElementById('bouncePlatform'),
+                document.getElementById('movingPlatform'),
+                document.getElementById('fragilePlatform')
+            ];
+            
+            // Collectibles
+            const coins = [
+                document.getElementById('coin1'),
+                document.getElementById('coin2'),
+                document.getElementById('coin3'),
+                document.getElementById('coin4'),
+                document.getElementById('coin5')
+            ];
+            
+            const specialCollectible = document.getElementById('specialCollectible');
+            const hiddenArea = document.getElementById('hiddenArea');
+            
+            // Enemies
+            const enemy1 = document.getElementById('enemy1');
+            
+            // Audio
+            const jumpSound = document.getElementById('jumpSound');
+            const coinSound = document.getElementById('coinSound');
+            const damageSound = document.getElementById('damageSound');
+            const bounceSound = document.getElementById('bounceSound');
+            const breakSound = document.getElementById('breakSound');
+            const hiddenSound = document.getElementById('hiddenSound');
+            const gameOverSound = document.getElementById('gameOverSound');
+            const backgroundMusic = document.getElementById('backgroundMusic');
+            
+            // Game state
+            let score = 0;
+            let lives = 3;
+            let isJumping = false;
+            let isGameOver = false;
+            let isGameStarted = false;
+            let velocityY = 0;
+            let velocityX = 0;
+            let gravity = 0.5;
+            let playerX = 50;
+            let playerY = 300;
+            let isOnGround = false;
+            let hasSpecialCollectible = false;
+            let gameSpeed = 1;
+            
+            // Initialize player position
+            player.style.left = `${playerX}px`;
+            player.style.bottom = `${playerY}px`;
+            
+            // Event listeners
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+            restartButton.addEventListener('click', resetGame);
+            startButton.addEventListener('click', startGame);
+            
+            // Start game function
+            function startGame() {
+                startScreen.classList.add('hidden');
+                isGameStarted = true;
+                backgroundMusic.play();
+                gameLoop();
+            }
+            
+            // Game loop
+            function gameLoop() {
+                if (isGameOver || !isGameStarted) return;
+                
+                updatePlayerPosition();
+                checkCollisions();
+                checkEnemyCollisions();
+                checkCollectibles();
+                checkSpecialCollectible();
+                checkHiddenArea();
+                
+                requestAnimationFrame(gameLoop);
+            }
+            
+            // Update player position based on velocity
+            function updatePlayerPosition() {
+                // Apply gravity
+                if (!isOnGround) {
+                    velocityY -= gravity;
+                }
+                
+                // Update position
+                playerY -= velocityY;
+                playerX += velocityX;
+                
+                // Boundary checks
+                if (playerX < 0) playerX = 0;
+                if (playerX > gameContainer.offsetWidth - player.offsetWidth) {
+                    playerX = gameContainer.offsetWidth - player.offsetWidth;
+                }
+                
+                if (playerY < 0) {
+                    playerY = 0;
+                    velocityY = 0;
+                }
+                
+                // Check if player fell off the bottom
+                if (playerY > gameContainer.offsetHeight) {
+                    takeDamage();
+                    playerY = 0;
+                    velocityY = 0;
+                }
+                
+                // Update player position
+                player.style.bottom = `${playerY}px`;
+                player.style.left = `${playerX}px`;
+                
+                // Check if player is on ground
+                isOnGround = false;
+                
+                // Check platform collisions
+                platforms.forEach(platform => {
+                    if (isColliding(player, platform) && velocityY <= 0) {
+                        const platformTop = gameContainer.offsetHeight - platform.offsetTop - platform.offsetHeight;
+                        
+                        if (playerY <= platformTop + 5 && playerY >= platformTop - 10) {
+                            playerY = platformTop;
+                            isOnGround = true;
+                            velocityY = 0;
+                            
+                            // Special platform behaviors
+                            if (platform.id === 'bouncePlatform') {
+                                jump(15);
+                                bounceSound.play();
+                            } else if (platform.id === 'fragilePlatform') {
+                                // Fragile platform breaks after landing
+                                setTimeout(() => {
+                                    platform.style.opacity = '0';
+                                    breakSound.play();
+                                }, 300);
+                            } else {
+                                // Regular landing
+                                player.classList.add('land-animation');
+                                setTimeout(() => {
+                                    player.classList.remove('land-animation');
+                                }, 200);
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Check collisions with collectibles
+            function checkCollectibles() {
+                coins.forEach((coin, index) => {
+                    if (coin.style.opacity !== '0' && isColliding(player, coin)) {
+                        coin.style.opacity = '0';
+                        score += 100;
+                        scoreDisplay.textContent = score;
+                        coinSound.play();
+                    }
+                });
+            }
+            
+            // Check special collectible
+            function checkSpecialCollectible() {
+                if (specialCollectible.style.opacity !== '0' && isColliding(player, specialCollectible)) {
+                    specialCollectible.style.opacity = '0';
+                    hasSpecialCollectible = true;
+                    score += 500;
+                    scoreDisplay.textContent = score;
+                    hiddenSound.play();
+                }
+            }
+            
+            // Check hidden area
+            function checkHiddenArea() {
+                if (hasSpecialCollectible && isColliding(player, hiddenArea)) {
+                    hiddenArea.classList.add('revealed');
+                    if (!hiddenArea.dataset.collected) {
+                        hiddenArea.dataset.collected = 'true';
+                        score += 1000;
+                        scoreDisplay.textContent = score;
+                        hiddenSound.play();
+                    }
+                }
+            }
+            
+            // Check enemy collisions
+            function checkEnemyCollisions() {
+                if (isColliding(player, enemy1)) {
+                    takeDamage();
+                    // Bounce player away from enemy
+                    velocityX = playerX < enemy1.offsetLeft ? -5 : 5;
+                    velocityY = 5;
+                }
+            }
+            
+            // Take damage function
+            function takeDamage() {
+                if (isGameOver) return;
+                
+                lives--;
+                livesDisplay.textContent = lives;
+                player.classList.add('damage-effect');
+                damageSound.play();
+                
+                setTimeout(() => {
+                    player.classList.remove('damage-effect');
+                }, 300);
+                
+                if (lives <= 0) {
+                    gameOver();
+                }
+            }
+            
+            // Game over function
+            function gameOver() {
+                isGameOver = true;
+                finalScoreDisplay.textContent = score;
+                gameOverlay.classList.remove('hidden');
+                gameOverSound.play();
+                backgroundMusic.pause();
+            }
+            
+            // Reset game function
+            function resetGame() {
+                // Reset game state
+                score = 0;
+                lives = 3;
+                isJumping = false;
+                isGameOver = false;
+                velocityY = 0;
+                velocityX = 0;
+                playerX = 50;
+                playerY = 300;
+                hasSpecialCollectible = false;
+                
+                // Reset UI
+                scoreDisplay.textContent = score;
+                livesDisplay.textContent = lives;
+                gameOverlay.classList.add('hidden');
+                
+                // Reset player position
+                player.style.left = `${playerX}px`;
+                player.style.bottom = `${playerY}px`;
+                
+                // Reset collectibles
+                coins.forEach(coin => {
+                    coin.style.opacity = '1';
+                });
+                
+                specialCollectible.style.opacity = '1';
+                hiddenArea.classList.remove('revealed');
+                hiddenArea.dataset.collected = '';
+                
+                // Reset platforms
+                platforms.forEach(platform => {
+                    platform.style.opacity = '1';
+                });
+                
+                // Start game again
+                backgroundMusic.currentTime = 0;
+                backgroundMusic.play();
+                isGameStarted = true;
+                gameLoop();
+            }
+            
+            // Collision detection helper function
+            function isColliding(element1, element2) {
+                const rect1 = element1.getBoundingClientRect();
+                const rect2 = element2.getBoundingClientRect();
+                
+                return !(
+                    rect1.right < rect2.left || 
+                    rect1.left > rect2.right || 
+                    rect1.bottom < rect2.top || 
+                    rect1.top > rect2.bottom
+                );
+            }
+            
+            // Jump function
+            function jump(power = 10) {
+                if (isOnGround) {
+                    velocityY = power;
+                    isJumping = true;
+                    isOnGround = false;
+                    player.classList.add('jump-animation');
+                    jumpSound.play();
+                    
+                    setTimeout(() => {
+                        player.classList.remove('jump-animation');
+                        isJumping = false;
+                    }, 500);
+                }
+            }
+            
+            // Handle key down events
+            function handleKeyDown(e) {
+                if (!isGameStarted || isGameOver) return;
+                
+                switch(e.key) {
+                    case 'ArrowUp':
+                    case ' ':
+                        jump();
+                        break;
+                    case 'ArrowLeft':
+                        velocityX = -5;
+                        break;
+                    case 'ArrowRight':
+                        velocityX = 5;
+                        break;
+                }
+            }
+            
+            // Handle key up events
+            function handleKeyUp(e) {
+                if (!isGameStarted || isGameOver) return;
+                
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    velocityX = 0;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
