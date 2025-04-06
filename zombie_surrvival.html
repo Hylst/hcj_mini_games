@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Survival Run</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Press+Start+2P&display=swap');
+        
+        :root {
+            --primary: #4a044e;
+            --secondary: #2d033b;
+            --accent: #e94560;
+            --text: #f8f1f1;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Press Start 2P', cursive;
+            background-color: #111;
+            color: var(--text);
+            touch-action: manipulation;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            overflow: hidden;
+        }
+        
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 18px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 10px;
+        }
+        
+        #high-score-display {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            font-size: 14px;
+            color: #ffcc00;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 8px 12px;
+            border-radius: 10px;
+        }
+        
+        #health-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        
+        #health-bar {
+            width: 200px;
+            height: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #health-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(to right, #4ade80, #22d3ee);
+            transition: width 0.3s;
+        }
+        
+        #health-text {
+            font-size: 12px;
+            color: white;
+        }
+        
+        #start-screen, #game-over-screen, #pause-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 20;
+        }
+        
+        .title {
+            font-size: clamp(2rem, 8vw, 4.5rem);
+            color: var(--accent);
+            text-shadow: 4px 4px 0px var(--primary);
+            margin-bottom: 40px;
+            animation: pulse 2s infinite;
+            text-align: center;
+            line-height: 1.2;
+        }
+        
+        .subtitle {
+            font-size: clamp(1rem, 4vw, 1.5rem);
+            color: var(--text);
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        .btn {
+            pointer-events: auto;
+            padding: 15px 40px;
+            font-size: clamp(1rem, 4vw, 1.5rem);
+            background: linear-gradient(to right, var(--accent), #ff7b54);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            font-family: 'Press Start 2P', cursive;
+            margin: 10px 0;
+            text-transform: uppercase;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(to right, #555, #777);
+            font-size: 0.8rem;
+            padding: 10px 20px;
+        }
+        
+        #powerup-display {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        
+        .powerup-icon {
+            width: 40px;
+            height: 40px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            position: relative;
+        }
+        
+        .powerup-timer {
+            position: absolute;
+            bottom: -15px;
+            font-size: 10px;
+            color: white;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .active-powerup {
+            background-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+        }
+        
+        #controls-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 250px;
+            text-align: center;
+        }
+        
+        #mobile-controls {
+            position: absolute;
+            bottom: 80px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            pointer-events: auto;
+            padding: 0 20px;
+            box-sizing: border-box;
+            display: none;
+        }
+        
+        .mobile-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        
+        #pause-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            color: white;
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 30;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        
+        .shake {
+            animation: shake 0.3s linear;
+        }
+        
+        .ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to bottom, #3a3a3a, #1a1a1a);
+        }
+        
+        /* Particle effects */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        /* Damage indicator */
+        .damage-indicator {
+            position: absolute;
+            color: red;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+            animation: float-up 1s forwards;
+        }
+        
+        @keyframes float-up {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+        
+        /* Combo indicator */
+        .combo-indicator {
+            position: absolute;
+            color: #ffcc00;
+            font-size: 28px;
+            font-weight: bold;
+            pointer-events: none;
+            animation: combo-pulse 0.5s infinite alternate;
+        }
+        
+        @keyframes combo-pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.2); }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #mobile-controls {
+                display: flex;
+            }
+            
+            #controls-info {
+                display: none;
+            }
+            
+            #score-display, #high-score-display {
+                font-size: 14px;
+                top: 10px;
+                left: 10px;
+            }
+            
+            #high-score-display {
+                top: 45px;
+            }
+            
+            #health-container {
+                top: 10px;
+                right: 10px;
+                padding: 8px;
+            }
+            
+            #health-bar {
+                width: 150px;
+                height: 15px;
+            }
+            
+            #health-text {
+                font-size: 10px;
+            }
+            
+            #powerup-display {
+                bottom: 10px;
+                left: 10px;
+                padding: 8px;
+            }
+            
+            .powerup-icon {
+                width: 30px;
+                height: 30px;
+                font-size: 16px;
+            }
+            
+            .powerup-timer {
+                font-size: 8px;
+                bottom: -12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        
+        <div id="ui-overlay">
+            <div id="score-display">SCORE: 0</div>
+            <div id="high-score-display">HIGH SCORE: 0</div>
+            
+            <div id="health-container">
+                <div id="health-text">HEALTH</div>
+                <div id="health-bar">
+                    <div id="health-fill"></div>
+                </div>
+            </div>
+            
+            <div id="powerup-display">
+                <div class="powerup-icon" id="weapon-icon">
+                    <i class="fas fa-gun"></i>
+                    <div class="powerup-timer" id="weapon-timer"></div>
+                </div>
+                <div class="powerup-icon" id="shield-icon">
+                    <i class="fas fa-shield-alt"></i>
+                    <div class="powerup-timer" id="shield-timer"></div>
+                </div>
+                <div class="powerup-icon" id="speed-icon">
+                    <i class="fas fa-bolt"></i>
+                    <div class="powerup-timer" id="speed-timer"></div>
+                </div>
+                <div class="powerup-icon" id="double-icon">
+                    <i class="fas fa-star"></i>
+                    <div class="powerup-timer" id="double-timer"></div>
+                </div>
+            </div>
+            
+            <div id="controls-info">
+                <div>CONTROLS:</div>
+                <div>SPACE/UP - JUMP</div>
+                <div>DOWN - SLIDE</div>
+                <div>CLICK - SHOOT</div>
+                <div>P - PAUSE</div>
+            </div>
+            
+            <div id="mobile-controls">
+                <div class="mobile-btn" id="jump-btn">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <div class="mobile-btn" id="slide-btn">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <div class="mobile-btn" id="shoot-btn">
+                    <i class="fas fa-bullseye"></i>
+                </div>
+            </div>
+            
+            <div id="pause-btn">
+                <i class="fas fa-pause"></i>
+            </div>
+        </div>
+        
+        <div id="start-screen">
+            <h1 class="title">ZOMBIE<br>SURVIVAL RUN</h1>
+            <p class="subtitle">Escape the horde and survive as long as you can!</p>
+            <button class="btn" id="start-btn">START GAME</button>
+            <button class="btn btn-secondary" id="how-to-btn">HOW TO PLAY</button>
+        </div>
+        
+        <div id="how-to-screen" style="display: none;">
+            <h1 class="title">HOW TO PLAY</h1>
+            <div style="max-width: 600px; margin: 0 auto 30px; padding: 0 20px;">
+                <p style="margin-bottom: 20px; font-size: 14px; line-height: 1.6;">
+                    <strong>CONTROLS:</strong><br>
+                    - JUMP: Press SPACE, UP ARROW or tap JUMP button<br>
+                    - SLIDE: Press DOWN ARROW or tap SLIDE button<br>
+                    - SHOOT: Click mouse or tap SHOOT button (when armed)<br>
+                    - PAUSE: Press P or tap PAUSE button
+                </p>
+                <p style="margin-bottom: 20px; font-size: 14px; line-height: 1.6;">
+                    <strong>POWER-UPS:</strong><br>
+                    - <i class="fas fa-gun"></i> WEAPON: Shoot zombies for bonus points<br>
+                    - <i class="fas fa-shield-alt"></i> SHIELD: Temporary invincibility<br>
+                    - <i class="fas fa-bolt"></i> SPEED: Run faster for a limited time<br>
+                    - <i class="fas fa-star"></i> DOUBLE: Double points for all actions
+                </p>
+                <p style="font-size: 14px; line-height: 1.6;">
+                    <strong>TIP:</strong> Chain zombie kills for combo bonuses!
+                </p>
+            </div>
+            <button class="btn" id="back-btn">BACK</button>
+        </div>
+        
+        <div id="game-over-screen" style="display: none;">
+            <h1 class="title">GAME OVER</h1>
+            <div id="final-score" style="font-size: 24px; margin-bottom: 20px;">SCORE: 0</div>
+            <div id="new-high-score" style="font-size: 18px; color: #ffcc00; margin-bottom: 30px; display: none;">
+                NEW HIGH SCORE!
+            </div>
+            <div style="display: flex; gap: 20px;">
+                <button class="btn" id="restart-btn">TRY AGAIN</button>
+                <button class="btn btn-secondary" id="menu-btn">MENU</button>
+            </div>
+        </div>
+        
+        <div id="pause-screen" style="display: none;">
+            <h1 class="title">GAME PAUSED</h1>
+            <div style="display: flex; gap: 20px; margin-top: 30px;">
+                <button class="btn" id="resume-btn">RESUME</button>
+                <button class="btn btn-secondary" id="quit-btn">QUIT</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game constants
+        const GAME_WIDTH = window.innerWidth;
+        const GAME_HEIGHT = window.innerHeight;
+        const GROUND_HEIGHT = 100;
+        const PLAYER_WIDTH = 60;
+        const PLAYER_HEIGHT = 100;
+        const PLAYER_START_X = 150;
+        const PLAYER_START_Y = GAME_HEIGHT - GROUND_HEIGHT - PLAYER_HEIGHT;
+        const GRAVITY = 1.5;
+        const JUMP_FORCE = -25;
+        const RUN_SPEED = 8;
+        const INITIAL_SPAWN_RATE = 2000; // ms
+        const DIFFICULTY_INCREASE_INTERVAL = 10000; // ms
+        const COMBO_TIMEOUT = 3000; // ms for combo chain
+        
+        // Game state
+        let gameRunning = false;
+        let gamePaused = false;
+        let score = 0;
+        let highScore = localStorage.getItem('zombieRunHighScore') || 0;
+        let health = 100;
+        let gameSpeed = 1;
+        let spawnRate = INITIAL_SPAWN_RATE;
+        let lastSpawnTime = 0;
+        let lastDifficultyIncrease = 0;
+        let playerYVelocity = 0;
+        let isJumping = false;
+        let isSliding = false;
+        let slideDuration = 0;
+        let comboCount = 0;
+        let lastComboTime = 0;
+        let damageFlash = 0;
+        
+        // Powerups
+        let powerups = {
+            weapon: { active: false, duration: 10000, timeLeft: 0 },
+            shield: { active: false, duration: 8000, timeLeft: 0 },
+            speed: { active: false, duration: 7000, timeLeft: 0 },
+            double: { active: false, duration: 6000, timeLeft: 0 }
+        };
+        
+        // Game elements
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('start-screen');
+        const howToScreen = document.getElementById('how-to-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const pauseScreen = document.getElementById('pause-screen');
+        const startBtn = document.getElementById('start-btn');
+        const howToBtn = document.getElementById('how-to-btn');
+        const backBtn = document.getElementById('back-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const menuBtn = document.getElementById('menu-btn');
+        const resumeBtn = document.getElementById('resume-btn');
+        const quitBtn = document.getElementById('quit-btn');
+        const scoreDisplay = document.getElementById('score-display');
+        const highScoreDisplay = document.getElementById('high-score-display');
+        const healthFill = document.getElementById('health-fill');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const newHighScoreDisplay = document.getElementById('new-high-score');
+        const weaponIcon = document.getElementById('weapon-icon');
+        const shieldIcon = document.getElementById('shield-icon');
+        const speedIcon = document.getElementById('speed-icon');
+        const doubleIcon = document.getElementById('double-icon');
+        const weaponTimer = document.getElementById('weapon-timer');
+        const shieldTimer = document.getElementById('shield-timer');
+        const speedTimer = document.getElementById('speed-timer');
+        const doubleTimer = document.getElementById('double-timer');
+        const pauseBtn = document.getElementById('pause-btn');
+        const jumpBtn = document.getElementById('jump-btn');
+        const slideBtn = document.getElementById('slide-btn');
+        const shootBtn = document.getElementById('shoot-btn');
+        
+        // Set canvas size
+        canvas.width = GAME_WIDTH;
+        canvas.height = GAME_HEIGHT;
+        
+        // Game objects
+        const player = {
+            x: PLAYER_START_X,
+            y: PLAYER_START_Y,
+            width: PLAYER_WIDTH,
+            height: PLAYER_HEIGHT,
+            color: '#f8f1f1',
+            frame: 0,
+            animationSpeed: 0.2
+        };
+        
+        let zombies = [];
+        let obstacles = [];
+        let bullets = [];
+        let explosions = [];
+        let bloodSplatters = [];
+        let powerupItems = [];
+        let particles = [];
+        let damageIndicators = [];
+        let comboIndicators = [];
+        
+        // Preload images
+        const images = {
+            playerRun: [],
+            playerJump: null,
+            playerSlide: null,
+            zombies: [],
+            obstacles: [],
+            powerups: {}
+        };
+        
+        // Create placeholder images (in a real game, you'd load actual images)
+        function createPlaceholderImages() {
+            // Player run animation frames
+            for (let i = 0; i < 8; i++) {
+                const canvas = document.createElement('canvas');
+                canvas.width = PLAYER_WIDTH;
+                canvas.height = PLAYER_HEIGHT;
+                const ctx = canvas.getContext('2d');
+                
+                // Simple running animation frames
+                ctx.fillStyle = player.color;
+                
+                // Body
+                ctx.fillRect(0, 20, PLAYER_WIDTH, PLAYER_HEIGHT - 20);
+                
+                // Head
+                ctx.beginPath();
+                ctx.arc(PLAYER_WIDTH / 2, 20, 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Legs (animation)
+                const legOffset = Math.sin(i * 0.8) * 10;
+                ctx.fillRect(10, PLAYER_HEIGHT - 20, 15, 20);
+                ctx.fillRect(PLAYER_WIDTH - 25, PLAYER_HEIGHT - 20 + legOffset, 15, 20);
+                
+                images.playerRun.push(canvas);
+            }
+            
+            // Player jump frame
+            const jumpCanvas = document.createElement('canvas');
+            jumpCanvas.width = PLAYER_WIDTH;
+            jumpCanvas.height = PLAYER_HEIGHT;
+            const jumpCtx = jumpCanvas.getContext('2d');
+            jumpCtx.fillStyle = player.color;
+            
+            // Body
+            jumpCtx.fillRect(0, 20, PLAYER_WIDTH, PLAYER_HEIGHT - 20);
+            
+            // Head
+            jumpCtx.beginPath();
+            jumpCtx.arc(PLAYER_WIDTH / 2, 20, 20, 0, Math.PI * 2);
+            jumpCtx.fill();
+            
+            // Legs (jump position)
+            jumpCtx.fillRect(10, PLAYER_HEIGHT - 20, 15, 20);
+            jumpCtx.fillRect(PLAYER_WIDTH - 25, PLAYER_HEIGHT - 20, 15, 20);
+            
+            images.playerJump = jumpCanvas;
+            
+            // Player slide frame
+            const slideCanvas = document.createElement('canvas');
+            slideCanvas.width = PLAYER_WIDTH;
+            slideCanvas.height = 40;
+            const slideCtx = slideCanvas.getContext('2d');
+            slideCtx.fillStyle = player.color;
+            
+            // Body (flattened)
+            slideCtx.fillRect(0, 0, PLAYER_WIDTH, 40);
+            
+            // Head peeking out
+            slideCtx.beginPath();
+            slideCtx.arc(PLAYER_WIDTH / 2, -10, 20, 0, Math.PI * 2);
+            slideCtx.fill();
+            
+            images.playerSlide = slideCanvas;
+            
+            // Zombie types
+            const zombieColors = ['#4a7c59', '#7c4a4a', '#4a4a7c', '#7c7c4a'];
+            for (let i = 0; i < zombieColors.length; i++) {
+                const zombieCanvas = document.createElement('canvas');
+                zombieCanvas.width = 80;
+                zombieCanvas.height = 120;
+                const zombieCtx = zombieCanvas.getContext('2d');
+                zombieCtx.fillStyle = zombieColors[i];
+                
+                // Body
+                zombieCtx.fillRect(0, 0, 80, 120);
+                
+                // Head
+                zombieCtx.beginPath();
+                zombieCtx.arc(40, -20, 30, 0, Math.PI * 2);
+                zombieCtx.fill();
+                
+                // Arms (animation)
+                const armOffset = Math.sin(i * 0.5) * 15;
+                zombieCtx.fillRect(-10, 30, 20, 10);
+                zombieCtx.fillRect(70, 30 + armOffset, 20, 10);
+                
+                images.zombies.push(zombieCanvas);
+            }
+        }
+        
+        // Event listeners
+        startBtn.addEventListener('click', startGame);
+        howToBtn.addEventListener('click', showHowTo);
+        backBtn.addEventListener('click', showStartScreen);
+        restartBtn.addEventListener('click', restartGame);
+        menuBtn.addEventListener('click', showStartScreen);
+        resumeBtn.addEventListener('click', resumeGame);
+        quitBtn.addEventListener('click', showStartScreen);
+        pauseBtn.addEventListener('click', togglePause);
+        
+        // Mobile controls
+        jumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!gameRunning || gamePaused) return;
+            if (!isJumping && !isSliding) {
+                playerJump();
+            }
+        });
+        
+        slideBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!gameRunning || gamePaused) return;
+            if (!isSliding && !isJumping) {
+                playerSlide();
+            }
+        });
+        
+        slideBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (isSliding) {
+                endSlide();
+            }
+        });
+        
+        shootBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!gameRunning || gamePaused || !powerups.weapon.active) return;
+            shootBullet();
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning || gamePaused) return;
+            
+            switch(e.key) {
+                case ' ':
+                case 'ArrowUp':
+                case 'w':
+                    if (!isJumping && !isSliding) {
+                        playerJump();
+                    }
+                    break;
+                case 'ArrowDown':
+                case 's':
+                    if (!isSliding && !isJumping) {
+                        playerSlide();
+                    }
+                    break;
+                case 'p':
+                    togglePause();
+                    break;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (!gameRunning || gamePaused) return;
+            
+            if ((e.key === 'ArrowDown' || e.key === 's') && isSliding) {
+                endSlide();
+            }
+        });
+        
+        canvas.addEventListener('click', (e) => {
+            if (!gameRunning || gamePaused || !powerups.weapon.active) return;
+            shootBullet();
+        });
+        
+        // Game functions
+        function startGame() {
+            createPlaceholderImages();
+            
+            gameRunning = true;
+            gamePaused = false;
+            score = 0;
+            health = 100;
+            gameSpeed = 1;
+            spawnRate = INITIAL_SPAWN_RATE;
+            lastSpawnTime = 0;
+            lastDifficultyIncrease = 0;
+            playerYVelocity = 0;
+            isJumping = false;
+            isSliding = false;
+            slideDuration = 0;
+            comboCount = 0;
+            lastComboTime = 0;
+            damageFlash = 0;
+            
+            zombies = [];
+            obstacles = [];
+            bullets = [];
+            explosions = [];
+            bloodSplatters = [];
+            powerupItems = [];
+            particles = [];
+            damageIndicators = [];
+            comboIndicators = [];
+            
+            // Reset powerups
+            Object.keys(powerups).forEach(type => {
+                powerups[type].active = false;
+                powerups[type].timeLeft = 0;
+            });
+            
+            updatePowerupIcons();
+            
+            player.x = PLAYER_START_X;
+            player.y = PLAYER_START_Y;
+            player.width = PLAYER_WIDTH;
+            player.height = PLAYER_HEIGHT;
+            player.frame = 0;
+            
+            startScreen.style.display = 'none';
+            howToScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            pauseScreen.style.display = 'none';
+            
+            updateScoreDisplay();
+            updateHealthBar();
+            
+            // Start game loop
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function showHowTo() {
+            startScreen.style.display = 'none';
+            howToScreen.style.display = 'flex';
+        }
+        
+        function showStartScreen() {
+            gameRunning = false;
+            startScreen.style.display = 'flex';
+            howToScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            pauseScreen.style.display = 'none';
+        }
+        
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            startGame();
+        }
+        
+        function togglePause() {
+            if (!gameRunning) return;
+            
+            gamePaused = !gamePaused;
+            
+            if (gamePaused) {
+                pauseScreen.style.display = 'flex';
+            } else {
+                pauseScreen.style.display = 'none';
+                // Resume game loop
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        function resumeGame() {
+            gamePaused = false;
+            pauseScreen.style.display = 'none';
+            // Resume game loop
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            playSound('gameOver');
+            
+            // Update high score
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('zombieRunHighScore', highScore);
+                newHighScoreDisplay.style.display = 'block';
+            } else {
+                newHighScoreDisplay.style.display = 'none';
+            }
+            
+            // Show game over screen
+            finalScoreDisplay.textContent = `SCORE: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        function gameLoop(timestamp) {
+            if (!gameRunning || gamePaused) return;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // Draw background
+            drawBackground();
+            
+            // Update and draw game objects
+            updatePlayer();
+            drawPlayer();
+            
+            updateZombies();
+            drawZombies();
+            
+            updateObstacles();
+            drawObstacles();
+            
+            updateBullets();
+            drawBullets();
+            
+            updatePowerups();
+            drawPowerups();
+            
+            updateExplosions();
+            drawExplosions();
+            
+            updateBlood();
+            drawBlood();
+            
+            updateParticles();
+            drawParticles();
+            
+            updateDamageIndicators();
+            drawDamageIndicators();
+            
+            updateComboIndicators();
+            drawComboIndicators();
+            
+            // Spawn new enemies and obstacles
+            if (timestamp - lastSpawnTime > spawnRate) {
+                spawnEnemyOrObstacle();
+                lastSpawnTime = timestamp;
+            }
+            
+            // Increase difficulty over time
+            if (timestamp - lastDifficultyIncrease > DIFFICULTY_INCREASE_INTERVAL) {
+                increaseDifficulty();
+                lastDifficultyIncrease = timestamp;
+            }
+            
+            // Update combo timer
+            if (comboCount > 0 && timestamp - lastComboTime > COMBO_TIMEOUT) {
+                endCombo();
+            }
+            
+            // Update powerup timers
+            updatePowerupTimers();
+            
+            // Update score
+            score += Math.floor(gameSpeed);
+            updateScoreDisplay();
+            
+            // Damage flash effect
+            if (damageFlash > 0) {
+                damageFlash--;
+                ctx.fillStyle = `rgba(255, 0, 0, ${damageFlash / 10})`;
+                ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            }
+            
+            // Continue game loop
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function drawBackground() {
+            // Draw sky gradient
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+            skyGradient.addColorStop(0, '#1a1a2e');
+            skyGradient.addColorStop(1, '#16213e');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // Draw moon
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.beginPath();
+            ctx.arc(GAME_WIDTH - 100, 100, 50, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw stars
+            ctx.fillStyle = 'white';
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * GAME_WIDTH;
+                const y = Math.random() * (GAME_HEIGHT - GROUND_HEIGHT - 200);
+                const size = Math.random() * 2;
+                ctx.fillRect(x, y, size, size);
+            }
+            
+            // Draw ground
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(0, GAME_HEIGHT - GROUND_HEIGHT, GAME_WIDTH, GROUND_HEIGHT);
+            
+            // Add ground details (cracks, debris)
+            ctx.fillStyle = '#444';
+            for (let i = 0; i < 20; i++) {
+                const x = Math.random() * GAME_WIDTH;
+                const width = 2 + Math.random() * 10;
+                ctx.fillRect(x, GAME_HEIGHT - GROUND_HEIGHT, width, 3);
+            }
+            
+            // Draw some background elements (buildings, trees, etc.)
+            ctx.fillStyle = '#333';
+            for (let i = 0; i < 5; i++) {
+                const buildingWidth = 100 + Math.random() * 100;
+                const buildingHeight = 200 + Math.random() * 200;
+                const buildingX = (GAME_WIDTH / 5) * i + Math.random() * 50;
+                
+                // Building shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(buildingX + 10, GAME_HEIGHT - GROUND_HEIGHT + 10, buildingWidth, buildingHeight);
+                
+                // Building
+                ctx.fillStyle = '#333';
+                ctx.fillRect(buildingX, GAME_HEIGHT - GROUND_HEIGHT - buildingHeight, buildingWidth, buildingHeight);
+                
+                // Add some damage to buildings
+                ctx.fillStyle = '#222';
+                for (let j = 0; j < 5; j++) {
+                    const damageX = buildingX + Math.random() * buildingWidth;
+                    const damageY = GAME_HEIGHT - GROUND_HEIGHT - buildingHeight + Math.random() * buildingHeight;
+                    const damageSize = 10 + Math.random() * 20;
+                    ctx.fillRect(damageX, damageY, damageSize, damageSize);
+                }
+                
+                // Add some windows
+                ctx.fillStyle = '#555';
+                const windowSize = 15;
+                const windowsX = Math.floor(buildingWidth / (windowSize + 10));
+                const windowsY = Math.floor(buildingHeight / (windowSize + 10));
+                
+                for (let wx = 0; wx < windowsX; wx++) {
+                    for (let wy = 0; wy < windowsY; wy++) {
+                        if (Math.random() > 0.3) { // Randomly place windows
+                            // Some windows are broken
+                            if (Math.random() > 0.7) {
+                                ctx.fillStyle = '#222';
+                            } else {
+                                ctx.fillStyle = '#555';
+                            }
+                            
+                            ctx.fillRect(
+                                buildingX + 10 + wx * (windowSize + 10),
+                                GAME_HEIGHT - GROUND_HEIGHT - buildingHeight + 10 + wy * (windowSize + 10),
+                                windowSize,
+                                windowSize
+                            );
+                        }
+                    }
+                }
+                
+                ctx.fillStyle = '#333';
+            }
+        }
+        
+        function updatePlayer() {
+            // Update animation frame
+            if (!isJumping && !isSliding) {
+                player.frame = (player.frame + player.animationSpeed) % images.playerRun.length;
+            }
+            
+            // Apply gravity
+            if (isJumping) {
+                playerYVelocity += GRAVITY;
+                player.y += playerYVelocity;
+                
+                // Check if player has landed
+                if (player.y >= PLAYER_START_Y) {
+                    player.y = PLAYER_START_Y;
+                    isJumping = false;
+                    playerYVelocity = 0;
+                }
+            }
+            
+            // Handle sliding
+            if (isSliding) {
+                slideDuration++;
+                
+                if (slideDuration > 60) { // Slide lasts for 1 second (60 frames)
+                    endSlide();
+                }
+            }
+        }
+        
+        function drawPlayer() {
+            // Draw player with current animation frame
+            if (isSliding) {
+                ctx.drawImage(
+                    images.playerSlide, 
+                    player.x, 
+                    player.y + PLAYER_HEIGHT - 40, 
+                    player.width, 
+                    40
+                );
+            } else if (isJumping) {
+                ctx.drawImage(
+                    images.playerJump, 
+                    player.x, 
+                    player.y, 
+                    player.width, 
+                    player.height
+                );
+            } else {
+                const frame = Math.floor(player.frame);
+                ctx.drawImage(
+                    images.playerRun[frame], 
+                    player.x, 
+                    player.y, 
+                    player.width, 
+                    player.height
+                );
+            }
+        }
+        
+        function playerJump() {
+            isJumping = true;
+            playerYVelocity = JUMP_FORCE;
+            playSound('jump');
+            
+            // Jump particles
+            createParticles(
+                player.x + player.width / 2, 
+                player.y + player.height, 
+                10, 
+                '#ffffff', 
+                2, 
+                5
+            );
+        }
+        
+        function playerSlide() {
+            isSliding = true;
+            slideDuration = 0;
+            player.height = 40;
+            player.y = PLAYER_START_Y + PLAYER_HEIGHT - 40;
+            playSound('slide');
+        }
+        
+        function endSlide() {
+            isSliding = false;
+            player.height = PLAYER_HEIGHT;
+            player.y = PLAYER_START_Y;
+        }
+        
+        function spawnEnemyOrObstacle() {
+            const rand = Math.random();
+            
+            if (rand < 0.5) { // 50% chance for zombie
+                spawnZombie();
+            } else if (rand < 0.85) { // 35% chance for obstacle
+                spawnObstacle();
+            } else { // 15% chance for powerup
+                spawnPowerup();
+            }
+        }
+        
+        function spawnZombie() {
+            const zombieTypes = [
+                { color: 0, speed: 3 + Math.random() * 2, health: 1, score: 50 }, // Green zombie
+                { color: 1, speed: 2 + Math.random() * 1, health: 2, score: 100 }, // Red zombie (tougher)
+                { color: 2, speed: 4 + Math.random() * 2, health: 1, score: 75 }, // Blue zombie (faster)
+                { color: 3, speed: 1.5 + Math.random() * 1, health: 3, score: 150 } // Yellow zombie (boss)
+            ];
+            
+            const type = zombieTypes[Math.floor(Math.random() * zombieTypes.length)];
+            
+            const zombie = {
+                x: GAME_WIDTH,
+                y: GAME_HEIGHT - GROUND_HEIGHT - 120,
+                width: 80,
+                height: 120,
+                color: type.color,
+                speed: type.speed * gameSpeed,
+                health: type.health,
+                maxHealth: type.health,
+                score: type.score,
+                type: type,
+                frame: 0,
+                animationSpeed: 0.1
+            };
+            
+            zombies.push(zombie);
+        }
+        
+        function updateZombies() {
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                const zombie = zombies[i];
+                
+                // Update animation frame
+                zombie.frame = (zombie.frame + zombie.animationSpeed) % 8;
+                
+                // Move zombie
+                zombie.x -= zombie.speed;
+                
+                // Check if zombie is off screen
+                if (zombie.x + zombie.width < 0) {
+                    zombies.splice(i, 1);
+                    continue;
+                }
+                
+                // Check collision with player
+                if (checkCollision(player, zombie) && !powerups.shield.active) {
+                    takeDamage(10 - zombie.type.color); // Different damage based on zombie type
+                    createBloodSplatter(zombie.x + zombie.width / 2, zombie.y + zombie.height / 2);
+                    zombies.splice(i, 1);
+                    playSound('hurt');
+                }
+            }
+        }
+        
+        function drawZombies() {
+            zombies.forEach(zombie => {
+                // Draw zombie with current animation frame
+                const frame = Math.floor(zombie.frame);
+                ctx.save();
+                ctx.translate(zombie.x, zombie.y);
+                
+                // Body
+                ctx.drawImage(images.zombies[zombie.color], 0, 0, zombie.width, zombie.height);
+                
+                // Health bar for zombies with health > 1
+                if (zombie.maxHealth > 1) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(0, -15, zombie.width, 5);
+                    
+                    ctx.fillStyle = 'green';
+                    ctx.fillRect(0, -15, zombie.width * (zombie.health / zombie.maxHealth), 5);
+                }
+                
+                ctx.restore();
+            });
+        }
+        
+        function spawnObstacle() {
+            const obstacleTypes = [
+                { width: 40, height: 60, color: '#555' }, // Small barrier
+                { width: 80, height: 40, color: '#777' }, // Wide barrier
+                { width: 30, height: 90, color: '#666' }, // Tall barrier
+                { width: 60, height: 60, color: '#888' }  // Car wreck
+            ];
+            
+            const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+            
+            const obstacle = {
+                x: GAME_WIDTH,
+                y: GAME_HEIGHT - GROUND_HEIGHT - type.height,
+                width: type.width,
+                height: type.height,
+                color: type.color
+            };
+            
+            obstacles.push(obstacle);
+        }
+        
+        function updateObstacles() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                
+                // Move obstacle
+                obstacle.x -= 5 * gameSpeed;
+                
+                // Check if obstacle is off screen
+                if (obstacle.x + obstacle.width < 0) {
+                    obstacles.splice(i, 1);
+                    continue;
+                }
+                
+                // Check collision with player
+                if (checkCollision(player, obstacle) && !isJumping && !powerups.shield.active) {
+                    takeDamage(15);
+                    obstacles.splice(i, 1);
+                    playSound('hurt');
+                }
+            }
+        }
+        
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // Add some details to obstacles
+                ctx.fillStyle = '#444';
+                ctx.fillRect(obstacle.x + 5, obstacle.y + 5, obstacle.width - 10, 5);
+                ctx.fillRect(obstacle.x + 5, obstacle.y + 15, obstacle.width - 10, 5);
+                
+                // For car wreck
+                if (obstacle.width === 60 && obstacle.height === 60) {
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(obstacle.x + 10, obstacle.y + 10, 40, 20); // Windows
+                    ctx.fillRect(obstacle.x + 15, obstacle.y + 35, 10, 15); // Wheel
+                    ctx.fillRect(obstacle.x + 35, obstacle.y + 35, 10, 15); // Wheel
+                }
+            });
+        }
+        
+        function spawnPowerup() {
+            const powerupTypes = ['weapon', 'shield', 'speed', 'double'];
+            const type = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+            
+            const colors = {
+                weapon: '#ffcc00',
+                shield: '#0099ff',
+                speed: '#00ff99',
+                double: '#ff00ff'
+            };
+            
+            const icons = {
+                weapon: '🔫',
+                shield: '🛡️',
+                speed: '⚡',
+                double: '⭐'
+            };
+            
+            const powerup = {
+                x: GAME_WIDTH,
+                y: GAME_HEIGHT - GROUND_HEIGHT - 150 + Math.random() * 50,
+                width: 30,
+                height: 30,
+                color: colors[type],
+                type: type,
+                icon: icons[type],
+                duration: powerups[type].duration
+            };
+            
+            powerupItems.push(powerup);
+        }
+        
+        function updatePowerups() {
+            for (let i = powerupItems.length - 1; i >= 0; i--) {
+                const powerup = powerupItems[i];
+                
+                // Move powerup
+                powerup.x -= 3 * gameSpeed;
+                
+                // Check if powerup is off screen
+                if (powerup.x + powerup.width < 0) {
+                    powerupItems.splice(i, 1);
+                    continue;
+                }
+                
+                // Check collision with player
+                if (checkCollision(player, powerup)) {
+                    activatePowerup(powerup.type, powerup.duration);
+                    powerupItems.splice(i, 1);
+                    playSound('powerup');
+                    
+                    // Powerup collection effect
+                    createParticles(
+                        powerup.x + powerup.width / 2,
+                        powerup.y + powerup.height / 2,
+                        20,
+                        powerup.color,
+                        3,
+                        10
+                    );
+                }
+            }
+        }
+        
+        function drawPowerups() {
+            powerupItems.forEach(powerup => {
+                // Draw glowing effect
+                ctx.shadowColor = powerup.color;
+                ctx.shadowBlur = 15;
+                
+                // Draw powerup circle
+                ctx.fillStyle = powerup.color;
+                ctx.beginPath();
+                ctx.arc(
+                    powerup.x + powerup.width / 2, 
+                    powerup.y + powerup.height / 2, 
+                    powerup.width / 2, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Reset shadow
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                
+                // Draw icon (emoji)
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#000';
+                ctx.fillText(
+                    powerup.icon, 
+                    powerup.x + powerup.width / 2, 
+                    powerup.y + powerup.height / 2
+                );
+            });
+        }
+        
+        function activatePowerup(type, duration) {
+            // If already active, reset timer instead of stacking
+            if (powerups[type].active) {
+                powerups[type].timeLeft = duration;
+            } else {
+                powerups[type].active = true;
+                powerups[type].timeLeft = duration;
+            }
+            
+            updatePowerupIcons();
+            
+            // Special effects for each powerup
+            switch(type) {
+                case 'speed':
+                    gameSpeed *= 1.5;
+                    break;
+                case 'weapon':
+                    // Give some ammo immediately
+                    shootBullet();
+                    break;
+            }
+        }
+        
+        function updatePowerupTimers() {
+            Object.keys(powerups).forEach(type => {
+                if (powerups[type].active) {
+                    powerups[type].timeLeft -= 16; // Roughly 60fps
+                    
+                    if (powerups[type].timeLeft <= 0) {
+                        deactivatePowerup(type);
+                    }
+                }
+            });
+            
+            updatePowerupIcons();
+        }
+        
+        function deactivatePowerup(type) {
+            powerups[type].active = false;
+            powerups[type].timeLeft = 0;
+            
+            // Revert special effects
+            if (type === 'speed') {
+                gameSpeed /= 1.5;
+            }
+            
+            updatePowerupIcons();
+        }
+        
+        function updatePowerupIcons() {
+            weaponIcon.classList.toggle('active-powerup', powerups.weapon.active);
+            shieldIcon.classList.toggle('active-powerup', powerups.shield.active);
+            speedIcon.classList.toggle('active-powerup', powerups.speed.active);
+            doubleIcon.classList.toggle('active-powerup', powerups.double.active);
+            
+            // Update timer text
+            weaponTimer.textContent = powerups.weapon.active ? 
+                Math.ceil(powerups.weapon.timeLeft / 1000) : '';
+            shieldTimer.textContent = powerups.shield.active ? 
+                Math.ceil(powerups.shield.timeLeft / 1000) : '';
+            speedTimer.textContent = powerups.speed.active ? 
+                Math.ceil(powerups.speed.timeLeft / 1000) : '';
+            doubleTimer.textContent = powerups.double.active ? 
+                Math.ceil(powerups.double.timeLeft / 1000) : '';
+        }
+        
+        function shootBullet() {
+            if (!powerups.weapon.active) return;
+            
+            const bullet = {
+                x: player.x + player.width,
+                y: player.y + player.height / 2,
+                width: 15,
+                height: 5,
+                speed: 20 * gameSpeed,
+                damage: 1
+            };
+            
+            bullets.push(bullet);
+            playSound('shoot');
+            
+            // Muzzle flash effect
+            createParticles(
+                player.x + player.width,
+                player.y + player.height / 2,
+                5,
+                '#ffcc00',
+                2,
+                5
+            );
+        }
+        
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                
+                // Move bullet
+                bullet.x += bullet.speed;
+                
+                // Check if bullet is off screen
+                if (bullet.x > GAME_WIDTH) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Check collision with zombies
+                for (let j = zombies.length - 1; j >= 0; j--) {
+                    const zombie = zombies[j];
+                    
+                    if (checkCollision(bullet, zombie)) {
+                        // Damage zombie
+                        zombie.health -= bullet.damage;
+                        
+                        // Create blood splatter
+                        createBloodSplatter(
+                            zombie.x + zombie.width / 2, 
+                            zombie.y + zombie.height / 2,
+                            10
+                        );
+                        
+                        // Remove bullet
+                        bullets.splice(i, 1);
+                        
+                        // Show damage indicator
+                        createDamageIndicator(
+                            zombie.x + zombie.width / 2,
+                            zombie.y,
+                            bullet.damage * (powerups.double.active ? 2 : 1)
+                        );
+                        
+                        // Check if zombie is dead
+                        if (zombie.health <= 0) {
+                            createExplosion(
+                                zombie.x + zombie.width / 2, 
+                                zombie.y + zombie.height / 2
+                            );
+                            
+                            // Add to combo
+                            addToCombo(zombie.score);
+                            
+                            // Add score
+                            addScore(zombie.score * (powerups.double.active ? 2 : 1));
+                            
+                            zombies.splice(j, 1);
+                        }
+                        
+                        break;
+                    }
+                }
+            }
+        }
+        
+        function drawBullets() {
+            bullets.forEach(bullet => {
+                // Draw bullet with glow effect
+                ctx.shadowColor = '#ffcc00';
+                ctx.shadowBlur = 10;
+                
+                // Bullet gradient
+                const gradient = ctx.createLinearGradient(
+                    bullet.x, bullet.y, 
+                    bullet.x + bullet.width, bullet.y
+                );
+                gradient.addColorStop(0, '#ffcc00');
+                gradient.addColorStop(1, '#ff6600');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+            });
+        }
+        
+        function createExplosion(x, y) {
+            explosions.push({
+                x: x - 25,
+                y: y - 25,
+                width: 50,
+                height: 50,
+                startTime: Date.now()
+            });
+            
+            playSound('explosion');
+            
+            // Explosion particles
+            createParticles(x, y, 30, '#ff6600', 5, 15);
+        }
+        
+        function updateExplosions() {
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                const explosion = explosions[i];
+                const elapsed = Date.now() - explosion.startTime;
+                
+                if (elapsed > 500) { // Explosion lasts 0.5 seconds
+                    explosions.splice(i, 1);
+                }
+            }
+        }
+        
+        function drawExplosions() {
+            explosions.forEach(explosion => {
+                const elapsed = Date.now() - explosion.startTime;
+                const progress = elapsed / 500; // 0 to 1
+                const radius = 25 * (1 + progress); // Grow over time
+                const alpha = 1 - progress; // Fade over time
+                
+                ctx.globalAlpha = alpha;
+                
+                // Draw explosion with gradient
+                const gradient = ctx.createRadialGradient(
+                    explosion.x + 25,
+                    explosion.y + 25,
+                    0,
+                    explosion.x + 25,
+                    explosion.y + 25,
+                    radius
+                );
+                
+                gradient.addColorStop(0, 'orange');
+                gradient.addColorStop(0.5, 'red');
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(
+                    explosion.x + 25,
+                    explosion.y + 25,
+                    radius,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                ctx.globalAlpha = 1;
+            });
+        }
+        
+        function createBloodSplatter(x, y, count = 5) {
+            // Create multiple blood particles
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 30;
+                const size = 5 + Math.random() * 15;
+                
+                bloodSplatters.push({
+                    x: x + Math.cos(angle) * distance,
+                    y: y + Math.sin(angle) * distance,
+                    width: size,
+                    height: size,
+                    alpha: 0.7,
+                    fadeSpeed: 0.01 + Math.random() * 0.02
+                });
+            }
+        }
+        
+        function updateBlood() {
+            for (let i = bloodSplatters.length - 1; i >= 0; i--) {
+                const blood = bloodSplatters[i];
+                
+                blood.alpha -= blood.fadeSpeed;
+                
+                if (blood.alpha <= 0) {
+                    bloodSplatters.splice(i, 1);
+                }
+            }
+        }
+        
+        function drawBlood() {
+            bloodSplatters.forEach(blood => {
+                ctx.globalAlpha = blood.alpha;
+                
+                // Blood splatter shape
+                ctx.save();
+                ctx.translate(blood.x, blood.y);
+                ctx.rotate(Math.random() * Math.PI * 2);
+                
+                ctx.fillStyle = 'rgba(150, 0, 0, 0.7)';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, blood.width / 2, blood.width / 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+                ctx.globalAlpha = 1;
+            });
+        }
+        
+        function createParticles(x, y, count, color, minSize, maxSize) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 3;
+                const size = minSize + Math.random() * (maxSize - minSize);
+                const lifetime = 30 + Math.random() * 30;
+                
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    width: size,
+                    height: size,
+                    color: color,
+                    lifetime: lifetime,
+                    maxLifetime: lifetime,
+                    gravity: 0.1
+                });
+            }
+        }
+        
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                
+                // Update position
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.vy += particle.gravity;
+                
+                // Update lifetime
+                particle.lifetime--;
+                
+                if (particle.lifetime <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+        
+        function drawParticles() {
+            particles.forEach(particle => {
+                const alpha = particle.lifetime / particle.maxLifetime;
+                
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(
+                    particle.x, 
+                    particle.y, 
+                    particle.width / 2, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+        }
+        
+        function createDamageIndicator(x, y, amount) {
+            damageIndicators.push({
+                x: x,
+                y: y,
+                text: `-${amount}`,
+                lifetime: 60,
+                vy: -1
+            });
+        }
+        
+        function updateDamageIndicators() {
+            for (let i = damageIndicators.length - 1; i >= 0; i--) {
+                const indicator = damageIndicators[i];
+                
+                indicator.y += indicator.vy;
+                indicator.lifetime--;
+                
+                if (indicator.lifetime <= 0) {
+                    damageIndicators.splice(i, 1);
+                }
+            }
+        }
+        
+        function drawDamageIndicators() {
+            damageIndicators.forEach(indicator => {
+                const alpha = indicator.lifetime / 60;
+                
+                ctx.globalAlpha = alpha;
+                ctx.font = '20px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'red';
+                ctx.fillText(
+                    indicator.text, 
+                    indicator.x, 
+                    indicator.y
+                );
+                ctx.globalAlpha = 1;
+            });
+        }
+        
+        function addToCombo(amount) {
+            const now = Date.now();
+            
+            // If last kill was recent, add to combo
+            if (now - lastComboTime < COMBO_TIMEOUT) {
+                comboCount++;
+                
+                // Show combo indicator
+                if (comboCount > 1) {
+                    createComboIndicator(
+                        player.x + player.width / 2,
+                        player.y - 30,
+                        `COMBO x${comboCount}`
+                    );
+                    
+                    // Combo bonus
+                    addScore(amount * comboCount * 0.5 * (powerups.double.active ? 2 : 1));
+                }
+            } else {
+                comboCount = 1;
+            }
+            
+            lastComboTime = now;
+        }
+        
+        function endCombo() {
+            if (comboCount > 3) {
+                createComboIndicator(
+                    player.x + player.width / 2,
+                    player.y - 60,
+                    `COMBO ENDED! x${comboCount}`
+                );
+            }
+            comboCount = 0;
+        }
+        
+        function createComboIndicator(x, y, text) {
+            comboIndicators.push({
+                x: x,
+                y: y,
+                text: text,
+                lifetime: 60,
+                vy: -0.5
+            });
+        }
+        
+        function updateComboIndicators() {
+            for (let i = comboIndicators.length - 1; i >= 0; i--) {
+                const indicator = comboIndicators[i];
+                
+                indicator.y += indicator.vy;
+                indicator.lifetime--;
+                
+                if (indicator.lifetime <= 0) {
+                    comboIndicators.splice(i, 1);
+                }
+            }
+        }
+        
+        function drawComboIndicators() {
+            comboIndicators.forEach(indicator => {
+                const alpha = indicator.lifetime / 60;
+                
+                ctx.globalAlpha = alpha;
+                ctx.font = '24px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#ffcc00';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                
+                // Stroke text for better visibility
+                ctx.strokeText(
+                    indicator.text, 
+                    indicator.x, 
+                    indicator.y
+                );
+                
+                // Fill text
+                ctx.fillText(
+                    indicator.text, 
+                    indicator.x, 
+                    indicator.y
+                );
+                
+                ctx.globalAlpha = 1;
+            });
+        }
+        
+        function checkCollision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+        
+        function takeDamage(amount) {
+            if (powerups.shield.active) return;
+            
+            health -= amount;
+            damageFlash = 10;
+            updateHealthBar();
+            
+            // Shake screen effect
+            document.getElementById('game-container').classList.add('shake');
+            setTimeout(() => {
+                document.getElementById('game-container').classList.remove('shake');
+            }, 300);
+            
+            // Damage particles
+            createParticles(
+                player.x + player.width / 2,
+                player.y + player.height / 2,
+                10,
+                'red',
+                3,
+                8
+            );
+            
+            playSound('hurt');
+            
+            if (health <= 0) {
+                health = 0;
+                gameOver();
+            }
+        }
+        
+        function addScore(amount) {
+            score += amount;
+            updateScoreDisplay();
+        }
+        
+        function updateHealthBar() {
+            const percent = Math.max(0, health);
+            healthFill.style.width = `${percent}%`;
+            
+            // Change color based on health
+            if (health > 60) {
+                healthFill.style.background = 'linear-gradient(to right, #4ade80, #22d3ee)';
+            } else if (health > 30) {
+                healthFill.style.background = 'linear-gradient(to right, #f59e0b, #fbbf24)';
+            } else {
+                healthFill.style.background = 'linear-gradient(to right, #ef4444, #f87171)';
+            }
+        }
+        
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `SCORE: ${score}`;
+            highScoreDisplay.textContent = `HIGH SCORE: ${highScore}`;
+        }
+        
+        function increaseDifficulty() {
+            gameSpeed *= 1.1;
+            spawnRate = Math.max(500, spawnRate * 0.9); // Don't go below 500ms
+            
+            // Visual indicator of difficulty increase
+            createComboIndicator(
+                GAME_WIDTH / 2,
+                GAME_HEIGHT / 2,
+                'SPEED INCREASED!'
+            );
+            
+            playSound('powerup');
+        }
+        
+        // Audio functions
+        function playSound(type) {
+            // In a real game, you would play actual sound files here
+            // This is just a placeholder for the concept
+            const sounds = {
+                jump: { oscillator: { start: () => {}, stop: () => {} } },
+                shoot: { oscillator: { start: () => {}, stop: () => {} } },
+                explosion: { oscillator: { start: () => {}, stop: () => {} } },
+                powerup: { oscillator: { start: () => {}, stop: () => {} } },
+                hurt: { oscillator: { start: () => {}, stop: () => {} } },
+                gameOver: { oscillator: { start: () => {}, stop: () => {} } },
+                slide: { oscillator: { start: () => {}, stop: () => {} } }
+            };
+            
+            sounds[type].oscillator.start();
+        }
+        
+        // Initialize game
+        updatePowerupIcons();
+        updateScoreDisplay();
+    </script>
+</body>
+</html>
