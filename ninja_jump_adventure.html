@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninja Jump Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes jump {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0); }
+        }
+        
+        @keyframes land {
+            0% { transform: scale(1.2, 0.8); }
+            100% { transform: scale(1, 1); }
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes enemy-walk {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(100px); }
+        }
+        
+        @keyframes cloud-move {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(20px); }
+        }
+        
+        .jump-animation {
+            animation: jump 0.5s ease-out;
+        }
+        
+        .land-animation {
+            animation: land 0.2s ease-out;
+        }
+        
+        .float-animation {
+            animation: float 2s infinite ease-in-out;
+        }
+        
+        .shake-animation {
+            animation: shake 0.3s ease-in-out;
+        }
+        
+        .platform {
+            transition: all 0.3s ease;
+        }
+        
+        .bounce-platform:hover {
+            transform: scale(1.05);
+        }
+        
+        .hidden-area {
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .hidden-area.revealed {
+            opacity: 1;
+        }
+        
+        #game-container {
+            background: linear-gradient(to bottom, #87CEEB, #1E90FF);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .damage-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 0, 0, 0.3);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .damage-effect.active {
+            opacity: 1;
+        }
+        
+        .collectible-pulse {
+            animation: pulse 1s infinite;
+        }
+        
+        .enemy-walk {
+            animation: enemy-walk 2s infinite alternate ease-in-out;
+        }
+        
+        .cloud-move {
+            animation: cloud-move 30s infinite alternate ease-in-out;
+        }
+        
+        .parallax-bg {
+            position: absolute;
+            width: 200%;
+            height: 100%;
+            background: url('https://assets.codepen.io/21542/camera-reels-example-bg.jpg') repeat-x;
+            background-size: auto 100%;
+            z-index: 0;
+        }
+        
+        .cloud {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.8;
+            z-index: 1;
+        }
+        
+        .particle {
+            position: absolute;
+            background: gold;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .player-shadow {
+            position: absolute;
+            width: 30px;
+            height: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 50%;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.8);
+            transition: all 0.3s ease;
+            filter: blur(2px);
+        }
+        
+        .pause-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        
+        .tutorial-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+        }
+        
+        .double-jump-indicator {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 20px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 5;
+        }
+        
+        .double-jump-indicator.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto p-4">
+        <h1 class="text-4xl font-bold text-center mb-4 text-yellow-300">Ninja Jump Adventure</h1>
+        
+        <div class="flex justify-between items-center mb-4">
+            <div class="bg-gray-800 p-3 rounded-lg flex items-center">
+                <span class="text-yellow-300"><i class="fas fa-coins mr-2"></i></span>
+                <span id="score">0</span>
+            </div>
+            <div class="bg-gray-800 p-3 rounded-lg flex items-center">
+                <span class="text-red-400"><i class="fas fa-heart mr-2"></i></span>
+                <span id="health">3</span>
+            </div>
+            <div class="bg-gray-800 p-3 rounded-lg flex items-center">
+                <span class="text-blue-400"><i class="fas fa-gem mr-2"></i></span>
+                <span id="gems">0</span>/<span id="total-gems">3</span>
+            </div>
+            <div class="bg-gray-800 p-3 rounded-lg flex items-center">
+                <span class="text-green-400"><i class="fas fa-stopwatch mr-2"></i></span>
+                <span id="timer">60</span>
+            </div>
+            <button id="pause-btn" class="bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition">
+                <i class="fas fa-pause"></i>
+            </button>
+        </div>
+        
+        <div id="game-container" class="w-full h-96 bg-blue-500 rounded-lg relative mx-auto border-4 border-gray-700">
+            <div class="parallax-bg" id="parallax-bg"></div>
+            <div class="damage-effect"></div>
+            
+            <!-- Clouds -->
+            <div class="cloud cloud-move" style="width: 60px; height: 30px; top: 50px; left: 100px;"></div>
+            <div class="cloud cloud-move" style="width: 80px; height: 40px; top: 80px; left: 300px; animation-delay: 5s;"></div>
+            <div class="cloud cloud-move" style="width: 100px; height: 50px; top: 40px; left: 500px; animation-delay: 10s;"></div>
+            
+            <!-- Player Character -->
+            <div id="player-container" class="absolute bottom-8 left-1/4 transform -translate-x-1/2">
+                <div id="player" class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xl relative">
+                    <i class="fas fa-user-ninja"></i>
+                    <div class="player-shadow"></div>
+                </div>
+                <div id="double-jump-indicator" class="double-jump-indicator">
+                    DOUBLE JUMP READY!
+                </div>
+            </div>
+            
+            <!-- Platforms -->
+            <div class="platform ground-platform absolute bottom-0 left-0 w-full h-8 bg-green-700"></div>
+            
+            <div class="platform normal-platform absolute w-24 h-4 bg-green-600 rounded-lg" style="bottom: 100px; left: 50px;"></div>
+            <div class="platform normal-platform absolute w-24 h-4 bg-green-600 rounded-lg" style="bottom: 180px; left: 200px;"></div>
+            <div class="platform normal-platform absolute w-24 h-4 bg-green-600 rounded-lg" style="bottom: 80px; right: 150px;"></div>
+            
+            <div class="platform bounce-platform absolute w-20 h-4 bg-blue-400 rounded-lg cursor-pointer" style="bottom: 150px; right: 50px;"></div>
+            <div class="platform moving-platform absolute w-20 h-4 bg-purple-500 rounded-lg" style="bottom: 200px; left: 150px;"></div>
+            <div class="platform fragile-platform absolute w-20 h-4 bg-yellow-500 rounded-lg" style="bottom: 220px; right: 200px;"></div>
+            
+            <!-- Hidden area (revealed when player gets close) -->
+            <div class="hidden-area absolute w-32 h-32 bg-yellow-300 rounded-lg" style="bottom: 250px; right: 30px;">
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <i class="fas fa-star text-yellow-600 text-4xl float-animation"></i>
+                </div>
+            </div>
+            
+            <!-- Collectibles -->
+            <div class="collectible absolute w-6 h-6 bg-yellow-300 rounded-full flex items-center justify-center collectible-pulse" style="bottom: 70px; left: 70px;">
+                <i class="fas fa-coins text-yellow-700 text-xs"></i>
+            </div>
+            <div class="collectible absolute w-6 h-6 bg-yellow-300 rounded-full flex items-center justify-center collectible-pulse" style="bottom: 150px; left: 220px;">
+                <i class="fas fa-coins text-yellow-700 text-xs"></i>
+            </div>
+            <div class="collectible absolute w-6 h-6 bg-blue-300 rounded-full flex items-center justify-center collectible-pulse" style="bottom: 230px; right: 220px;">
+                <i class="fas fa-gem text-blue-700 text-xs"></i>
+            </div>
+            <div class="collectible absolute w-6 h-6 bg-blue-300 rounded-full flex items-center justify-center collectible-pulse" style="bottom: 260px; right: 50px;">
+                <i class="fas fa-gem text-blue-700 text-xs"></i>
+            </div>
+            
+            <!-- Enemies -->
+            <div class="enemy absolute w-10 h-10 bg-red-700 rounded-lg enemy-walk" style="bottom: 8px; left: 300px;">
+                <div class="relative w-full h-full flex items-center justify-center">
+                    <i class="fas fa-bug text-white"></i>
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gray-300">
+                        <div class="enemy-health h-full bg-green-500" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="enemy absolute w-10 h-10 bg-red-700 rounded-lg enemy-walk" style="bottom: 108px; left: 400px; animation-delay: 1s;">
+                <div class="relative w-full h-full flex items-center justify-center">
+                    <i class="fas fa-ghost text-white"></i>
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gray-300">
+                        <div class="enemy-health h-full bg-green-500" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Game Over Screen (initially hidden) -->
+            <div id="game-over" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center hidden z-20">
+                <h2 class="text-4xl font-bold text-red-500 mb-4">Game Over</h2>
+                <div class="bg-gray-800 p-6 rounded-lg text-center mb-6">
+                    <p class="text-xl mb-2">Your score: <span class="text-yellow-300" id="final-score">0</span></p>
+                    <p class="text-xl">Gems collected: <span class="text-blue-300" id="final-gems">0</span>/<span id="final-total-gems">3</span></p>
+                </div>
+                <button id="restart-btn" class="px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600 transition flex items-center">
+                    <i class="fas fa-redo mr-2"></i> Play Again
+                </button>
+            </div>
+            
+            <!-- Victory Screen (initially hidden) -->
+            <div id="victory" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center hidden z-20">
+                <h2 class="text-4xl font-bold text-yellow-300 mb-4">Victory!</h2>
+                <div class="bg-gray-800 p-6 rounded-lg text-center mb-6">
+                    <p class="text-xl mb-2">You collected all the gems!</p>
+                    <p class="text-xl">Final score: <span class="text-yellow-300" id="victory-score">0</span></p>
+                </div>
+                <button id="victory-restart-btn" class="px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600 transition flex items-center">
+                    <i class="fas fa-redo mr-2"></i> Play Again
+                </button>
+            </div>
+            
+            <!-- Pause Screen (initially hidden) -->
+            <div id="pause-screen" class="pause-screen hidden">
+                <h2 class="text-4xl font-bold text-yellow-300 mb-6">Game Paused</h2>
+                <button id="resume-btn" class="px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600 transition mb-4">
+                    Resume Game
+                </button>
+                <button id="restart-from-pause-btn" class="px-6 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition">
+                    Restart Game
+                </button>
+            </div>
+            
+            <!-- Tutorial Overlay (initially shown) -->
+            <div id="tutorial-overlay" class="tutorial-overlay">
+                <div class="bg-gray-800 p-6 rounded-lg max-w-md">
+                    <h2 class="text-2xl font-bold text-yellow-300 mb-4">Ninja Jump Adventure</h2>
+                    <p class="mb-4">Jump, collect coins and gems, and defeat enemies in this action-packed platformer!</p>
+                    
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold mb-2">Controls:</h3>
+                        <p class="mb-1"><span class="bg-gray-700 px-2 py-1 rounded">Space</span> - Jump</p>
+                        <p class="mb-1"><span class="bg-gray-700 px-2 py-1 rounded">← →</span> - Move</p>
+                        <p><span class="bg-gray-700 px-2 py-1 rounded">P</span> - Pause</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold mb-2">Platform Types:</h3>
+                        <div class="flex items-center mb-1">
+                            <div class="w-4 h-4 bg-green-600 mr-2"></div>
+                            <span>Normal</span>
+                        </div>
+                        <div class="flex items-center mb-1">
+                            <div class="w-4 h-4 bg-blue-400 mr-2"></div>
+                            <span>Bounce (higher jump)</span>
+                        </div>
+                        <div class="flex items-center mb-1">
+                            <div class="w-4 h-4 bg-purple-500 mr-2"></div>
+                            <span>Moving</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-4 h-4 bg-yellow-500 mr-2"></div>
+                            <span>Fragile (breaks after use)</span>
+                        </div>
+                    </div>
+                    
+                    <button id="start-game-btn" class="w-full px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600 transition mt-4">
+                        Start Game
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-gray-800 p-3 rounded-lg">
+                <h3 class="text-lg font-semibold mb-2">Power-ups:</h3>
+                <div class="flex items-center mb-1">
+                    <div class="w-4 h-4 bg-yellow-300 rounded-full mr-2 flex items-center justify-center">
+                        <i class="fas fa-coins text-yellow-700 text-xs"></i>
+                    </div>
+                    <span>Coins (+10 pts)</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-blue-300 rounded-full mr-2 flex items-center justify-center">
+                        <i class="fas fa-gem text-blue-700 text-xs"></i>
+                    </div>
+                    <span>Gems (+50 pts, required for victory)</span>
+                </div>
+            </div>
+            
+            <div class="bg-gray-800 p-3 rounded-lg">
+                <h3 class="text-lg font-semibold mb-2">Enemies:</h3>
+                <div class="flex items-center mb-1">
+                    <div class="w-4 h-4 bg-red-700 rounded mr-2 flex items-center justify-center">
+                        <i class="fas fa-bug text-white text-xs"></i>
+                    </div>
+                    <span>Jump on them to defeat (+30 pts)</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-red-700 rounded mr-2 flex items-center justify-center">
+                        <i class="fas fa-ghost text-white text-xs"></i>
+                    </div>
+                    <span>Contact damages you (-1 health)</span>
+                </div>
+            </div>
+            
+            <div class="bg-gray-800 p-3 rounded-lg">
+                <h3 class="text-lg font-semibold mb-2">Special:</h3>
+                <div class="flex items-center mb-1">
+                    <div class="w-4 h-4 bg-yellow-300 rounded mr-2 flex items-center justify-center">
+                        <i class="fas fa-star text-yellow-600 text-xs"></i>
+                    </div>
+                    <span>Hidden areas (reveal when close)</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-white rounded-full mr-2"></div>
+                    <span>Double jump when in air</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="jump-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3" preload="auto"></audio>
+    <audio id="collect-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-coin-win-notification-919.mp3" preload="auto"></audio>
+    <audio id="damage-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-player-losing-or-failing-2042.mp3" preload="auto"></audio>
+    <audio id="bounce-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3" preload="auto"></audio>
+    <audio id="break-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-wood-break-with-hammer-2955.mp3" preload="auto"></audio>
+    <audio id="victory-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" preload="auto"></audio>
+    <audio id="game-over-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3" preload="auto"></audio>
+    <audio id="background-music" loop src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-668.mp3" preload="auto"></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game state
+            const gameState = {
+                score: 0,
+                health: 3,
+                gems: 0,
+                timeLeft: 60,
+                isJumping: false,
+                hasDoubleJump: true,
+                isGameOver: false,
+                isPaused: false,
+                playerVelocityY: 0,
+                playerVelocityX: 0,
+                gravity: 0.5,
+                playerX: 100,
+                playerY: 0,
+                playerWidth: 48,
+                playerHeight: 48,
+                keys: {},
+                platforms: [],
+                collectibles: [],
+                enemies: [],
+                totalGems: 0,
+                particles: [],
+                clouds: [],
+                bgPos: 0,
+                gameStartTime: 0,
+                lastTime: 0,
+                tutorialShown: true
+            };
+
+            // DOM elements
+            const player = document.getElementById('player');
+            const playerContainer = document.getElementById('player-container');
+            const playerShadow = document.querySelector('.player-shadow');
+            const gameContainer = document.getElementById('game-container');
+            const scoreDisplay = document.getElementById('score');
+            const healthDisplay = document.getElementById('health');
+            const gemsDisplay = document.getElementById('gems');
+            const totalGemsDisplay = document.getElementById('total-gems');
+            const timerDisplay = document.getElementById('timer');
+            const gameOverScreen = document.getElementById('game-over');
+            const finalScoreDisplay = document.getElementById('final-score');
+            const finalGemsDisplay = document.getElementById('final-gems');
+            const finalTotalGemsDisplay = document.getElementById('final-total-gems');
+            const restartBtn = document.getElementById('restart-btn');
+            const victoryScreen = document.getElementById('victory');
+            const victoryScoreDisplay = document.getElementById('victory-score');
+            const victoryRestartBtn = document.getElementById('victory-restart-btn');
+            const damageEffect = document.querySelector('.damage-effect');
+            const hiddenArea = document.querySelector('.hidden-area');
+            const parallaxBg = document.getElementById('parallax-bg');
+            const pauseBtn = document.getElementById('pause-btn');
+            const pauseScreen = document.getElementById('pause-screen');
+            const resumeBtn = document.getElementById('resume-btn');
+            const restartFromPauseBtn = document.getElementById('restart-from-pause-btn');
+            const tutorialOverlay = document.getElementById('tutorial-overlay');
+            const startGameBtn = document.getElementById('start-game-btn');
+            const doubleJumpIndicator = document.getElementById('double-jump-indicator');
+            
+            // Audio elements
+            const jumpSound = document.getElementById('jump-sound');
+            const collectSound = document.getElementById('collect-sound');
+            const damageSound = document.getElementById('damage-sound');
+            const bounceSound = document.getElementById('bounce-sound');
+            const breakSound = document.getElementById('break-sound');
+            const victorySound = document.getElementById('victory-sound');
+            const gameOverSound = document.getElementById('game-over-sound');
+            const bgMusic = document.getElementById('background-music');
+
+            // Initialize game elements
+            function initGame() {
+                // Reset game state
+                gameState.score = 0;
+                gameState.health = 3;
+                gameState.gems = 0;
+                gameState.timeLeft = 60;
+                gameState.isJumping = false;
+                gameState.hasDoubleJump = true;
+                gameState.isGameOver = false;
+                gameState.isPaused = false;
+                gameState.playerVelocityY = 0;
+                gameState.playerVelocityX = 0;
+                gameState.playerX = 100;
+                gameState.playerY = gameContainer.offsetHeight - 56; // Start on ground
+                gameState.particles = [];
+                gameState.bgPos = 0;
+                gameState.gameStartTime = Date.now();
+                gameState.lastTime = 0;
+                
+                // Update displays
+                scoreDisplay.textContent = gameState.score;
+                healthDisplay.textContent = gameState.health;
+                gemsDisplay.textContent = gameState.gems;
+                timerDisplay.textContent = gameState.timeLeft;
+                
+                // Hide game over/victory/pause screens
+                gameOverScreen.classList.add('hidden');
+                victoryScreen.classList.add('hidden');
+                pauseScreen.classList.add('hidden');
+                
+                // Reset player position
+                playerContainer.style.left = '25%';
+                playerContainer.style.bottom = '8px';
+                player.classList.remove('jump-animation', 'land-animation');
+                
+                // Get all platforms, collectibles, and enemies
+                gameState.platforms = Array.from(document.querySelectorAll('.platform:not(.ground-platform)'));
+                gameState.collectibles = Array.from(document.querySelectorAll('.collectible'));
+                gameState.enemies = Array.from(document.querySelectorAll('.enemy'));
+                gameState.totalGems = document.querySelectorAll('.collectible i.fa-gem').length;
+                totalGemsDisplay.textContent = gameState.totalGems;
+                finalTotalGemsDisplay.textContent = gameState.totalGems;
+                
+                // Reset platforms
+                gameState.platforms.forEach(platform => {
+                    if (platform.classList.contains('fragile-platform')) {
+                        platform.style.display = 'block';
+                    }
+                });
+                
+                // Reset collectibles
+                gameState.collectibles.forEach(collectible => {
+                    collectible.style.display = 'flex';
+                });
+                
+                // Reset enemies
+                gameState.enemies.forEach(enemy => {
+                    enemy.style.display = 'block';
+                    enemy.querySelector('.enemy-health').style.width = '100%';
+                });
+                
+                // Reset hidden area
+                hiddenArea.classList.remove('revealed');
+                
+                // Reset double jump indicator
+                doubleJumpIndicator.classList.remove('active');
+                
+                // Start background music
+                bgMusic.currentTime = 0;
+                bgMusic.volume = 0.3;
+                
+                // Clear existing particles
+                document.querySelectorAll('.particle').forEach(p => p.remove());
+                
+                // Start the game loop if not in tutorial
+                if (!gameState.tutorialShown) {
+                    bgMusic.play();
+                    requestAnimationFrame(gameLoop);
+                }
+            }
+
+            // Create particles effect
+            function createParticles(x, y, color, count = 10) {
+                for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = `${x}px`;
+                    particle.style.top = `${y}px`;
+                    particle.style.width = `${Math.random() * 6 + 2}px`;
+                    particle.style.height = particle.style.width;
+                    particle.style.backgroundColor = color;
+                    particle.style.opacity = '0.8';
+                    
+                    gameContainer.appendChild(particle);
+                    
+                    gameState.particles.push({
+                        element: particle,
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8,
+                        life: 30 + Math.random() * 20
+                    });
+                }
+            }
+
+            // Check collision between two elements
+            function checkCollision(rect1, rect2) {
+                return (
+                    rect1.x < rect2.x + rect2.width &&
+                    rect1.x + rect1.width > rect2.x &&
+                    rect1.y < rect2.y + rect2.height &&
+                    rect1.y + rect1.height > rect2.y
+                );
+            }
+
+            // Get element's bounding box adjusted for game container
+            function getGameBoundingBox(element) {
+                const containerRect = gameContainer.getBoundingClientRect();
+                const elementRect = element.getBoundingClientRect();
+                
+                return {
+                    x: elementRect.left - containerRect.left,
+                    y: elementRect.top - containerRect.top,
+                    width: elementRect.width,
+                    height: elementRect.height
+                };
+            }
+
+            // Jump function
+            function jump() {
+                if (!gameState.isGameOver && !gameState.isPaused) {
+                    if (!gameState.isJumping) {
+                        // Regular jump from ground/platform
+                        gameState.isJumping = true;
+                        gameState.playerVelocityY = -12;
+                        gameState.hasDoubleJump = true;
+                        player.classList.add('jump-animation');
+                        
+                        // Play jump sound
+                        jumpSound.currentTime = 0;
+                        jumpSound.play();
+                        
+                        // Create jump particles
+                        createParticles(
+                            gameState.playerX + gameState.playerWidth/2, 
+                            gameState.playerY + gameState.playerHeight, 
+                            '#f56565'
+                        );
+                        
+                        setTimeout(() => {
+                            player.classList.remove('jump-animation');
+                        }, 500);
+                    } else if (gameState.hasDoubleJump) {
+                        // Double jump in air
+                        gameState.playerVelocityY = -12;
+                        gameState.hasDoubleJump = false;
+                        doubleJumpIndicator.classList.remove('active');
+                        
+                        // Play jump sound
+                        jumpSound.currentTime = 0;
+                        jumpSound.play();
+                        
+                        // Create double jump particles
+                        createParticles(
+                            gameState.playerX + gameState.playerWidth/2, 
+                            gameState.playerY + gameState.playerHeight, 
+                            '#ffffff',
+                            15
+                        );
+                    }
+                }
+            }
+
+            // Take damage function
+            function takeDamage() {
+                gameState.health--;
+                healthDisplay.textContent = gameState.health;
+                
+                // Show damage effect
+                damageEffect.classList.add('active');
+                setTimeout(() => {
+                    damageEffect.classList.remove('active');
+                }, 300);
+                
+                // Play damage sound
+                damageSound.currentTime = 0;
+                damageSound.play();
+                
+                // Shake player
+                player.classList.add('shake-animation');
+                setTimeout(() => {
+                    player.classList.remove('shake-animation');
+                }, 300);
+                
+                if (gameState.health <= 0) {
+                    gameOver();
+                }
+            }
+
+            // Collect item function
+            function collectItem(item) {
+                item.style.display = 'none';
+                
+                // Check what type of item was collected
+                if (item.querySelector('.fa-coins')) {
+                    gameState.score += 10;
+                    createParticles(
+                        parseFloat(item.style.left) + 12, 
+                        parseFloat(item.style.top) + 12, 
+                        '#f6e05e',
+                        15
+                    );
+                } else if (item.querySelector('.fa-gem')) {
+                    gameState.score += 50;
+                    gameState.gems++;
+                    createParticles(
+                        parseFloat(item.style.left) + 12, 
+                        parseFloat(item.style.top) + 12, 
+                        '#63b3ed',
+                        20
+                    );
+                }
+                
+                scoreDisplay.textContent = gameState.score;
+                gemsDisplay.textContent = gameState.gems;
+                
+                // Play collect sound
+                collectSound.currentTime = 0;
+                collectSound.play();
+                
+                // Check for victory condition
+                if (gameState.gems >= gameState.totalGems) {
+                    victory();
+                }
+            }
+
+            // Game over function
+            function gameOver() {
+                gameState.isGameOver = true;
+                finalScoreDisplay.textContent = gameState.score;
+                finalGemsDisplay.textContent = gameState.gems;
+                gameOverScreen.classList.remove('hidden');
+                
+                // Play game over sound
+                bgMusic.pause();
+                gameOverSound.currentTime = 0;
+                gameOverSound.play();
+            }
+
+            // Victory function
+            function victory() {
+                gameState.isGameOver = true;
+                victoryScoreDisplay.textContent = gameState.score;
+                victoryScreen.classList.remove('hidden');
+                
+                // Play victory sound
+                bgMusic.pause();
+                victorySound.currentTime = 0;
+                victorySound.play();
+            }
+
+            // Toggle pause function
+            function togglePause() {
+                gameState.isPaused = !gameState.isPaused;
+                
+                if (gameState.isPaused) {
+                    pauseScreen.classList.remove('hidden');
+                    bgMusic.pause();
+                } else {
+                    pauseScreen.classList.add('hidden');
+                    bgMusic.play();
+                    gameState.lastTime = performance.now(); // Reset lastTime to prevent large delta
+                    requestAnimationFrame(gameLoop);
+                }
+            }
+
+            // Update timer function
+            function updateTimer() {
+                if (gameState.isGameOver || gameState.isPaused) return;
+                
+                const currentTime = Date.now();
+                const elapsedSeconds = Math.floor((currentTime - gameState.gameStartTime) / 1000);
+                gameState.timeLeft = Math.max(0, 60 - elapsedSeconds);
+                timerDisplay.textContent = gameState.timeLeft;
+                
+                if (gameState.timeLeft <= 0) {
+                    gameOver();
+                }
+            }
+
+            // Update player shadow based on jump state
+            function updatePlayerShadow() {
+                if (gameState.isJumping) {
+                    const shadowScale = 0.8 + (Math.abs(gameState.playerVelocityY) / 30);
+                    const shadowOpacity = 0.3 - (Math.abs(gameState.playerVelocityY) / 40);
+                    
+                    playerShadow.style.transform = `translateX(-50%) scale(${shadowScale})`;
+                    playerShadow.style.opacity = Math.max(0.1, shadowOpacity).toString();
+                } else {
+                    playerShadow.style.transform = 'translateX(-50%) scale(0.8)';
+                    playerShadow.style.opacity = '0.3';
+                }
+            }
+
+            // Main game loop
+            function gameLoop(timestamp) {
+                if (gameState.isGameOver || gameState.isPaused) return;
+                
+                // Calculate delta time for smooth animation
+                const deltaTime = timestamp - gameState.lastTime;
+                gameState.lastTime = timestamp;
+                
+                // Apply gravity (positive value makes player fall DOWN)
+                gameState.playerVelocityY += gameState.gravity;
+                
+                // Apply horizontal movement based on key presses
+                if (gameState.keys['ArrowLeft']) {
+                    gameState.playerVelocityX = -5;
+                    player.style.transform = 'scaleX(-1)';
+                } else if (gameState.keys['ArrowRight']) {
+                    gameState.playerVelocityX = 5;
+                    player.style.transform = 'scaleX(1)';
+                } else {
+                    gameState.playerVelocityX = 0;
+                }
+                
+                // Update player position
+                gameState.playerX += gameState.playerVelocityX;
+                gameState.playerY += gameState.playerVelocityY;
+                
+                // Boundary checks
+                if (gameState.playerX < 0) {
+                    gameState.playerX = 0;
+                }
+                
+                if (gameState.playerX > gameContainer.offsetWidth - gameState.playerWidth) {
+                    gameState.playerX = gameContainer.offsetWidth - gameState.playerWidth;
+                }
+                
+                // Ground check (playerY increases as player falls down)
+                const groundLevel = gameContainer.offsetHeight - gameState.playerHeight - 8;
+                if (gameState.playerY >= groundLevel) {
+                    gameState.playerY = groundLevel;
+                    gameState.playerVelocityY = 0;
+                    gameState.isJumping = false;
+                    gameState.hasDoubleJump = true;
+                    
+                    // Show double jump indicator when landing
+                    if (!doubleJumpIndicator.classList.contains('active')) {
+                        doubleJumpIndicator.classList.add('active');
+                        setTimeout(() => {
+                            doubleJumpIndicator.classList.remove('active');
+                        }, 2000);
+                    }
+                }
+                
+                // Update player position in DOM (using top instead of bottom)
+                playerContainer.style.left = `${gameState.playerX}px`;
+                playerContainer.style.bottom = `${gameContainer.offsetHeight - gameState.playerY - gameState.playerHeight}px`;
+                
+                // Update parallax background
+                gameState.bgPos = (gameState.bgPos - gameState.playerVelocityX * 0.1) % gameContainer.offsetWidth;
+                parallaxBg.style.left = `${gameState.bgPos}px`;
+                
+                // Update player shadow
+                updatePlayerShadow();
+                
+                // Get player's bounding box
+                const playerBox = {
+                    x: gameState.playerX,
+                    y: gameState.playerY,
+                    width: gameState.playerWidth,
+                    height: gameState.playerHeight
+                };
+                
+                // Check platform collisions
+                let onPlatform = false;
+                
+                gameState.platforms.forEach(platform => {
+                    if (platform.style.display === 'none') return;
+                    
+                    const platformBox = getGameBoundingBox(platform);
+                    
+                    // Check if player is above platform and falling
+                    if (
+                        playerBox.y + playerBox.height > platformBox.y &&
+                        playerBox.y < platformBox.y + platformBox.height &&
+                        playerBox.x + playerBox.width > platformBox.x &&
+                        playerBox.x < platformBox.x + platformBox.width &&
+                        gameState.playerVelocityY > 0
+                    ) {
+                        // Land on platform
+                        gameState.playerY = platformBox.y - gameState.playerHeight;
+                        gameState.playerVelocityY = 0;
+                        gameState.isJumping = false;
+                        gameState.hasDoubleJump = true;
+                        onPlatform = true;
+                        
+                        // Show double jump indicator when landing on platform
+                        if (!doubleJumpIndicator.classList.contains('active')) {
+                            doubleJumpIndicator.classList.add('active');
+                            setTimeout(() => {
+                                doubleJumpIndicator.classList.remove('active');
+                            }, 2000);
+                        }
+                        
+                        // Add landing animation
+                        player.classList.add('land-animation');
+                        setTimeout(() => {
+                            player.classList.remove('land-animation');
+                        }, 200);
+                        
+                        // Platform type specific behaviors
+                        if (platform.classList.contains('bounce-platform')) {
+                            // Higher bounce
+                            gameState.playerVelocityY = -15;
+                            gameState.isJumping = true;
+                            
+                            // Play bounce sound
+                            bounceSound.currentTime = 0;
+                            bounceSound.play();
+                            
+                            // Create bounce particles
+                            createParticles(
+                                gameState.playerX + gameState.playerWidth/2, 
+                                gameState.playerY + gameState.playerHeight, 
+                                '#4299e1'
+                            );
+                        } else if (platform.classList.contains('fragile-platform')) {
+                            // Break after landing
+                            setTimeout(() => {
+                                platform.style.display = 'none';
+                                
+                                // Play break sound
+                                breakSound.currentTime = 0;
+                                breakSound.play();
+                                
+                                // Create break particles
+                                createParticles(
+                                    platformBox.x + platformBox.width/2, 
+                                    platformBox.y + platformBox.height/2, 
+                                    '#ecc94b',
+                                    15
+                                );
+                            }, 200);
+                        } else if (platform.classList.contains('moving-platform')) {
+                            // Move player with platform
+                            gameState.playerX += Math.sin(Date.now() / 500) * 0.5;
+                        }
+                    }
+                });
+                
+                // Check collectible collisions
+                gameState.collectibles.forEach(collectible => {
+                    if (collectible.style.display !== 'none') {
+                        const collectibleBox = getGameBoundingBox(collectible);
+                        
+                        if (checkCollision(playerBox, collectibleBox)) {
+                            collectItem(collectible);
+                        }
+                    }
+                });
+                
+                // Check enemy collisions
+                gameState.enemies.forEach(enemy => {
+                    if (enemy.style.display !== 'none') {
+                        const enemyBox = getGameBoundingBox(enemy);
+                        
+                        if (checkCollision(playerBox, enemyBox)) {
+                            // Check if player is jumping on enemy (from above)
+                            if (gameState.playerVelocityY > 0 && playerBox.y + playerBox.height < enemyBox.y + 20) {
+                                // Enemy defeated
+                                const healthBar = enemy.querySelector('.enemy-health');
+                                const currentWidth = parseFloat(healthBar.style.width);
+                                const newWidth = currentWidth - 50;
+                                
+                                if (newWidth <= 0) {
+                                    enemy.style.display = 'none';
+                                    gameState.score += 30;
+                                    scoreDisplay.textContent = gameState.score;
+                                    
+                                    // Create enemy defeat particles
+                                    createParticles(
+                                        enemyBox.x + enemyBox.width/2, 
+                                        enemyBox.y + enemyBox.height/2, 
+                                        '#f56565',
+                                        20
+                                    );
+                                } else {
+                                    healthBar.style.width = `${newWidth}%`;
+                                }
+                                
+                                // Bounce off enemy
+                                gameState.playerVelocityY = -10;
+                            } else {
+                                // Player takes damage
+                                takeDamage();
+                                
+                                // Knockback
+                                gameState.playerVelocityX = playerBox.x < enemyBox.x ? -8 : 8;
+                                gameState.playerVelocityY = -5;
+                            }
+                        }
+                    }
+                });
+                
+                // Check hidden area proximity
+                const hiddenAreaBox = getGameBoundingBox(hiddenArea);
+                const distanceToHiddenArea = Math.sqrt(
+                    Math.pow(playerBox.x - hiddenAreaBox.x, 2) + 
+                    Math.pow(playerBox.y - hiddenAreaBox.y, 2)
+                );
+                
+                if (distanceToHiddenArea < 150 && !hiddenArea.classList.contains('revealed')) {
+                    hiddenArea.classList.add('revealed');
+                    
+                    // Create reveal particles
+                    createParticles(
+                        hiddenAreaBox.x + hiddenAreaBox.width/2, 
+                        hiddenAreaBox.y + hiddenAreaBox.height/2, 
+                        '#f6e05e',
+                        30
+                    );
+                }
+                
+                // Update particles
+                gameState.particles = gameState.particles.filter(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.life--;
+                    
+                    particle.element.style.left = `${particle.x}px`;
+                    particle.element.style.top = `${particle.y}px`;
+                    particle.element.style.opacity = particle.life / 50;
+                    
+                    return particle.life > 0;
+                });
+                
+                // Remove dead particles
+                gameState.particles.forEach(particle => {
+                    if (particle.life <= 0) {
+                        particle.element.remove();
+                    }
+                });
+                
+                // Update timer
+                updateTimer();
+                
+                // Continue game loop
+                requestAnimationFrame(gameLoop);
+            }
+
+            // Event listeners
+            document.addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault(); // Prevent spacebar from scrolling page
+                    jump();
+                }
+                
+                if (e.key === 'p' || e.key === 'P') {
+                    togglePause();
+                }
+                
+                gameState.keys[e.key] = true;
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                gameState.keys[e.key] = false;
+            });
+            
+            restartBtn.addEventListener('click', () => {
+                initGame();
+                requestAnimationFrame(gameLoop);
+            });
+            
+            victoryRestartBtn.addEventListener('click', () => {
+                initGame();
+                requestAnimationFrame(gameLoop);
+            });
+            
+            pauseBtn.addEventListener('click', togglePause);
+            resumeBtn.addEventListener('click', togglePause);
+            
+            restartFromPauseBtn.addEventListener('click', () => {
+                togglePause();
+                initGame();
+                requestAnimationFrame(gameLoop);
+            });
+            
+            startGameBtn.addEventListener('click', () => {
+                tutorialOverlay.classList.add('hidden');
+                gameState.tutorialShown = false;
+                initGame();
+                requestAnimationFrame(gameLoop);
+            });
+            
+            // Bounce platform click handler
+            document.querySelectorAll('.bounce-platform').forEach(platform => {
+                platform.addEventListener('click', () => {
+                    if (!gameState.isGameOver && !gameState.isPaused) {
+                        gameState.playerVelocityY = -15;
+                        gameState.isJumping = true;
+                        
+                        // Play bounce sound
+                        bounceSound.currentTime = 0;
+                        bounceSound.play();
+                        
+                        // Create bounce particles
+                        createParticles(
+                            gameState.playerX + gameState.playerWidth/2, 
+                            gameState.playerY + gameState.playerHeight, 
+                            '#4299e1'
+                        );
+                    }
+                });
+            });
+            
+            // Initialize the game (shows tutorial first)
+            initGame();
+        });
+    </script>
+</body>
+</html>
