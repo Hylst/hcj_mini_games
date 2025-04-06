@@ -164,11 +164,11 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 20;
+            z-index: 100;
         }
         
         .tutorial-overlay {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -178,7 +178,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 30;
+            z-index: 200;
         }
         
         .double-jump-indicator {
@@ -246,41 +246,110 @@
             pointer-events: none;
             z-index: -1;
         }
+        
+        .info-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            border: 2px solid #4a5568;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 600px;
+            width: 90%;
+            z-index: 150;
+            display: none;
+        }
+        
+        .info-panel.active {
+            display: block;
+        }
+        
+        .info-panel h2 {
+            color: #f6ad55;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #4a5568;
+            padding-bottom: 0.5rem;
+        }
+        
+        .info-panel p {
+            margin-bottom: 0.5rem;
+        }
+        
+        .info-panel .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        
+        .game-ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .game-ui > div {
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin: 0 5px;
+            pointer-events: auto;
+        }
+        
+        .game-ui i {
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
     <div class="container mx-auto p-4">
         <h1 class="text-4xl font-bold text-center mb-4 text-yellow-300">Ninja Jump Adventure</h1>
         
-        <div class="flex justify-between items-center mb-4">
-            <div class="bg-gray-800 p-3 rounded-lg flex items-center">
-                <span class="text-yellow-300"><i class="fas fa-coins mr-2"></i></span>
-                <span id="score">0</span>
-            </div>
-            <div class="bg-gray-800 p-3 rounded-lg flex items-center">
-                <span class="text-red-400"><i class="fas fa-heart mr-2"></i></span>
-                <span id="health">3</span>
-            </div>
-            <div class="bg-gray-800 p-3 rounded-lg flex items-center">
-                <span class="text-blue-400"><i class="fas fa-gem mr-2"></i></span>
-                <span id="gems">0</span>/<span id="total-gems">3</span>
-            </div>
-            <div class="bg-gray-800 p-3 rounded-lg flex items-center">
-                <span class="text-green-400"><i class="fas fa-stopwatch mr-2"></i></span>
-                <span id="timer">60</span>
-            </div>
-            <div class="bg-gray-800 p-3 rounded-lg flex items-center">
-                <span class="text-purple-400"><i class="fas fa-bolt mr-2"></i></span>
-                <span id="combo">0x</span>
-            </div>
-            <button id="pause-btn" class="bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition">
-                <i class="fas fa-pause"></i>
-            </button>
-        </div>
-        
         <div id="game-container" class="w-full h-96 bg-blue-500 rounded-lg relative mx-auto border-4 border-gray-700">
             <div class="parallax-bg" id="parallax-bg"></div>
             <div class="damage-effect"></div>
+            
+            <!-- Game UI (fixed position, doesn't move with game) -->
+            <div class="game-ui">
+                <div class="flex items-center">
+                    <span class="text-yellow-300"><i class="fas fa-coins"></i></span>
+                    <span id="score">0</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-red-400"><i class="fas fa-heart"></i></span>
+                    <span id="health">3</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-blue-400"><i class="fas fa-gem"></i></span>
+                    <span id="gems">0</span>/<span id="total-gems">3</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-green-400"><i class="fas fa-stopwatch"></i></span>
+                    <span id="timer">60</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-purple-400"><i class="fas fa-bolt"></i></span>
+                    <span id="combo">0x</span>
+                </div>
+                <button id="pause-btn" class="bg-gray-800 p-1 rounded-lg hover:bg-gray-700 transition">
+                    <i class="fas fa-pause"></i>
+                </button>
+                <button id="info-btn" class="bg-gray-800 p-1 rounded-lg hover:bg-gray-700 transition">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </div>
             
             <!-- Clouds -->
             <div class="cloud cloud-move" style="width: 60px; height: 30px; top: 50px; left: 100px;"></div>
@@ -361,10 +430,11 @@
                     <div class="absolute top-0 left-0 w-full h-1 bg-gray-300">
                         <div class="enemy-health h-full bg-green-500" style="width: 100%;"></div>
                     </div>
+                </div>
             </div>
             
-            <!-- Game Over Screen (initially hidden) -->
-            <div id="game-over" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center hidden z-20">
+            <!-- Game Over Screen -->
+            <div id="game-over" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center hidden z-100">
                 <h2 class="text-4xl font-bold text-red-500 mb-4">Game Over</h2>
                 <div class="bg-gray-800 p-6 rounded-lg text-center mb-6">
                     <p class="text-xl mb-2">Your score: <span class="text-yellow-300" id="final-score">0</span></p>
@@ -376,8 +446,8 @@
                 </button>
             </div>
             
-            <!-- Victory Screen (initially hidden) -->
-            <div id="victory" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center hidden z-20">
+            <!-- Victory Screen -->
+            <div id="victory" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center hidden z-100">
                 <h2 class="text-4xl font-bold text-yellow-300 mb-4">Victory!</h2>
                 <div class="bg-gray-800 p-6 rounded-lg text-center mb-6">
                     <p class="text-xl mb-2">You collected all the gems!</p>
@@ -389,7 +459,7 @@
                 </button>
             </div>
             
-            <!-- Pause Screen (initially hidden) -->
+            <!-- Pause Screen -->
             <div id="pause-screen" class="pause-screen hidden">
                 <h2 class="text-4xl font-bold text-yellow-300 mb-6">Game Paused</h2>
                 <button id="resume-btn" class="px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600 transition mb-4">
@@ -400,7 +470,7 @@
                 </button>
             </div>
             
-            <!-- Tutorial Overlay (initially shown) -->
+            <!-- Tutorial Overlay -->
             <div id="tutorial-overlay" class="tutorial-overlay">
                 <div class="bg-gray-800 p-6 rounded-lg max-w-md">
                     <h2 class="text-2xl font-bold text-yellow-300 mb-4">Ninja Jump Adventure</h2>
@@ -413,26 +483,6 @@
                         <p><span class="bg-gray-700 px-2 py-1 rounded">P</span> - Pause</p>
                     </div>
                     
-                    <div class="mb-4">
-                        <h3 class="text-lg font-semibold mb-2">Platform Types:</h3>
-                        <div class="flex items-center mb-1">
-                            <div class="w-4 h-4 bg-green-600 mr-2"></div>
-                            <span>Normal</span>
-                        </div>
-                        <div class="flex items-center mb-1">
-                            <div class="w-4 h-4 bg-blue-400 mr-2"></div>
-                            <span>Bounce (higher jump)</span>
-                        </div>
-                        <div class="flex items-center mb-1">
-                            <div class="w-4 h-4 bg-purple-500 mr-2"></div>
-                            <span>Moving</span>
-                        </div>
-                        <div class="flex items-center">
-                            <div class="w-4 h-4 bg-yellow-500 mr-2"></div>
-                            <span>Fragile (breaks after use)</span>
-                        </div>
-                    </div>
-                    
                     <button id="start-game-btn" class="w-full px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600 transition mt-4">
                         Start Game
                     </button>
@@ -440,74 +490,82 @@
             </div>
         </div>
         
-        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-gray-800 p-3 rounded-lg">
-                <h3 class="text-lg font-semibold mb-2">Power-ups:</h3>
-                <div class="flex items-center mb-1">
-                    <div class="w-4 h-4 bg-yellow-300 rounded-full mr-2 flex items-center justify-center">
-                        <i class="fas fa-coins text-yellow-700 text-xs"></i>
-                    </div>
-                    <span>Coins (+10 pts)</span>
-                </div>
-                <div class="flex items-center mb-1">
-                    <div class="w-4 h-4 bg-blue-300 rounded-full mr-2 flex items-center justify-center">
-                        <i class="fas fa-gem text-blue-700 text-xs"></i>
-                    </div>
-                    <span>Gems (+50 pts, required for victory)</span>
-                </div>
-                <div class="flex items-center mb-1">
-                    <div class="w-4 h-4 bg-yellow-500 rounded-full mr-2 flex items-center justify-center">
-                        <i class="fas fa-shield-alt text-white text-xs"></i>
-                    </div>
-                    <span>Invincibility (temporary protection)</span>
-                </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 bg-blue-400 rounded-full mr-2 flex items-center justify-center">
-                        <i class="fas fa-bolt text-white text-xs"></i>
-                    </div>
-                    <span>Speed Boost (faster movement)</span>
-                </div>
-            </div>
+        <!-- Info Panel (hidden by default) -->
+        <div id="info-panel" class="info-panel">
+            <button class="close-btn" id="close-info-btn">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2>Game Information</h2>
             
-            <div class="bg-gray-800 p-3 rounded-lg">
-                <h3 class="text-lg font-semibold mb-2">Enemies:</h3>
-                <div class="flex items-center mb-1">
-                    <div class="w-4 h-4 bg-red-700 rounded mr-2 flex items-center justify-center">
-                        <i class="fas fa-bug text-white text-xs"></i>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Power-ups:</h3>
+                    <div class="flex items-center mb-1">
+                        <div class="w-4 h-4 bg-yellow-300 rounded-full mr-2 flex items-center justify-center">
+                            <i class="fas fa-coins text-yellow-700 text-xs"></i>
+                        </div>
+                        <span>Coins (+10 pts)</span>
                     </div>
-                    <span>Jump on them to defeat (+30 pts)</span>
-                </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 bg-red-700 rounded mr-2 flex items-center justify-center">
-                        <i class="fas fa-ghost text-white text-xs"></i>
+                    <div class="flex items-center mb-1">
+                        <div class="w-4 h-4 bg-blue-300 rounded-full mr-2 flex items-center justify-center">
+                            <i class="fas fa-gem text-blue-700 text-xs"></i>
+                        </div>
+                        <span>Gems (+50 pts, required for victory)</span>
                     </div>
-                    <span>Contact damages you (-1 health)</span>
+                    <div class="flex items-center mb-1">
+                        <div class="w-4 h-4 bg-yellow-500 rounded-full mr-2 flex items-center justify-center">
+                            <i class="fas fa-shield-alt text-white text-xs"></i>
+                        </div>
+                        <span>Invincibility (temporary protection)</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-blue-400 rounded-full mr-2 flex items-center justify-center">
+                            <i class="fas fa-bolt text-white text-xs"></i>
+                        </div>
+                        <span>Speed Boost (faster movement)</span>
+                    </div>
                 </div>
                 
-                <h3 class="text-lg font-semibold mt-4 mb-2">Combo System:</h3>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 bg-purple-500 rounded-full mr-2 flex items-center justify-center">
-                        <i class="fas fa-bolt text-white text-xs"></i>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Enemies:</h3>
+                    <div class="flex items-center mb-1">
+                        <div class="w-4 h-4 bg-red-700 rounded mr-2 flex items-center justify-center">
+                            <i class="fas fa-bug text-white text-xs"></i>
+                        </div>
+                        <span>Jump on them to defeat (+30 pts)</span>
                     </div>
-                    <span>Chain actions to increase multiplier</span>
-                </div>
-            </div>
-            
-            <div class="bg-gray-800 p-3 rounded-lg">
-                <h3 class="text-lg font-semibold mb-2">Special:</h3>
-                <div class="flex items-center mb-1">
-                    <div class="w-4 h-4 bg-yellow-300 rounded mr-2 flex items-center justify-center">
-                        <i class="fas fa-star text-yellow-600 text-xs"></i>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-red-700 rounded mr-2 flex items-center justify-center">
+                            <i class="fas fa-ghost text-white text-xs"></i>
+                        </div>
+                        <span>Contact damages you (-1 health)</span>
                     </div>
-                    <span>Hidden areas (reveal when close)</span>
+                    
+                    <h3 class="text-lg font-semibold mt-4 mb-2">Combo System:</h3>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-purple-500 rounded-full mr-2 flex items-center justify-center">
+                            <i class="fas fa-bolt text-white text-xs"></i>
+                        </div>
+                        <span>Chain actions to increase multiplier</span>
+                    </div>
                 </div>
-                <div class="flex items-center mb-1">
-                    <div class="w-4 h-4 bg-white rounded-full mr-2"></div>
-                    <span>Double jump when in air</span>
-                </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
-                    <span>Time limit (60 seconds)</span>
+                
+                <div class="md:col-span-2">
+                    <h3 class="text-lg font-semibold mb-2">Special:</h3>
+                    <div class="flex items-center mb-1">
+                        <div class="w-4 h-4 bg-yellow-300 rounded mr-2 flex items-center justify-center">
+                            <i class="fas fa-star text-yellow-600 text-xs"></i>
+                        </div>
+                        <span>Hidden areas (reveal when close)</span>
+                    </div>
+                    <div class="flex items-center mb-1">
+                        <div class="w-4 h-4 bg-white rounded-full mr-2"></div>
+                        <span>Double jump when in air</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
+                        <span>Time limit (60 seconds)</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -596,6 +654,9 @@
             const startGameBtn = document.getElementById('start-game-btn');
             const doubleJumpIndicator = document.getElementById('double-jump-indicator');
             const comboIndicator = document.getElementById('combo-indicator');
+            const infoBtn = document.getElementById('info-btn');
+            const infoPanel = document.getElementById('info-panel');
+            const closeInfoBtn = document.getElementById('close-info-btn');
             
             // Audio elements
             const jumpSound = document.getElementById('jump-sound');
@@ -1025,6 +1086,15 @@
                 }
             }
 
+            // Toggle info panel
+            function toggleInfoPanel() {
+                if (infoPanel.classList.contains('active')) {
+                    infoPanel.classList.remove('active');
+                } else {
+                    infoPanel.classList.add('active');
+                }
+            }
+
             // Update timer function
             function updateTimer() {
                 if (gameState.isGameOver || gameState.isPaused) return;
@@ -1357,6 +1427,10 @@
                     togglePause();
                 }
                 
+                if (e.key === 'i' || e.key === 'I') {
+                    toggleInfoPanel();
+                }
+                
                 gameState.keys[e.key] = true;
             });
             
@@ -1389,6 +1463,9 @@
                 initGame();
                 requestAnimationFrame(gameLoop);
             });
+            
+            infoBtn.addEventListener('click', toggleInfoPanel);
+            closeInfoBtn.addEventListener('click', toggleInfoPanel);
             
             // Bounce platform click handler
             document.querySelectorAll('.bounce-platform').forEach(platform => {
