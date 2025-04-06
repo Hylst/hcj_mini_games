@@ -197,6 +197,55 @@
         .double-jump-indicator.active {
             opacity: 1;
         }
+        
+        .combo-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: bold;
+            color: gold;
+            text-shadow: 0 0 10px rgba(255,215,0,0.7);
+            opacity: 0;
+            transition: all 0.5s;
+            z-index: 15;
+        }
+        
+        .combo-indicator.active {
+            opacity: 1;
+            animation: pulse 0.5s;
+        }
+        
+        .power-up {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            z-index: 5;
+        }
+        
+        .power-up.invincibility {
+            background: radial-gradient(circle, #ff0 0%, #f80 100%);
+            box-shadow: 0 0 10px #ff0;
+        }
+        
+        .power-up.speed {
+            background: radial-gradient(circle, #0ff 0%, #08f 100%);
+            box-shadow: 0 0 10px #0ff;
+        }
+        
+        .invincibility-effect {
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,0,0.3) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -219,6 +268,10 @@
             <div class="bg-gray-800 p-3 rounded-lg flex items-center">
                 <span class="text-green-400"><i class="fas fa-stopwatch mr-2"></i></span>
                 <span id="timer">60</span>
+            </div>
+            <div class="bg-gray-800 p-3 rounded-lg flex items-center">
+                <span class="text-purple-400"><i class="fas fa-bolt mr-2"></i></span>
+                <span id="combo">0x</span>
             </div>
             <button id="pause-btn" class="bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition">
                 <i class="fas fa-pause"></i>
@@ -244,6 +297,9 @@
                     DOUBLE JUMP READY!
                 </div>
             </div>
+            
+            <!-- Combo Indicator -->
+            <div id="combo-indicator" class="combo-indicator"></div>
             
             <!-- Platforms -->
             <div class="platform ground-platform absolute bottom-0 left-0 w-full h-8 bg-green-700"></div>
@@ -277,6 +333,18 @@
                 <i class="fas fa-gem text-blue-700 text-xs"></i>
             </div>
             
+            <!-- Power-ups -->
+            <div class="power-up invincibility" style="bottom: 120px; left: 300px;">
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <i class="fas fa-shield-alt text-white text-xs"></i>
+                </div>
+            </div>
+            <div class="power-up speed" style="bottom: 190px; left: 350px;">
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <i class="fas fa-bolt text-white text-xs"></i>
+                </div>
+            </div>
+            
             <!-- Enemies -->
             <div class="enemy absolute w-10 h-10 bg-red-700 rounded-lg enemy-walk" style="bottom: 8px; left: 300px;">
                 <div class="relative w-full h-full flex items-center justify-center">
@@ -293,7 +361,6 @@
                     <div class="absolute top-0 left-0 w-full h-1 bg-gray-300">
                         <div class="enemy-health h-full bg-green-500" style="width: 100%;"></div>
                     </div>
-                </div>
             </div>
             
             <!-- Game Over Screen (initially hidden) -->
@@ -302,6 +369,7 @@
                 <div class="bg-gray-800 p-6 rounded-lg text-center mb-6">
                     <p class="text-xl mb-2">Your score: <span class="text-yellow-300" id="final-score">0</span></p>
                     <p class="text-xl">Gems collected: <span class="text-blue-300" id="final-gems">0</span>/<span id="final-total-gems">3</span></p>
+                    <p class="text-xl mt-2">Max combo: <span class="text-purple-300" id="final-combo">0x</span></p>
                 </div>
                 <button id="restart-btn" class="px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600 transition flex items-center">
                     <i class="fas fa-redo mr-2"></i> Play Again
@@ -314,6 +382,7 @@
                 <div class="bg-gray-800 p-6 rounded-lg text-center mb-6">
                     <p class="text-xl mb-2">You collected all the gems!</p>
                     <p class="text-xl">Final score: <span class="text-yellow-300" id="victory-score">0</span></p>
+                    <p class="text-xl mt-2">Max combo: <span class="text-purple-300" id="victory-combo">0x</span></p>
                 </div>
                 <button id="victory-restart-btn" class="px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600 transition flex items-center">
                     <i class="fas fa-redo mr-2"></i> Play Again
@@ -380,11 +449,23 @@
                     </div>
                     <span>Coins (+10 pts)</span>
                 </div>
-                <div class="flex items-center">
+                <div class="flex items-center mb-1">
                     <div class="w-4 h-4 bg-blue-300 rounded-full mr-2 flex items-center justify-center">
                         <i class="fas fa-gem text-blue-700 text-xs"></i>
                     </div>
                     <span>Gems (+50 pts, required for victory)</span>
+                </div>
+                <div class="flex items-center mb-1">
+                    <div class="w-4 h-4 bg-yellow-500 rounded-full mr-2 flex items-center justify-center">
+                        <i class="fas fa-shield-alt text-white text-xs"></i>
+                    </div>
+                    <span>Invincibility (temporary protection)</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-blue-400 rounded-full mr-2 flex items-center justify-center">
+                        <i class="fas fa-bolt text-white text-xs"></i>
+                    </div>
+                    <span>Speed Boost (faster movement)</span>
                 </div>
             </div>
             
@@ -402,6 +483,14 @@
                     </div>
                     <span>Contact damages you (-1 health)</span>
                 </div>
+                
+                <h3 class="text-lg font-semibold mt-4 mb-2">Combo System:</h3>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-purple-500 rounded-full mr-2 flex items-center justify-center">
+                        <i class="fas fa-bolt text-white text-xs"></i>
+                    </div>
+                    <span>Chain actions to increase multiplier</span>
+                </div>
             </div>
             
             <div class="bg-gray-800 p-3 rounded-lg">
@@ -412,9 +501,13 @@
                     </div>
                     <span>Hidden areas (reveal when close)</span>
                 </div>
-                <div class="flex items-center">
+                <div class="flex items-center mb-1">
                     <div class="w-4 h-4 bg-white rounded-full mr-2"></div>
                     <span>Double jump when in air</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
+                    <span>Time limit (60 seconds)</span>
                 </div>
             </div>
         </div>
@@ -427,6 +520,8 @@
     <audio id="break-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-wood-break-with-hammer-2955.mp3" preload="auto"></audio>
     <audio id="victory-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" preload="auto"></audio>
     <audio id="game-over-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3" preload="auto"></audio>
+    <audio id="powerup-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" preload="auto"></audio>
+    <audio id="combo-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3" preload="auto"></audio>
     <audio id="background-music" loop src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-668.mp3" preload="auto"></audio>
 
     <script>
@@ -452,13 +547,21 @@
                 platforms: [],
                 collectibles: [],
                 enemies: [],
+                powerUps: [],
                 totalGems: 0,
                 particles: [],
                 clouds: [],
                 bgPos: 0,
                 gameStartTime: 0,
                 lastTime: 0,
-                tutorialShown: true
+                tutorialShown: true,
+                combo: 0,
+                maxCombo: 0,
+                comboTimeout: null,
+                isInvincible: false,
+                speedBoost: false,
+                speedBoostEndTime: 0,
+                invincibilityEndTime: 0
             };
 
             // DOM elements
@@ -471,13 +574,16 @@
             const gemsDisplay = document.getElementById('gems');
             const totalGemsDisplay = document.getElementById('total-gems');
             const timerDisplay = document.getElementById('timer');
+            const comboDisplay = document.getElementById('combo');
             const gameOverScreen = document.getElementById('game-over');
             const finalScoreDisplay = document.getElementById('final-score');
             const finalGemsDisplay = document.getElementById('final-gems');
             const finalTotalGemsDisplay = document.getElementById('final-total-gems');
+            const finalComboDisplay = document.getElementById('final-combo');
             const restartBtn = document.getElementById('restart-btn');
             const victoryScreen = document.getElementById('victory');
             const victoryScoreDisplay = document.getElementById('victory-score');
+            const victoryComboDisplay = document.getElementById('victory-combo');
             const victoryRestartBtn = document.getElementById('victory-restart-btn');
             const damageEffect = document.querySelector('.damage-effect');
             const hiddenArea = document.querySelector('.hidden-area');
@@ -489,6 +595,7 @@
             const tutorialOverlay = document.getElementById('tutorial-overlay');
             const startGameBtn = document.getElementById('start-game-btn');
             const doubleJumpIndicator = document.getElementById('double-jump-indicator');
+            const comboIndicator = document.getElementById('combo-indicator');
             
             // Audio elements
             const jumpSound = document.getElementById('jump-sound');
@@ -498,6 +605,8 @@
             const breakSound = document.getElementById('break-sound');
             const victorySound = document.getElementById('victory-sound');
             const gameOverSound = document.getElementById('game-over-sound');
+            const powerupSound = document.getElementById('powerup-sound');
+            const comboSound = document.getElementById('combo-sound');
             const bgMusic = document.getElementById('background-music');
 
             // Initialize game elements
@@ -519,12 +628,25 @@
                 gameState.bgPos = 0;
                 gameState.gameStartTime = Date.now();
                 gameState.lastTime = 0;
+                gameState.combo = 0;
+                gameState.maxCombo = 0;
+                gameState.isInvincible = false;
+                gameState.speedBoost = false;
+                gameState.speedBoostEndTime = 0;
+                gameState.invincibilityEndTime = 0;
+                
+                // Clear any existing combo timeout
+                if (gameState.comboTimeout) {
+                    clearTimeout(gameState.comboTimeout);
+                    gameState.comboTimeout = null;
+                }
                 
                 // Update displays
                 scoreDisplay.textContent = gameState.score;
                 healthDisplay.textContent = gameState.health;
                 gemsDisplay.textContent = gameState.gems;
                 timerDisplay.textContent = gameState.timeLeft;
+                comboDisplay.textContent = '0x';
                 
                 // Hide game over/victory/pause screens
                 gameOverScreen.classList.add('hidden');
@@ -536,10 +658,17 @@
                 playerContainer.style.bottom = '8px';
                 player.classList.remove('jump-animation', 'land-animation');
                 
-                // Get all platforms, collectibles, and enemies
+                // Remove invincibility effect if present
+                const invincibilityEffect = player.querySelector('.invincibility-effect');
+                if (invincibilityEffect) {
+                    invincibilityEffect.remove();
+                }
+                
+                // Get all platforms, collectibles, enemies, and power-ups
                 gameState.platforms = Array.from(document.querySelectorAll('.platform:not(.ground-platform)'));
                 gameState.collectibles = Array.from(document.querySelectorAll('.collectible'));
                 gameState.enemies = Array.from(document.querySelectorAll('.enemy'));
+                gameState.powerUps = Array.from(document.querySelectorAll('.power-up'));
                 gameState.totalGems = document.querySelectorAll('.collectible i.fa-gem').length;
                 totalGemsDisplay.textContent = gameState.totalGems;
                 finalTotalGemsDisplay.textContent = gameState.totalGems;
@@ -562,11 +691,20 @@
                     enemy.querySelector('.enemy-health').style.width = '100%';
                 });
                 
+                // Reset power-ups
+                gameState.powerUps.forEach(powerUp => {
+                    powerUp.style.display = 'block';
+                });
+                
                 // Reset hidden area
                 hiddenArea.classList.remove('revealed');
                 
                 // Reset double jump indicator
                 doubleJumpIndicator.classList.remove('active');
+                
+                // Reset combo indicator
+                comboIndicator.classList.remove('active');
+                comboIndicator.textContent = '';
                 
                 // Start background music
                 bgMusic.currentTime = 0;
@@ -651,6 +789,9 @@
                             '#f56565'
                         );
                         
+                        // Add to combo
+                        addToCombo('Jump');
+                        
                         setTimeout(() => {
                             player.classList.remove('jump-animation');
                         }, 500);
@@ -671,12 +812,55 @@
                             '#ffffff',
                             15
                         );
+                        
+                        // Add to combo
+                        addToCombo('Double Jump');
                     }
                 }
             }
 
+            // Add to combo counter
+            function addToCombo(action) {
+                // Reset combo timeout if it exists
+                if (gameState.comboTimeout) {
+                    clearTimeout(gameState.comboTimeout);
+                }
+                
+                // Increase combo
+                gameState.combo++;
+                if (gameState.combo > gameState.maxCombo) {
+                    gameState.maxCombo = gameState.combo;
+                }
+                
+                // Update combo display
+                comboDisplay.textContent = `${gameState.combo}x`;
+                
+                // Show combo indicator for special combos
+                if (gameState.combo >= 3) {
+                    comboIndicator.textContent = `${gameState.combo} COMBO!`;
+                    comboIndicator.classList.add('active');
+                    
+                    // Play combo sound
+                    comboSound.currentTime = 0;
+                    comboSound.play();
+                    
+                    setTimeout(() => {
+                        comboIndicator.classList.remove('active');
+                    }, 1000);
+                }
+                
+                // Set timeout to reset combo if no actions for 2 seconds
+                gameState.comboTimeout = setTimeout(() => {
+                    gameState.combo = 0;
+                    comboDisplay.textContent = '0x';
+                    gameState.comboTimeout = null;
+                }, 2000);
+            }
+
             // Take damage function
             function takeDamage() {
+                if (gameState.isInvincible) return;
+                
                 gameState.health--;
                 healthDisplay.textContent = gameState.health;
                 
@@ -696,6 +880,10 @@
                     player.classList.remove('shake-animation');
                 }, 300);
                 
+                // Reset combo
+                gameState.combo = 0;
+                comboDisplay.textContent = '0x';
+                
                 if (gameState.health <= 0) {
                     gameOver();
                 }
@@ -707,15 +895,20 @@
                 
                 // Check what type of item was collected
                 if (item.querySelector('.fa-coins')) {
-                    gameState.score += 10;
+                    const points = 10 * (gameState.combo > 0 ? gameState.combo : 1);
+                    gameState.score += points;
                     createParticles(
                         parseFloat(item.style.left) + 12, 
                         parseFloat(item.style.top) + 12, 
                         '#f6e05e',
                         15
                     );
+                    
+                    // Add to combo
+                    addToCombo('Coin');
                 } else if (item.querySelector('.fa-gem')) {
-                    gameState.score += 50;
+                    const points = 50 * (gameState.combo > 0 ? gameState.combo : 1);
+                    gameState.score += points;
                     gameState.gems++;
                     createParticles(
                         parseFloat(item.style.left) + 12, 
@@ -723,6 +916,9 @@
                         '#63b3ed',
                         20
                     );
+                    
+                    // Add to combo
+                    addToCombo('Gem');
                 }
                 
                 scoreDisplay.textContent = gameState.score;
@@ -738,11 +934,61 @@
                 }
             }
 
+            // Activate power-up function
+            function activatePowerUp(powerUp) {
+                powerUp.style.display = 'none';
+                
+                if (powerUp.classList.contains('invincibility')) {
+                    gameState.isInvincible = true;
+                    gameState.invincibilityEndTime = Date.now() + 10000; // 10 seconds
+                    
+                    // Add visual effect
+                    const effect = document.createElement('div');
+                    effect.className = 'invincibility-effect';
+                    player.appendChild(effect);
+                    
+                    // Remove effect after duration
+                    setTimeout(() => {
+                        if (player.contains(effect)) {
+                            effect.remove();
+                        }
+                        gameState.isInvincible = false;
+                    }, 10000);
+                    
+                    // Add to combo
+                    addToCombo('Power-Up');
+                } else if (powerUp.classList.contains('speed')) {
+                    gameState.speedBoost = true;
+                    gameState.speedBoostEndTime = Date.now() + 5000; // 5 seconds
+                    
+                    // Remove boost after duration
+                    setTimeout(() => {
+                        gameState.speedBoost = false;
+                    }, 5000);
+                    
+                    // Add to combo
+                    addToCombo('Power-Up');
+                }
+                
+                // Play power-up sound
+                powerupSound.currentTime = 0;
+                powerupSound.play();
+                
+                // Create power-up particles
+                createParticles(
+                    parseFloat(powerUp.style.left) + 10, 
+                    parseFloat(powerUp.style.top) + 10, 
+                    powerUp.classList.contains('invincibility') ? '#f6e05e' : '#63b3ed',
+                    20
+                );
+            }
+
             // Game over function
             function gameOver() {
                 gameState.isGameOver = true;
                 finalScoreDisplay.textContent = gameState.score;
                 finalGemsDisplay.textContent = gameState.gems;
+                finalComboDisplay.textContent = `${gameState.maxCombo}x`;
                 gameOverScreen.classList.remove('hidden');
                 
                 // Play game over sound
@@ -755,6 +1001,7 @@
             function victory() {
                 gameState.isGameOver = true;
                 victoryScoreDisplay.textContent = gameState.score;
+                victoryComboDisplay.textContent = `${gameState.maxCombo}x`;
                 victoryScreen.classList.remove('hidden');
                 
                 // Play victory sound
@@ -806,6 +1053,23 @@
                 }
             }
 
+            // Check and update power-up timers
+            function updatePowerUpTimers() {
+                const now = Date.now();
+                
+                // Check invincibility
+                if (gameState.isInvincible && now >= gameState.invincibilityEndTime) {
+                    gameState.isInvincible = false;
+                    const effect = player.querySelector('.invincibility-effect');
+                    if (effect) effect.remove();
+                }
+                
+                // Check speed boost
+                if (gameState.speedBoost && now >= gameState.speedBoostEndTime) {
+                    gameState.speedBoost = false;
+                }
+            }
+
             // Main game loop
             function gameLoop(timestamp) {
                 if (gameState.isGameOver || gameState.isPaused) return;
@@ -818,11 +1082,12 @@
                 gameState.playerVelocityY += gameState.gravity;
                 
                 // Apply horizontal movement based on key presses
+                const speedMultiplier = gameState.speedBoost ? 1.5 : 1;
                 if (gameState.keys['ArrowLeft']) {
-                    gameState.playerVelocityX = -5;
+                    gameState.playerVelocityX = -5 * speedMultiplier;
                     player.style.transform = 'scaleX(-1)';
                 } else if (gameState.keys['ArrowRight']) {
-                    gameState.playerVelocityX = 5;
+                    gameState.playerVelocityX = 5 * speedMultiplier;
                     player.style.transform = 'scaleX(1)';
                 } else {
                     gameState.playerVelocityX = 0;
@@ -868,6 +1133,9 @@
                 
                 // Update player shadow
                 updatePlayerShadow();
+                
+                // Update power-up timers
+                updatePowerUpTimers();
                 
                 // Get player's bounding box
                 const playerBox = {
@@ -930,6 +1198,9 @@
                                 gameState.playerY + gameState.playerHeight, 
                                 '#4299e1'
                             );
+                            
+                            // Add to combo
+                            addToCombo('Bounce');
                         } else if (platform.classList.contains('fragile-platform')) {
                             // Break after landing
                             setTimeout(() => {
@@ -946,6 +1217,9 @@
                                     '#ecc94b',
                                     15
                                 );
+                                
+                                // Add to combo
+                                addToCombo('Break');
                             }, 200);
                         } else if (platform.classList.contains('moving-platform')) {
                             // Move player with platform
@@ -965,6 +1239,17 @@
                     }
                 });
                 
+                // Check power-up collisions
+                gameState.powerUps.forEach(powerUp => {
+                    if (powerUp.style.display !== 'none') {
+                        const powerUpBox = getGameBoundingBox(powerUp);
+                        
+                        if (checkCollision(playerBox, powerUpBox)) {
+                            activatePowerUp(powerUp);
+                        }
+                    }
+                });
+                
                 // Check enemy collisions
                 gameState.enemies.forEach(enemy => {
                     if (enemy.style.display !== 'none') {
@@ -980,7 +1265,8 @@
                                 
                                 if (newWidth <= 0) {
                                     enemy.style.display = 'none';
-                                    gameState.score += 30;
+                                    const points = 30 * (gameState.combo > 0 ? gameState.combo : 1);
+                                    gameState.score += points;
                                     scoreDisplay.textContent = gameState.score;
                                     
                                     // Create enemy defeat particles
@@ -990,13 +1276,16 @@
                                         '#f56565',
                                         20
                                     );
+                                    
+                                    // Add to combo
+                                    addToCombo('Enemy Defeat');
                                 } else {
                                     healthBar.style.width = `${newWidth}%`;
                                 }
                                 
                                 // Bounce off enemy
                                 gameState.playerVelocityY = -10;
-                            } else {
+                            } else if (!gameState.isInvincible) {
                                 // Player takes damage
                                 takeDamage();
                                 
@@ -1025,6 +1314,9 @@
                         '#f6e05e',
                         30
                     );
+                    
+                    // Add to combo
+                    addToCombo('Secret Found');
                 }
                 
                 // Update particles
@@ -1115,6 +1407,9 @@
                             gameState.playerY + gameState.playerHeight, 
                             '#4299e1'
                         );
+                        
+                        // Add to combo
+                        addToCombo('Bounce');
                     }
                 });
             });
