@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sports Slam Dunk</title>
+    <title>Sports Slam Dunk | By Geoffroy Streit - Hylst</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.1, 0.9); }
         }
         
         @keyframes cheer {
@@ -21,6 +22,23 @@
         @keyframes wave {
             0%, 100% { transform: translateX(0); }
             50% { transform: translateX(10px); }
+        }
+        
+        @keyframes flash {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
         
         .basketball {
@@ -42,58 +60,127 @@
             background: linear-gradient(to bottom, #1a5e1a 0%, #0d3a0d 100%);
             position: relative;
             overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
         }
         
         #ball {
             position: absolute;
             transition: transform 0.1s ease-out;
+            z-index: 10;
         }
         
         #hoop {
             position: absolute;
+            z-index: 5;
         }
         
         #backboard {
             position: absolute;
+            z-index: 4;
         }
         
         .score-flash {
             animation: flash 0.5s;
         }
         
-        @keyframes flash {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
+        .court-line {
+            position: absolute;
+            background: white;
+            opacity: 0.8;
         }
         
         #aiPlayer {
             position: absolute;
             transition: all 0.3s ease;
+            z-index: 8;
+        }
+        
+        #player {
+            position: absolute;
+            z-index: 9;
+        }
+        
+        .net {
+            position: absolute;
+            width: 16px;
+            height: 30px;
+            border-left: 2px dashed white;
+            z-index: 6;
+        }
+        
+        .shake {
+            animation: shake 0.5s;
+        }
+        
+        .pulse {
+            animation: pulse 1s infinite;
+        }
+        
+        .power-meter {
+            height: 5px;
+            background: linear-gradient(to right, #4ade80, #f59e0b, #ef4444);
+            transition: width 0.1s;
+        }
+        
+        .combo-counter {
+            position: absolute;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fbbf24;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+            z-index: 20;
+        }
+        
+        .shot-trajectory {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 2;
         }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-center mb-6 text-yellow-400">Sports Slam Dunk</h1>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-4xl font-bold text-yellow-400 flex items-center">
+                <i class="fas fa-basketball-ball mr-3"></i>
+                Sports Slam Dunk
+            </h1>
+            <div class="text-sm text-gray-400">
+                By Geoffroy Streit - Hylst
+            </div>
+        </div>
         
         <div class="flex flex-col lg:flex-row gap-8 items-center lg:items-start">
             <!-- Game Area -->
             <div class="relative w-full lg:w-2/3">
-                <div id="court" class="w-full h-96 md:h-[32rem] rounded-lg shadow-lg relative overflow-hidden">
+                <div id="court" class="w-full h-96 md:h-[32rem] rounded-lg relative overflow-hidden">
                     <!-- Court markings -->
-                    <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-1 h-full bg-white"></div>
-                    <div class="absolute top-1/2 left-0 w-full h-1 bg-white"></div>
+                    <div class="court-line top-0 left-1/2 transform -translate-x-1/2 w-1 h-full"></div>
+                    <div class="court-line top-1/2 left-0 w-full h-1"></div>
                     <div class="absolute top-1/4 left-1/2 transform -translate-x-1/2 w-16 h-8 border-2 border-white rounded-full"></div>
                     
                     <!-- Hoop -->
-                    <div id="backboard" class="absolute top-16 right-8 w-4 h-24 bg-white"></div>
-                    <div id="hoop" class="absolute top-28 right-4 w-16 h-2 bg-orange-500 rounded-full"></div>
+                    <div id="backboard" class="absolute top-16 right-8 w-4 h-24 bg-white flex justify-center">
+                        <div class="w-1 h-full bg-gray-700"></div>
+                    </div>
+                    <div id="hoop" class="absolute top-28 right-4 w-16 h-2 bg-orange-500 rounded-full flex justify-center">
+                        <div class="net top-0 left-1/2 transform -translate-x-1/2"></div>
+                    </div>
                     <div class="absolute top-28 right-20 w-4 h-16 bg-white"></div>
                     
                     <!-- Ball -->
-                    <div id="ball" class="w-8 h-8 rounded-full bg-orange-500 shadow-lg flex items-center justify-center">
-                        <div class="w-6 h-6 rounded-full border-2 border-black"></div>
+                    <div id="ball" class="w-8 h-8 rounded-full bg-orange-500 shadow-lg flex items-center justify-center basketball">
+                        <div class="w-6 h-6 rounded-full border-2 border-black relative">
+                            <div class="absolute top-1/2 left-0 right-0 h-0.5 bg-black transform -rotate-45"></div>
+                            <div class="absolute top-1/2 left-0 right-0 h-0.5 bg-black transform rotate-45"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Player -->
+                    <div id="player" class="w-12 h-24 bg-red-500 rounded-t-full flex items-center justify-center">
+                        <div class="w-8 h-8 bg-red-300 rounded-full"></div>
                     </div>
                     
                     <!-- AI Player -->
@@ -102,7 +189,7 @@
                     </div>
                     
                     <!-- Crowd -->
-                    <div class="absolute bottom-0 left-0 right-0 h-16 bg-gray-800 flex justify-around">
+                    <div class="absolute bottom-0 left-0 right-0 h-16 bg-gray-800 flex justify-around px-4">
                         <div class="crowd-person wave-1 w-8 h-16 bg-red-500 rounded-t-full"></div>
                         <div class="crowd-person wave-2 w-8 h-16 bg-blue-500 rounded-t-full"></div>
                         <div class="crowd-person wave-3 w-8 h-16 bg-green-500 rounded-t-full"></div>
@@ -112,55 +199,120 @@
                     </div>
                 </div>
                 
-                <div class="mt-4 flex justify-center gap-4">
-                    <button id="dribbleBtn" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition">Dribble</button>
-                    <button id="shootBtn" class="px-4 py-2 bg-green-600 rounded hover:bg-green-700 transition">Shoot</button>
-                    <button id="dunkBtn" class="px-4 py-2 bg-red-600 rounded hover:bg-red-700 transition">Dunk</button>
+                <!-- Power meter -->
+                <div class="mt-4 bg-gray-800 rounded-lg p-2">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm">Shot Power</span>
+                        <span id="powerValue" class="text-sm">50%</span>
+                    </div>
+                    <div class="power-meter w-full rounded-full overflow-hidden">
+                        <div id="powerMeter" class="h-full" style="width: 50%"></div>
+                    </div>
+                </div>
+                
+                <!-- Controls -->
+                <div class="mt-4 grid grid-cols-3 gap-2">
+                    <button id="dribbleBtn" class="px-4 py-3 bg-blue-600 rounded hover:bg-blue-700 transition flex items-center justify-center">
+                        <i class="fas fa-running mr-2"></i> Dribble (Space)
+                    </button>
+                    <button id="shootBtn" class="px-4 py-3 bg-green-600 rounded hover:bg-green-700 transition flex items-center justify-center">
+                        <i class="fas fa-bullseye mr-2"></i> Shoot (↑)
+                    </button>
+                    <button id="dunkBtn" class="px-4 py-3 bg-red-600 rounded hover:bg-red-700 transition flex items-center justify-center">
+                        <i class="fas fa-fire mr-2"></i> Dunk (↓)
+                    </button>
                 </div>
             </div>
             
             <!-- Scoreboard and Controls -->
             <div class="w-full lg:w-1/3 bg-gray-800 p-6 rounded-lg shadow-lg">
                 <div class="text-center mb-6">
-                    <h2 class="text-2xl font-bold mb-2 text-yellow-400">Scoreboard</h2>
-                    <div class="flex justify-around items-center">
+                    <h2 class="text-2xl font-bold mb-4 text-yellow-400 flex items-center justify-center">
+                        <i class="fas fa-trophy mr-2"></i> Scoreboard
+                    </h2>
+                    <div class="flex justify-around items-center bg-gray-700 py-4 rounded-lg">
                         <div>
-                            <div class="text-xl">Player</div>
-                            <div id="playerScore" class="text-4xl font-bold">0</div>
+                            <div class="text-xl flex items-center justify-center">
+                                <i class="fas fa-user mr-2"></i> Player
+                            </div>
+                            <div id="playerScore" class="text-5xl font-bold">0</div>
                         </div>
-                        <div class="text-4xl">:</div>
+                        <div class="text-4xl mx-4">:</div>
                         <div>
-                            <div class="text-xl">AI</div>
-                            <div id="aiScore" class="text-4xl font-bold">0</div>
+                            <div class="text-xl flex items-center justify-center">
+                                <i class="fas fa-robot mr-2"></i> AI
+                            </div>
+                            <div id="aiScore" class="text-5xl font-bold">0</div>
                         </div>
                     </div>
-                    <div id="gameClock" class="text-2xl mt-4 font-mono">2:00</div>
+                    <div id="gameClock" class="text-2xl mt-4 font-mono bg-gray-900 py-2 rounded-lg">2:00</div>
                 </div>
                 
-                <div class="mb-6">
-                    <h3 class="text-xl font-bold mb-2 text-yellow-400">Controls</h3>
-                    <ul class="list-disc pl-5">
-                        <li>Click buttons or use keyboard</li>
-                        <li><span class="font-bold">Dribble:</span> Spacebar</li>
-                        <li><span class="font-bold">Shoot:</span> Arrow Up</li>
-                        <li><span class="font-bold">Dunk:</span> Arrow Down</li>
-                    </ul>
+                <!-- Game stats -->
+                <div class="mb-6 bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-xl font-bold mb-3 text-yellow-400 flex items-center">
+                        <i class="fas fa-chart-line mr-2"></i> Stats
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-sm text-gray-300">Shots Taken</div>
+                            <div id="shotsTaken" class="text-lg font-bold">0</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-300">Accuracy</div>
+                            <div id="shotAccuracy" class="text-lg font-bold">0%</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-300">Combo</div>
+                            <div id="comboCount" class="text-lg font-bold">0</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-300">Best Combo</div>
+                            <div id="bestCombo" class="text-lg font-bold">0</div>
+                        </div>
+                    </div>
                 </div>
                 
+                <!-- Difficulty and controls -->
                 <div class="mb-4">
-                    <label for="difficulty" class="block mb-2">AI Difficulty</label>
+                    <label for="difficulty" class="block mb-2 text-yellow-400">
+                        <i class="fas fa-cogs mr-2"></i> AI Difficulty
+                    </label>
                     <select id="difficulty" class="w-full p-2 rounded bg-gray-700 border border-gray-600">
                         <option value="easy">Easy</option>
                         <option value="medium" selected>Medium</option>
                         <option value="hard">Hard</option>
+                        <option value="insane">Insane</option>
                     </select>
                 </div>
                 
-                <button id="startGame" class="w-full py-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg font-bold transition">
-                    Start Game
+                <button id="startGame" class="w-full py-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg font-bold transition flex items-center justify-center pulse">
+                    <i class="fas fa-play mr-2"></i> Start Game
                 </button>
                 
-                <div id="message" class="mt-4 text-center text-lg font-semibold"></div>
+                <div id="message" class="mt-4 text-center text-lg font-semibold py-2 rounded-lg"></div>
+                
+                <!-- Special moves -->
+                <div class="mt-6">
+                    <h3 class="text-xl font-bold mb-2 text-yellow-400 flex items-center">
+                        <i class="fas fa-star mr-2"></i> Special Moves
+                    </h3>
+                    <div class="text-sm text-gray-300 mb-2">Press keys 1-4 during game</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-gray-700 p-2 rounded text-sm">
+                            <span class="font-bold">1:</span> Crossover
+                        </div>
+                        <div class="bg-gray-700 p-2 rounded text-sm">
+                            <span class="font-bold">2:</span> Fadeaway
+                        </div>
+                        <div class="bg-gray-700 p-2 rounded text-sm">
+                            <span class="font-bold">3:</span> Alley-oop
+                        </div>
+                        <div class="bg-gray-700 p-2 rounded text-sm">
+                            <span class="font-bold">4:</span> Half-court
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -172,16 +324,27 @@
             aiScore: 0,
             gameTime: 120, // 2 minutes in seconds
             gameActive: false,
-            ballPosition: { x: 50, y: 300 },
+            ballPosition: { x: 100, y: 300 },
+            playerPosition: { x: 100, y: 300 },
             aiPosition: { x: 300, y: 200 },
             aiDefenseMode: false,
-            difficulty: 'medium'
+            difficulty: 'medium',
+            shotsTaken: 0,
+            shotsMade: 0,
+            comboCount: 0,
+            bestCombo: 0,
+            powerLevel: 50,
+            powerDirection: 1,
+            specialMoveCooldown: 0,
+            gameInterval: null,
+            ballPossession: 'player' // 'player' or 'ai'
         };
         
         // DOM elements
         const ball = document.getElementById('ball');
         const hoop = document.getElementById('hoop');
         const backboard = document.getElementById('backboard');
+        const player = document.getElementById('player');
         const aiPlayer = document.getElementById('aiPlayer');
         const playerScoreEl = document.getElementById('playerScore');
         const aiScoreEl = document.getElementById('aiScore');
@@ -192,6 +355,12 @@
         const dunkBtn = document.getElementById('dunkBtn');
         const startGameBtn = document.getElementById('startGame');
         const difficultySelect = document.getElementById('difficulty');
+        const powerMeter = document.getElementById('powerMeter');
+        const powerValue = document.getElementById('powerValue');
+        const shotsTakenEl = document.getElementById('shotsTaken');
+        const shotAccuracyEl = document.getElementById('shotAccuracy');
+        const comboCountEl = document.getElementById('comboCount');
+        const bestComboEl = document.getElementById('bestCombo');
         
         // Sound effects
         const sounds = {
@@ -202,13 +371,20 @@
             dunk: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-basketball-ball-hard-hit-2093.mp3'], volume: 0.7 }),
             crowd: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-people-cheering-crowd-621.mp3'] }),
             buzzer: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-game-show-buzzer-980.mp3'] }),
-            block: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3'] })
+            block: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3'] }),
+            crossover: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-fast-sweep-transition-166.mp3'] }),
+            swish: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-basketball-ball-hit-2090.mp3'] }),
+            whistle: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-referee-whistle-886.mp3'] }),
+            boo: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-crowd-booing-2060.mp3'] })
         };
         
         // Initialize game
         function initGame() {
             updateBallPosition();
+            updatePlayerPosition();
             updateAIPosition();
+            updatePowerMeter();
+            updateStats();
             
             // Event listeners
             dribbleBtn.addEventListener('click', dribble);
@@ -231,8 +407,30 @@
                     case 'ArrowDown':
                         dunk();
                         break;
+                    case '1':
+                        crossover();
+                        break;
+                    case '2':
+                        fadeaway();
+                        break;
+                    case '3':
+                        alleyOop();
+                        break;
+                    case '4':
+                        halfCourtShot();
+                        break;
                 }
             });
+            
+            // Power meter animation
+            setInterval(() => {
+                if (gameState.gameActive) {
+                    gameState.powerLevel += gameState.powerDirection;
+                    if (gameState.powerLevel >= 100) gameState.powerDirection = -1;
+                    if (gameState.powerLevel <= 0) gameState.powerDirection = 1;
+                    updatePowerMeter();
+                }
+            }, 50);
         }
         
         // Update ball position on screen
@@ -241,29 +439,53 @@
             ball.style.top = `${gameState.ballPosition.y}px`;
         }
         
+        // Update player position
+        function updatePlayerPosition() {
+            player.style.left = `${gameState.playerPosition.x}px`;
+            player.style.top = `${gameState.playerPosition.y}px`;
+        }
+        
         // Update AI player position
         function updateAIPosition() {
             aiPlayer.style.left = `${gameState.aiPosition.x}px`;
             aiPlayer.style.top = `${gameState.aiPosition.y}px`;
         }
         
+        // Update power meter display
+        function updatePowerMeter() {
+            powerMeter.style.width = `${gameState.powerLevel}%`;
+            powerValue.textContent = `${gameState.powerLevel}%`;
+        }
+        
+        // Update game stats
+        function updateStats() {
+            shotsTakenEl.textContent = gameState.shotsTaken;
+            const accuracy = gameState.shotsTaken > 0 
+                ? Math.round((gameState.shotsMade / gameState.shotsTaken) * 100)
+                : 0;
+            shotAccuracyEl.textContent = `${accuracy}%`;
+            comboCountEl.textContent = gameState.comboCount;
+            bestComboEl.textContent = gameState.bestCombo;
+        }
+        
         // Dribble action
         function dribble() {
-            if (!gameState.gameActive) return;
+            if (!gameState.gameActive || gameState.ballPossession !== 'player') return;
             
             sounds.dribble.play();
             
             // Animate dribble
-            ball.style.transform = 'translateY(20px)';
+            ball.style.transform = 'translateY(20px) scale(0.9)';
             setTimeout(() => {
-                ball.style.transform = 'translateY(0)';
+                ball.style.transform = 'translateY(0) scale(1)';
             }, 100);
             
             // Random chance to lose ball based on difficulty
             const loseBallChance = Math.random();
-            let threshold = 0.05; // Easy
-            if (gameState.difficulty === 'medium') threshold = 0.1;
+            let threshold = 0.03; // Easy
+            if (gameState.difficulty === 'medium') threshold = 0.08;
             if (gameState.difficulty === 'hard') threshold = 0.15;
+            if (gameState.difficulty === 'insane') threshold = 0.25;
             
             if (loseBallChance < threshold) {
                 stealBall();
@@ -272,7 +494,10 @@
         
         // Shoot action
         function shoot() {
-            if (!gameState.gameActive) return;
+            if (!gameState.gameActive || gameState.ballPossession !== 'player') return;
+            
+            gameState.shotsTaken++;
+            updateStats();
             
             sounds.shoot.play();
             
@@ -280,11 +505,15 @@
             const startPos = gameState.ballPosition;
             const hoopPos = { x: 80, y: 120 };
             
-            // Calculate parabolic trajectory
+            // Calculate trajectory based on power level
+            const powerFactor = gameState.powerLevel / 100;
             const controlPoint = {
-                x: (startPos.x + hoopPos.x) / 2,
-                y: Math.min(startPos.y, hoopPos.y) - 150
+                x: (startPos.x + hoopPos.x) / 2 + (Math.random() * 20 - 10),
+                y: Math.min(startPos.y, hoopPos.y) - 150 - (powerFactor * 100)
             };
+            
+            // Show trajectory preview
+            showTrajectory(startPos, controlPoint, hoopPos);
             
             let progress = 0;
             const shotInterval = setInterval(() => {
@@ -319,12 +548,51 @@
             }, 20);
         }
         
+        // Show shot trajectory
+        function showTrajectory(start, control, end) {
+            // Clear any existing trajectory
+            document.querySelectorAll('.shot-trajectory').forEach(el => el.remove());
+            
+            // Create points along the trajectory
+            for (let p = 0; p <= 1; p += 0.1) {
+                const x = (1 - p) * (1 - p) * start.x + 
+                          2 * (1 - p) * p * control.x + 
+                          p * p * end.x;
+                
+                const y = (1 - p) * (1 - p) * start.y + 
+                          2 * (1 - p) * p * control.y + 
+                          p * p * end.y;
+                
+                const dot = document.createElement('div');
+                dot.className = 'shot-trajectory';
+                dot.style.left = `${x}px`;
+                dot.style.top = `${y}px`;
+                dot.style.width = `${4 - (p * 3)}px`;
+                dot.style.height = `${4 - (p * 3)}px`;
+                document.getElementById('court').appendChild(dot);
+            }
+            
+            // Remove trajectory after a short delay
+            setTimeout(() => {
+                document.querySelectorAll('.shot-trajectory').forEach(el => el.remove());
+            }, 500);
+        }
+        
         // Dunk action
         function dunk() {
-            if (!gameState.gameActive) return;
+            if (!gameState.gameActive || gameState.ballPossession !== 'player') return;
+            
+            gameState.shotsTaken++;
+            updateStats();
             
             sounds.dunk.play();
             sounds.crowd.play();
+            
+            // Animate player jumping
+            player.style.transform = 'translateY(-30px)';
+            setTimeout(() => {
+                player.style.transform = 'translateY(0)';
+            }, 500);
             
             // Animate dunk
             const startPos = gameState.ballPosition;
@@ -352,25 +620,39 @@
         
         // Check if shot was successful
         function checkShotResult(hoopPos) {
-            // Random chance based on distance to hoop
+            // Random chance based on distance to hoop and power level
             const distance = Math.sqrt(
                 Math.pow(gameState.ballPosition.x - hoopPos.x, 2) + 
                 Math.pow(gameState.ballPosition.y - hoopPos.y, 2)
             );
             
-            // Base chance is 60% at perfect position, decreases with distance
-            let successChance = 0.6 - (distance / 200);
+            // Base chance is 70% at perfect position, decreases with distance
+            let successChance = 0.7 - (distance / 200);
+            
+            // Adjust for power level (optimal around 70-80)
+            const powerDeviation = Math.abs(gameState.powerLevel - 75) / 75;
+            successChance *= (1 - powerDeviation * 0.5);
             
             // Adjust for difficulty
-            if (gameState.difficulty === 'hard') successChance *= 0.7;
+            if (gameState.difficulty === 'hard') successChance *= 0.8;
+            if (gameState.difficulty === 'insane') successChance *= 0.6;
             
             if (Math.random() < successChance) {
                 sounds.swoosh.play();
                 sounds.crowd.play();
+                gameState.shotsMade++;
+                gameState.comboCount++;
+                if (gameState.comboCount > gameState.bestCombo) {
+                    gameState.bestCombo = gameState.comboCount;
+                }
+                updateStats();
                 scorePoints(2);
             } else {
                 sounds.bounce.play();
-                showMessage("Missed!", "text-red-400");
+                sounds.boo.play();
+                gameState.comboCount = 0;
+                updateStats();
+                showMessage("Missed!", "text-red-400 bg-gray-900");
             }
             
             resetAfterAction();
@@ -379,7 +661,10 @@
         // AI blocks the shot
         function blockShot() {
             sounds.block.play();
-            showMessage("Blocked by AI!", "text-red-400");
+            sounds.boo.play();
+            showMessage("Blocked by AI!", "text-red-400 bg-gray-900");
+            gameState.comboCount = 0;
+            updateStats();
             
             // Animate block
             gameState.ballPosition.x += 50;
@@ -394,7 +679,10 @@
         // AI steals the ball
         function stealBall() {
             sounds.block.play();
-            showMessage("Stolen by AI!", "text-red-400");
+            sounds.whistle.play();
+            showMessage("Stolen by AI!", "text-red-400 bg-gray-900");
+            gameState.comboCount = 0;
+            updateStats();
             
             // Animate steal
             let progress = 0;
@@ -403,8 +691,11 @@
                 
                 if (progress >= 1) {
                     clearInterval(stealInterval);
-                    aiScorePoints(2);
-                    resetAfterAction();
+                    gameState.ballPossession = 'ai';
+                    setTimeout(() => {
+                        aiScorePoints(2);
+                        resetAfterAction();
+                    }, 1000);
                     return;
                 }
                 
@@ -424,10 +715,15 @@
             playerScoreEl.textContent = gameState.playerScore;
             playerScoreEl.classList.add("score-flash");
             
+            // Show combo counter if applicable
+            if (gameState.comboCount > 1) {
+                showComboCounter(gameState.comboCount);
+            }
+            
             if (isDunk) {
-                showMessage(`Slam Dunk! +${points}`, "text-yellow-400");
+                showMessage(`Slam Dunk! +${points}`, "text-yellow-400 bg-gray-900");
             } else {
-                showMessage(`Score! +${points}`, "text-green-400");
+                showMessage(`Score! +${points}`, "text-green-400 bg-gray-900");
             }
             
             setTimeout(() => {
@@ -435,12 +731,31 @@
             }, 500);
         }
         
+        // Show combo counter
+        function showComboCounter(count) {
+            const combo = document.createElement('div');
+            combo.className = 'combo-counter';
+            combo.textContent = `${count}x Combo!`;
+            combo.style.left = `${gameState.ballPosition.x}px`;
+            combo.style.top = `${gameState.ballPosition.y - 50}px`;
+            document.getElementById('court').appendChild(combo);
+            
+            // Animate and remove
+            setTimeout(() => {
+                combo.style.transform = 'translateY(-30px)';
+                combo.style.opacity = '0';
+                setTimeout(() => {
+                    combo.remove();
+                }, 500);
+            }, 1000);
+        }
+        
         // Score points for AI
         function aiScorePoints(points) {
             gameState.aiScore += points;
             aiScoreEl.textContent = gameState.aiScore;
             aiScoreEl.classList.add("score-flash");
-            showMessage(`AI Scores! +${points}`, "text-blue-400");
+            showMessage(`AI Scores! +${points}`, "text-blue-400 bg-gray-900");
             
             setTimeout(() => {
                 aiScoreEl.classList.remove("score-flash");
@@ -450,9 +765,12 @@
         // Reset positions after action
         function resetAfterAction() {
             setTimeout(() => {
-                gameState.ballPosition = { x: 50, y: 300 };
+                gameState.ballPosition = { x: 100, y: 300 };
+                gameState.playerPosition = { x: 100, y: 300 };
                 gameState.aiPosition = { x: 300, y: 200 };
+                gameState.ballPossession = 'player';
                 updateBallPosition();
+                updatePlayerPosition();
                 updateAIPosition();
                 
                 // AI might go into defense mode
@@ -467,41 +785,56 @@
         // Show message to player
         function showMessage(msg, colorClass) {
             messageEl.textContent = msg;
-            messageEl.className = `mt-4 text-center text-lg font-semibold ${colorClass}`;
+            messageEl.className = `mt-4 text-center text-lg font-semibold py-2 rounded-lg ${colorClass} shake`;
             
             setTimeout(() => {
                 messageEl.textContent = "";
-                messageEl.className = "mt-4 text-center text-lg font-semibold";
+                messageEl.className = "mt-4 text-center text-lg font-semibold py-2 rounded-lg";
             }, 2000);
         }
         
         // Start the game
         function startGame() {
+            // Clear any existing game interval
+            if (gameState.gameInterval) {
+                clearInterval(gameState.gameInterval);
+            }
+            
             gameState.playerScore = 0;
             gameState.aiScore = 0;
             gameState.gameTime = 120;
             gameState.gameActive = true;
+            gameState.shotsTaken = 0;
+            gameState.shotsMade = 0;
+            gameState.comboCount = 0;
+            gameState.ballPossession = 'player';
             
             playerScoreEl.textContent = "0";
             aiScoreEl.textContent = "0";
             updateClock();
+            updateStats();
             
-            startGameBtn.textContent = "Restart Game";
-            showMessage("Game Started!", "text-green-400");
+            startGameBtn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Restart Game';
+            showMessage("Game Started!", "text-green-400 bg-gray-900");
             
             // Start game timer
-            const gameInterval = setInterval(() => {
+            gameState.gameInterval = setInterval(() => {
                 gameState.gameTime--;
                 updateClock();
                 
                 if (gameState.gameTime <= 0) {
-                    clearInterval(gameInterval);
+                    clearInterval(gameState.gameInterval);
                     endGame();
                 }
                 
                 // AI random action
                 if (Math.random() < 0.02) {
                     aiAction();
+                }
+                
+                // Update special move cooldown
+                if (gameState.specialMoveCooldown > 0) {
+                    gameState.specialMoveCooldown--;
                 }
             }, 1000);
         }
@@ -524,12 +857,19 @@
                 updateAIPosition();
             } else {
                 // Attempt to score
-                setTimeout(() => {
-                    if (Math.random() < 0.7) {
-                        sounds.crowd.play();
-                        aiScorePoints(2);
-                    }
-                }, 1000);
+                if (gameState.ballPossession === 'ai') {
+                    setTimeout(() => {
+                        const successChance = gameState.difficulty === 'easy' ? 0.5 
+                            : gameState.difficulty === 'medium' ? 0.7 
+                            : gameState.difficulty === 'hard' ? 0.8 
+                            : 0.9; // insane
+                        
+                        if (Math.random() < successChance) {
+                            sounds.crowd.play();
+                            aiScorePoints(2);
+                        }
+                    }, 1000);
+                }
             }
         }
         
@@ -541,6 +881,9 @@
             
             if (gameState.gameTime <= 10) {
                 gameClock.classList.add("text-red-500");
+                if (gameState.gameTime === 10) {
+                    sounds.whistle.play();
+                }
             } else {
                 gameClock.classList.remove("text-red-500");
             }
@@ -552,17 +895,223 @@
             sounds.buzzer.play();
             
             if (gameState.playerScore > gameState.aiScore) {
-                showMessage("You Win!", "text-green-400");
+                showMessage("You Win!", "text-green-400 bg-gray-900");
+                sounds.crowd.play();
             } else if (gameState.playerScore < gameState.aiScore) {
-                showMessage("You Lose!", "text-red-400");
+                showMessage("You Lose!", "text-red-400 bg-gray-900");
+                sounds.boo.play();
             } else {
-                showMessage("Tie Game!", "text-yellow-400");
+                showMessage("Tie Game!", "text-yellow-400 bg-gray-900");
+                sounds.whistle.play();
             }
         }
         
         // Update difficulty
         function updateDifficulty() {
             gameState.difficulty = difficultySelect.value;
+        }
+        
+        // Special move: Crossover
+        function crossover() {
+            if (!gameState.gameActive || gameState.ballPossession !== 'player' || gameState.specialMoveCooldown > 0) return;
+            
+            sounds.crossover.play();
+            showMessage("Crossover!", "text-purple-400 bg-gray-900");
+            
+            // Animate player movement
+            gameState.playerPosition.x += 30;
+            updatePlayerPosition();
+            
+            // Confuse AI for a moment
+            gameState.aiPosition.x += 50;
+            updateAIPosition();
+            
+            setTimeout(() => {
+                gameState.playerPosition.x -= 30;
+                updatePlayerPosition();
+            }, 300);
+            
+            gameState.specialMoveCooldown = 20;
+        }
+        
+        // Special move: Fadeaway
+        function fadeaway() {
+            if (!gameState.gameActive || gameState.ballPossession !== 'player' || gameState.specialMoveCooldown > 0) return;
+            
+            gameState.shotsTaken++;
+            updateStats();
+            
+            sounds.shoot.play();
+            showMessage("Fadeaway!", "text-blue-400 bg-gray-900");
+            
+            // Animate shot with higher arc
+            const startPos = gameState.ballPosition;
+            const hoopPos = { x: 80, y: 120 };
+            
+            const controlPoint = {
+                x: (startPos.x + hoopPos.x) / 2,
+                y: Math.min(startPos.y, hoopPos.y) - 200
+            };
+            
+            let progress = 0;
+            const shotInterval = setInterval(() => {
+                progress += 0.05;
+                
+                if (progress >= 1) {
+                    clearInterval(shotInterval);
+                    // Higher chance of success for fadeaway
+                    if (Math.random() < 0.8) {
+                        sounds.swoosh.play();
+                        sounds.crowd.play();
+                        gameState.shotsMade++;
+                        gameState.comboCount++;
+                        if (gameState.comboCount > gameState.bestCombo) {
+                            gameState.bestCombo = gameState.comboCount;
+                        }
+                        updateStats();
+                        scorePoints(2);
+                    } else {
+                        sounds.bounce.play();
+                        gameState.comboCount = 0;
+                        updateStats();
+                        showMessage("Missed!", "text-red-400 bg-gray-900");
+                    }
+                    resetAfterAction();
+                    return;
+                }
+                
+                // Quadratic Bezier curve calculation
+                const x = (1 - progress) * (1 - progress) * startPos.x + 
+                          2 * (1 - progress) * progress * controlPoint.x + 
+                          progress * progress * hoopPos.x;
+                
+                const y = (1 - progress) * (1 - progress) * startPos.y + 
+                          2 * (1 - progress) * progress * controlPoint.y + 
+                          progress * progress * hoopPos.y;
+                
+                gameState.ballPosition = { x, y };
+                updateBallPosition();
+            }, 20);
+            
+            gameState.specialMoveCooldown = 30;
+        }
+        
+        // Special move: Alley-oop
+        function alleyOop() {
+            if (!gameState.gameActive || gameState.ballPossession !== 'player' || gameState.specialMoveCooldown > 0) return;
+            
+            gameState.shotsTaken++;
+            updateStats();
+            
+            sounds.dunk.play();
+            sounds.crowd.play();
+            showMessage("Alley-oop!", "text-yellow-400 bg-gray-900");
+            
+            // Animate player jumping higher
+            player.style.transform = 'translateY(-50px)';
+            setTimeout(() => {
+                player.style.transform = 'translateY(0)';
+            }, 700);
+            
+            // Animate dunk with higher arc
+            const startPos = gameState.ballPosition;
+            const hoopPos = { x: 80, y: 120 };
+            
+            let progress = 0;
+            const dunkInterval = setInterval(() => {
+                progress += 0.04;
+                
+                if (progress >= 1) {
+                    clearInterval(dunkInterval);
+                    scorePoints(3, true); // Alley-oop is worth 3 points
+                    resetAfterAction();
+                    return;
+                }
+                
+                // Higher arc for alley-oop
+                const controlPoint = {
+                    x: (startPos.x + hoopPos.x) / 2,
+                    y: Math.min(startPos.y, hoopPos.y) - 200
+                };
+                
+                const x = (1 - progress) * (1 - progress) * startPos.x + 
+                          2 * (1 - progress) * progress * controlPoint.x + 
+                          progress * progress * hoopPos.x;
+                
+                const y = (1 - progress) * (1 - progress) * startPos.y + 
+                          2 * (1 - progress) * progress * controlPoint.y + 
+                          progress * progress * hoopPos.y;
+                
+                gameState.ballPosition = { x, y };
+                updateBallPosition();
+            }, 20);
+            
+            gameState.specialMoveCooldown = 40;
+        }
+        
+        // Special move: Half-court shot
+        function halfCourtShot() {
+            if (!gameState.gameActive || gameState.ballPossession !== 'player' || gameState.specialMoveCooldown > 0) return;
+            
+            gameState.shotsTaken++;
+            updateStats();
+            
+            sounds.shoot.play();
+            showMessage("Half-court shot!", "text-red-400 bg-gray-900");
+            
+            // Animate shot from further back
+            gameState.ballPosition = { x: 350, y: 250 };
+            updateBallPosition();
+            
+            const startPos = gameState.ballPosition;
+            const hoopPos = { x: 80, y: 120 };
+            
+            const controlPoint = {
+                x: (startPos.x + hoopPos.x) / 2,
+                y: Math.min(startPos.y, hoopPos.y) - 300
+            };
+            
+            let progress = 0;
+            const shotInterval = setInterval(() => {
+                progress += 0.03;
+                
+                if (progress >= 1) {
+                    clearInterval(shotInterval);
+                    // Lower chance of success but worth 4 points
+                    if (Math.random() < 0.3) {
+                        sounds.swoosh.play();
+                        sounds.crowd.play();
+                        gameState.shotsMade++;
+                        gameState.comboCount++;
+                        if (gameState.comboCount > gameState.bestCombo) {
+                            gameState.bestCombo = gameState.comboCount;
+                        }
+                        updateStats();
+                        scorePoints(4);
+                    } else {
+                        sounds.bounce.play();
+                        gameState.comboCount = 0;
+                        updateStats();
+                        showMessage("Missed!", "text-red-400 bg-gray-900");
+                    }
+                    resetAfterAction();
+                    return;
+                }
+                
+                // Quadratic Bezier curve calculation
+                const x = (1 - progress) * (1 - progress) * startPos.x + 
+                          2 * (1 - progress) * progress * controlPoint.x + 
+                          progress * progress * hoopPos.x;
+                
+                const y = (1 - progress) * (1 - progress) * startPos.y + 
+                          2 * (1 - progress) * progress * controlPoint.y + 
+                          progress * progress * hoopPos.y;
+                
+                gameState.ballPosition = { x, y };
+                updateBallPosition();
+            }, 20);
+            
+            gameState.specialMoveCooldown = 50;
         }
         
         // Initialize game when loaded
