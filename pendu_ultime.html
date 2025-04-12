@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Pendu Ultime</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .letter-tile {
+            transition: all 0.3s ease;
+        }
+        
+        .letter-tile.correct {
+            animation: bounce 0.5s ease;
+            background-color: #4ade80;
+            color: white;
+        }
+        
+        .letter-tile.incorrect {
+            animation: shake 0.3s ease;
+            background-color: #f87171;
+            color: white;
+        }
+        
+        .letter-reveal {
+            animation: fadeIn 0.5s ease forwards;
+        }
+        
+        .hangman-part {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .hangman-part.visible {
+            opacity: 1;
+        }
+        
+        .category-card {
+            transition: all 0.3s ease;
+        }
+        
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .difficulty-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .difficulty-btn.active {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .hint-pulse {
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans min-h-screen flex flex-col">
+    <!-- Audio Elements -->
+    <audio id="correctSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
+    <audio id="wrongSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
+    <audio id="winSound" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
+    <audio id="loseSound" src="https://assets.mixkit.co/sfx/preview/mixkit-sad-game-over-2759.mp3"></audio>
+    <audio id="clickSound" src="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3"></audio>
+    <audio id="hoverSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3"></audio>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8 flex-grow flex flex-col">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-yellow-400 mb-2">Le Pendu Ultime</h1>
+           <p class="text-lg text-gray-300">Devinez le mot avant que le bonhomme ne soit pendu!</p>
+        </header>
+
+        <!-- Game Screens -->
+        <div id="main-menu" class="flex-grow flex flex-col items-center justify-center">
+            <div class="bg-gray-800 rounded-xl p-8 max-w-2xl w-full shadow-2xl">
+                <h2 class="text-2xl font-bold mb-6 text-center">Choisissez une catégorie</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <div data-category="nourriture" class="category-card bg-blue-600 hover:bg-blue-700 rounded-lg p-4 cursor-pointer flex items-center">
+                        <i class="fas fa-utensils text-2xl mr-3"></i>
+                        <span>Nourriture</span>
+                    </div>
+                    <div data-category="animaux" class="category-card bg-green-600 hover:bg-green-700 rounded-lg p-4 cursor-pointer flex items-center">
+                        <i class="fas fa-paw text-2xl mr-3"></i>
+                        <span>Animaux</span>
+                    </div>
+                    <div data-category="pays" class="category-card bg-purple-600 hover:bg-purple-700 rounded-lg p-4 cursor-pointer flex items-center">
+                        <i class="fas fa-globe-europe text-2xl mr-3"></i>
+                        <span>Pays</span>
+                    </div>
+                    <div data-category="sports" class="category-card bg-red-600 hover:bg-red-700 rounded-lg p-4 cursor-pointer flex items-center">
+                        <i class="fas fa-running text-2xl mr-3"></i>
+                        <span>Sports</span>
+                    </div>
+                    <div data-category="objets" class="category-card bg-yellow-600 hover:bg-yellow-700 rounded-lg p-4 cursor-pointer flex items-center">
+                        <i class="fas fa-box-open text-2xl mr-3"></i>
+                        <span>Objets</span>
+                    </div>
+                    <div data-category="metiers" class="category-card bg-indigo-600 hover:bg-indigo-700 rounded-lg p-4 cursor-pointer flex items-center">
+                        <i class="fas fa-briefcase text-2xl mr-3"></i>
+                        <span>Métiers</span>
+                    </div>
+                </div>
+                
+                <h3 class="text-xl font-bold mb-4">Difficulté</h3>
+                <div class="flex justify-center space-x-4 mb-8">
+                    <button data-difficulty="facile" class="difficulty-btn bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg">Facile</button>
+                    <button data-difficulty="moyen" class="difficulty-btn bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg active">Moyen</button>
+                    <button data-difficulty="difficile" class="difficulty-btn bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg">Difficile</button>
+                </div>
+                
+                <div class="flex justify-center">
+                    <button id="start-game" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-bold text-lg">Commencer</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-screen" class="hidden flex-grow flex flex-col">
+            <div class="flex flex-col md:flex-row gap-8 flex-grow">
+                <!-- Hangman Drawing -->
+                <div class="w-full md:w-1/2 bg-gray-800 rounded-xl p-6 flex flex-col items-center">
+                    <h2 class="text-xl font-bold mb-4">Le Pendu</h2>
+                    <div class="relative w-48 h-64 mb-6">
+                        <!-- Gallows -->
+                        <div class="absolute left-1/2 top-0 w-1 h-16 bg-gray-300 -translate-x-1/2"></div>
+                        <div class="absolute left-1/2 top-0 w-24 h-1 bg-gray-300 -translate-x-1/2"></div>
+                        <div class="absolute left-1/2 top-16 w-1 h-8 bg-gray-300 -translate-x-1/2"></div>
+                        
+                        <!-- Hangman Parts -->
+                        <div id="hangman-head" class="hangman-part absolute left-1/2 top-24 w-8 h-8 rounded-full border-4 border-gray-300 -translate-x-1/2"></div>
+                        <div id="hangman-body" class="hangman-part absolute left-1/2 top-32 w-1 h-16 bg-gray-300 -translate-x-1/2"></div>
+                        <div id="hangman-left-arm" class="hangman-part absolute left-1/2 top-36 w-1 h-12 bg-gray-300 -translate-x-1/2 origin-top -rotate-45"></div>
+                        <div id="hangman-right-arm" class="hangman-part absolute left-1/2 top-36 w-1 h-12 bg-gray-300 -translate-x-1/2 origin-top rotate-45"></div>
+                        <div id="hangman-left-leg" class="hangman-part absolute left-1/2 top-48 w-1 h-12 bg-gray-300 -translate-x-1/2 origin-top -rotate-30"></div>
+                        <div id="hangman-right-leg" class="hangman-part absolute left-1/2 top-48 w-1 h-12 bg-gray-300 -translate-x-1/2 origin-top rotate-30"></div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="text-lg mb-2">Erreurs: <span id="errors-count">0</span>/6</p>
+                        <div class="w-full bg-gray-700 h-4 rounded-full overflow-hidden">
+                            <div id="error-bar" class="h-full bg-red-500 transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Word Display -->
+                <div class="w-full md:w-1/2 bg-gray-800 rounded-xl p-6 flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 id="current-category" class="text-xl font-bold">Catégorie: Nourriture</h2>
+                        <button id="hint-btn" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-lg flex items-center">
+                            <i class="fas fa-lightbulb mr-2"></i> Indice
+                        </button>
+                    </div>
+                    
+                    <div id="word-display" class="flex flex-wrap gap-2 justify-center mb-8 flex-grow items-center">
+                        <!-- Word letters will appear here -->
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold mb-2">Lettres utilisées:</h3>
+                        <div id="used-letters" class="flex flex-wrap gap-2">
+                            <!-- Used letters will appear here -->
+                        </div>
+                    </div>
+                    
+                    <div id="keyboard" class="grid grid-cols-7 gap-2">
+                        <!-- Keyboard will be generated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex justify-center">
+                <button id="back-to-menu" class="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg">Retour au menu</button>
+            </div>
+        </div>
+
+        <!-- Result Screens -->
+        <div id="win-screen" class="hidden flex-grow flex flex-col items-center justify-center">
+            <div class="bg-gray-800 rounded-xl p-8 max-w-md w-full text-center">
+                <div class="text-6xl text-green-500 mb-4">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <h2 class="text-3xl font-bold mb-2">Félicitations!</h2>
+                <p class="text-xl mb-4">Vous avez sauvé le bonhomme!</p>
+                <p class="mb-6">Le mot était: <span id="win-word" class="font-bold text-green-400"></span></p>
+                <div class="flex justify-center space-x-4">
+                    <button id="play-again-win" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg">Rejouer</button>
+                    <button id="menu-win" class="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg">Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="lose-screen" class="hidden flex-grow flex flex-col items-center justify-center">
+            <div class="bg-gray-800 rounded-xl p-8 max-w-md w-full text-center">
+                <div class="text-6xl text-red-500 mb-4">
+                    <i class="fas fa-skull"></i>
+                </div>
+                <h2 class="text-3xl font-bold mb-2">Dommage!</h2>
+                <p class="text-xl mb-4">Le bonhomme a été pendu...</p>
+                <p class="mb-6">Le mot était: <span id="lose-word" class="font-bold text-red-400"></span></p>
+                <div class="flex justify-center space-x-4">
+                    <button id="play-again-lose" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg">Rejouer</button>
+                    <button id="menu-lose" class="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg">Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 py-4 text-center text-gray-400">
+        <p>Créé par Geoffroy Streit - Hylst</p>
+    </footer>
+
+    <script>
+        // Game state
+        const gameState = {
+            currentScreen: 'main-menu',
+            category: null,
+            difficulty: 'moyen',
+            word: '',
+            hint: '',
+            guessedLetters: [],
+            errors: 0,
+            maxErrors: 6,
+            gameOver: false,
+            words: {
+                nourriture: [
+                    { word: "BAGUETTE", hint: "Pain long et mince, symbole de la France" },
+                    { word: "CROISSANT", hint: "Viennoiserie en forme de croissant" },
+                    { word: "FROMAGE", hint: "Produit laitier avec de nombreuses variétés" },
+                    { word: "ESCARGOT", hint: "Mollusque consommé avec du beurre à l'ail" },
+                    { word: "CREPE", hint: "Fine galette souvent sucrée ou salée" },
+                    { word: "QUICHE", hint: "Tarte salée à base d'œufs et de crème" },
+                    { word: "RATATOUILLE", hint: "Plat de légumes mijotés provençal" },
+                    { word: "BOEUFBOURGUIGNON", hint: "Ragoût de bœuf cuit au vin rouge" }
+                ],
+                animaux: [
+                    { word: "CHAT", hint: "Animal domestique qui miaule" },
+                    { word: "CHIEN", hint: "Meilleur ami de l'homme" },
+                    { word: "LION", hint: "Roi de la jungle" },
+                    { word: "ELEPHANT", hint: "Grand mammifère avec une trompe" },
+                    { word: "GIRAFE", hint: "Animal avec un très long cou" },
+                    { word: "KANGOUROU", hint: "Marsupial sauteur d'Australie" },
+                    { word: "PANDA", hint: "Ours noir et blanc de Chine" },
+                    { word: "PERROQUET", hint: "Oiseau qui peut imiter la parole" }
+                ],
+                pays: [
+                    { word: "FRANCE", hint: "Pays de la Tour Eiffel" },
+                    { word: "ALLEMAGNE", hint: "Pays de la bière et des saucisses" },
+                    { word: "ITALIE", hint: "Pays de la pizza et des pâtes" },
+                    { word: "ESPAGNE", hint: "Pays des corridas et du flamenco" },
+                    { word: "JAPON", hint: "Pays du soleil levant" },
+                    { word: "CANADA", hint: "Pays avec une feuille d'érable sur son drapeau" },
+                    { word: "BRESIL", hint: "Pays du carnaval de Rio" },
+                    { word: "AUSTRALIE", hint: "Pays-continent avec des kangourous" }
+                ],
+                sports: [
+                    { word: "FOOTBALL", hint: "Sport avec un ballon rond et des buts" },
+                    { word: "TENNIS", hint: "Sport avec une raquette et une balle" },
+                    { word: "BASKETBALL", hint: "Sport où on marque des paniers" },
+                    { word: "NATATION", hint: "Sport pratiqué dans l'eau" },
+                    { word: "CYCLISME", hint: "Sport avec un vélo" },
+                    { word: "RUGBY", hint: "Sport de contact avec un ballon ovale" },
+                    { word: "GOLF", hint: "Sport où on frappe une balle avec des clubs" },
+                    { word: "ATHLETISME", hint: "Sport regroupant course, sauts et lancers" }
+                ],
+                objets: [
+                    { word: "CHAISE", hint: "Meuble sur lequel on s'assoit" },
+                    { word: "TABLE", hint: "Meuble avec une surface plane" },
+                    { word: "LAMPE", hint: "Objet qui produit de la lumière" },
+                    { word: "TELEPHONE", hint: "Appareil pour communiquer à distance" },
+                    { word: "ORDINATEUR", hint: "Machine pour traiter des informations" },
+                    { word: "LIVRE", hint: "Collection de pages imprimées" },
+                    { word: "HORLOGE", hint: "Appareil qui indique l'heure" },
+                    { word: "VELO", hint: "Véhicule à deux roues avec des pédales" }
+                ],
+                metiers: [
+                    { word: "MEDECIN", hint: "Professionnel qui soigne les malades" },
+                    { word: "ENSEIGNANT", hint: "Personne qui éduque les élèves" },
+                    { word: "POLICIER", hint: "Agent qui maintient l'ordre public" },
+                    { word: "CUISINIER", hint: "Professionnel qui prépare les repas" },
+                    { word: "INGENIEUR", hint: "Professionnel qui conçoit des solutions techniques" },
+                    { word: "JOURNALISTE", hint: "Personne qui rapporte les nouvelles" },
+                    { word: "MECANICIEN", hint: "Professionnel qui répare les voitures" },
+                    { word: "ARCHITECTE", hint: "Professionnel qui conçoit des bâtiments" }
+                ]
+            }
+        };
+
+        // DOM elements
+        const elements = {
+            mainMenu: document.getElementById('main-menu'),
+            gameScreen: document.getElementById('game-screen'),
+            winScreen: document.getElementById('win-screen'),
+            loseScreen: document.getElementById('lose-screen'),
+            wordDisplay: document.getElementById('word-display'),
+            usedLetters: document.getElementById('used-letters'),
+            keyboard: document.getElementById('keyboard'),
+            errorsCount: document.getElementById('errors-count'),
+            errorBar: document.getElementById('error-bar'),
+            currentCategory: document.getElementById('current-category'),
+            hintBtn: document.getElementById('hint-btn'),
+            winWord: document.getElementById('win-word'),
+            loseWord: document.getElementById('lose-word'),
+            hangmanParts: {
+                head: document.getElementById('hangman-head'),
+                body: document.getElementById('hangman-body'),
+                leftArm: document.getElementById('hangman-left-arm'),
+                rightArm: document.getElementById('hangman-right-arm'),
+                leftLeg: document.getElementById('hangman-left-leg'),
+                rightLeg: document.getElementById('hangman-right-leg')
+            },
+            // Audio elements
+            correctSound: document.getElementById('correctSound'),
+            wrongSound: document.getElementById('wrongSound'),
+            winSound: document.getElementById('winSound'),
+            loseSound: document.getElementById('loseSound'),
+            clickSound: document.getElementById('clickSound'),
+            hoverSound: document.getElementById('hoverSound')
+        };
+
+        // Initialize the game
+        function initGame() {
+            setupEventListeners();
+            generateKeyboard();
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            // Category selection
+            document.querySelectorAll('[data-category]').forEach(card => {
+                card.addEventListener('click', () => {
+                    playSound('click');
+                    gameState.category = card.dataset.category;
+                    document.querySelectorAll('[data-category]').forEach(c => {
+                        c.classList.remove('ring-2', 'ring-yellow-400');
+                    });
+                    card.classList.add('ring-2', 'ring-yellow-400');
+                });
+                
+                card.addEventListener('mouseenter', () => playSound('hover'));
+            });
+
+            // Difficulty selection
+            document.querySelectorAll('[data-difficulty]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    playSound('click');
+                    gameState.difficulty = btn.dataset.difficulty;
+                    document.querySelectorAll('[data-difficulty]').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    btn.classList.add('active');
+                });
+                
+                btn.addEventListener('mouseenter', () => playSound('hover'));
+            });
+
+            // Start game button
+            document.getElementById('start-game').addEventListener('click', () => {
+                playSound('click');
+                if (!gameState.category) {
+                    alert('Veuillez choisir une catégorie');
+                    return;
+                }
+                startGame();
+            });
+
+            // Hint button
+            elements.hintBtn.addEventListener('click', () => {
+                playSound('click');
+                showHint();
+            });
+
+            // Back to menu buttons
+            document.getElementById('back-to-menu').addEventListener('click', () => {
+                playSound('click');
+                showScreen('main-menu');
+            });
+
+            // Play again buttons
+            document.getElementById('play-again-win').addEventListener('click', () => {
+                playSound('click');
+                startGame();
+            });
+            document.getElementById('play-again-lose').addEventListener('click', () => {
+                playSound('click');
+                startGame();
+            });
+
+            // Menu buttons
+            document.getElementById('menu-win').addEventListener('click', () => {
+                playSound('click');
+                showScreen('main-menu');
+            });
+            document.getElementById('menu-lose').addEventListener('click', () => {
+                playSound('click');
+                showScreen('main-menu');
+            });
+
+            // Keyboard input
+            document.addEventListener('keydown', (e) => {
+                if (gameState.currentScreen !== 'game-screen' || gameState.gameOver) return;
+                
+                const key = e.key.toUpperCase();
+                if (/^[A-Z]$/.test(key) && !gameState.guessedLetters.includes(key)) {
+                    handleLetterInput(key);
+                }
+            });
+        }
+
+        // Start a new game
+        function startGame() {
+            // Reset game state
+            gameState.guessedLetters = [];
+            gameState.errors = 0;
+            gameState.gameOver = false;
+            
+            // Select a random word from the category
+            const words = gameState.words[gameState.category];
+            const randomIndex = Math.floor(Math.random() * words.length);
+            gameState.word = words[randomIndex].word;
+            gameState.hint = words[randomIndex].hint;
+            
+            // Adjust difficulty
+            switch(gameState.difficulty) {
+                case 'facile':
+                    gameState.maxErrors = 8;
+                    // Reveal some letters
+                    revealRandomLetters(3);
+                    break;
+                case 'moyen':
+                    gameState.maxErrors = 6;
+                    break;
+                case 'difficile':
+                    gameState.maxErrors = 4;
+                    break;
+            }
+            
+            // Update UI
+            updateWordDisplay();
+            updateUsedLetters();
+            updateErrorsDisplay();
+            resetHangman();
+            
+            // Show game screen
+            showScreen('game-screen');
+            elements.currentCategory.textContent = `Catégorie: ${getCategoryName(gameState.category)}`;
+            
+            // Pulse hint button
+            elements.hintBtn.classList.add('hint-pulse');
+        }
+
+        // Show a screen and hide others
+        function showScreen(screen) {
+            gameState.currentScreen = screen;
+            
+            elements.mainMenu.classList.add('hidden');
+            elements.gameScreen.classList.add('hidden');
+            elements.winScreen.classList.add('hidden');
+            elements.loseScreen.classList.add('hidden');
+            
+            document.getElementById(`${screen}`).classList.remove('hidden');
+        }
+
+        // Generate keyboard
+        function generateKeyboard() {
+            elements.keyboard.innerHTML = '';
+            
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+            
+            alphabet.forEach(letter => {
+                const btn = document.createElement('button');
+                btn.className = 'letter-tile bg-gray-700 hover:bg-gray-600 h-10 rounded flex items-center justify-center font-bold';
+                btn.textContent = letter;
+                btn.dataset.letter = letter;
+                
+                btn.addEventListener('click', () => {
+                    if (!gameState.guessedLetters.includes(letter) && !gameState.gameOver) {
+                        playSound('click');
+                        handleLetterInput(letter);
+                    }
+                });
+                
+                elements.keyboard.appendChild(btn);
+            });
+        }
+
+        // Handle letter input
+        function handleLetterInput(letter) {
+            if (gameState.guessedLetters.includes(letter) || gameState.gameOver) return;
+            
+            gameState.guessedLetters.push(letter);
+            
+            // Check if letter is in word
+            if (gameState.word.includes(letter)) {
+                playSound('correct');
+                updateKeyboardButton(letter, 'correct');
+                
+                // Check if player has won
+                if (checkWin()) {
+                    gameWon();
+                }
+            } else {
+                playSound('wrong');
+                updateKeyboardButton(letter, 'incorrect');
+                gameState.errors++;
+                updateErrorsDisplay();
+                updateHangman();
+                
+                // Check if player has lost
+                if (gameState.errors >= gameState.maxErrors) {
+                    gameLost();
+                }
+            }
+            
+            updateWordDisplay();
+            updateUsedLetters();
+        }
+
+        // Update word display with guessed letters
+        function updateWordDisplay() {
+            elements.wordDisplay.innerHTML = '';
+            
+            const wordArray = gameState.word.split('');
+            
+            wordArray.forEach(letter => {
+                const letterDiv = document.createElement('div');
+                letterDiv.className = 'w-10 h-12 flex items-center justify-center text-2xl font-bold relative';
+                
+                if (gameState.guessedLetters.includes(letter) || gameState.gameOver) {
+                    const letterSpan = document.createElement('span');
+                    letterSpan.className = 'letter-reveal';
+                    letterSpan.textContent = letter;
+                    letterDiv.appendChild(letterSpan);
+                } else {
+                    const underline = document.createElement('div');
+                    underline.className = 'absolute bottom-0 left-0 w-full h-1 bg-white';
+                    letterDiv.appendChild(underline);
+                }
+                
+                elements.wordDisplay.appendChild(letterDiv);
+            });
+        }
+
+        // Update used letters display
+        function updateUsedLetters() {
+            elements.usedLetters.innerHTML = '';
+            
+            gameState.guessedLetters.forEach(letter => {
+                const letterSpan = document.createElement('span');
+                letterSpan.className = 'bg-gray-700 px-2 py-1 rounded';
+                letterSpan.textContent = letter;
+                elements.usedLetters.appendChild(letterSpan);
+            });
+        }
+
+        // Update keyboard button state
+        function updateKeyboardButton(letter, state) {
+            const btn = document.querySelector(`[data-letter="${letter}"]`);
+            if (btn) {
+                btn.classList.add(state);
+                btn.disabled = true;
+            }
+        }
+
+        // Update errors display
+        function updateErrorsDisplay() {
+            elements.errorsCount.textContent = gameState.errors;
+            const percentage = (gameState.errors / gameState.maxErrors) * 100;
+            elements.errorBar.style.width = `${percentage}%`;
+        }
+
+        // Update hangman drawing
+        function updateHangman() {
+            switch(gameState.errors) {
+                case 1:
+                    elements.hangmanParts.head.classList.add('visible');
+                    break;
+                case 2:
+                    elements.hangmanParts.body.classList.add('visible');
+                    break;
+                case 3:
+                    elements.hangmanParts.leftArm.classList.add('visible');
+                    break;
+                case 4:
+                    elements.hangmanParts.rightArm.classList.add('visible');
+                    break;
+                case 5:
+                    elements.hangmanParts.leftLeg.classList.add('visible');
+                    break;
+                case 6:
+                    elements.hangmanParts.rightLeg.classList.add('visible');
+                    break;
+            }
+        }
+
+        // Reset hangman drawing
+        function resetHangman() {
+            Object.values(elements.hangmanParts).forEach(part => {
+                part.classList.remove('visible');
+            });
+        }
+
+        // Check if player has won
+        function checkWin() {
+            const wordArray = gameState.word.split('');
+            return wordArray.every(letter => gameState.guessedLetters.includes(letter));
+        }
+
+        // Game won
+        function gameWon() {
+            gameState.gameOver = true;
+            playSound('win');
+            elements.winWord.textContent = gameState.word;
+            showScreen('win-screen');
+        }
+
+        // Game lost
+        function gameLost() {
+            gameState.gameOver = true;
+            playSound('lose');
+            elements.loseWord.textContent = gameState.word;
+            showScreen('lose-screen');
+        }
+
+        // Show hint
+        function showHint() {
+            elements.hintBtn.classList.remove('hint-pulse');
+            alert(`Indice: ${gameState.hint}`);
+        }
+
+        // Reveal random letters (for easy mode)
+        function revealRandomLetters(count) {
+            const wordArray = gameState.word.split('');
+            const uniqueLetters = [...new Set(wordArray)];
+            const lettersToReveal = [];
+            
+            // Get random letters to reveal
+            while (lettersToReveal.length < count && lettersToReveal.length < uniqueLetters.length) {
+                const randomIndex = Math.floor(Math.random() * uniqueLetters.length);
+                const letter = uniqueLetters[randomIndex];
+                
+                if (!lettersToReveal.includes(letter)) {
+                    lettersToReveal.push(letter);
+                }
+            }
+            
+            // Add to guessed letters
+            lettersToReveal.forEach(letter => {
+                if (!gameState.guessedLetters.includes(letter)) {
+                    gameState.guessedLetters.push(letter);
+                }
+            });
+        }
+
+        // Play sound
+        function playSound(type) {
+            const sound = elements[`${type}Sound`];
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play();
+            }
+        }
+
+        // Get category name
+        function getCategoryName(category) {
+            const names = {
+                nourriture: 'Nourriture',
+                animaux: 'Animaux',
+                pays: 'Pays',
+                sports: 'Sports',
+                objets: 'Objets',
+                metiers: 'Métiers'
+            };
+            return names[category] || category;
+        }
+
+        // Initialize the game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>

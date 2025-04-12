@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>French Quiz Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .pulse {
+            animation: pulse 0.5s ease-in-out;
+        }
+        .shake {
+            animation: shake 0.3s ease-in-out;
+        }
+        .progress-bar {
+            transition: width 0.3s ease-out;
+        }
+        .option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .option {
+            transition: all 0.2s ease;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="text-center mb-8 fade-in">
+            <h1 class="text-4xl font-bold text-indigo-800 mb-2">French Quiz Challenge</h1>
+            <p class="text-lg text-indigo-600">Test your knowledge of French language and culture!</p>
+            <div class="mt-4 flex justify-center space-x-4">
+                <button id="soundToggle" class="p-2 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                <button id="helpBtn" class="p-2 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Game Modes Selection -->
+        <div id="modeSelection" class="bg-white rounded-xl shadow-lg p-6 mb-8 fade-in">
+            <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Select Difficulty</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button data-mode="easy" class="mode-btn bg-green-100 hover:bg-green-200 text-green-800 py-4 px-6 rounded-lg transition flex flex-col items-center">
+                    <i class="fas fa-seedling text-2xl mb-2"></i>
+                    <span class="font-medium">Easy</span>
+                    <small class="text-sm opacity-75">Basic vocabulary</small>
+                </button>
+                <button data-mode="medium" class="mode-btn bg-yellow-100 hover:bg-yellow-200 text-yellow-800 py-4 px-6 rounded-lg transition flex flex-col items-center">
+                    <i class="fas fa-tree text-2xl mb-2"></i>
+                    <span class="font-medium">Medium</span>
+                    <small class="text-sm opacity-75">Common phrases</small>
+                </button>
+                <button data-mode="hard" class="mode-btn bg-red-100 hover:bg-red-200 text-red-800 py-4 px-6 rounded-lg transition flex flex-col items-center">
+                    <i class="fas fa-mountain text-2xl mb-2"></i>
+                    <span class="font-medium">Hard</span>
+                    <small class="text-sm opacity-75">Advanced grammar</small>
+                </button>
+            </div>
+        </div>
+
+        <!-- Quiz Container (initially hidden) -->
+        <div id="quizContainer" class="hidden bg-white rounded-xl shadow-lg p-6 mb-8">
+            <!-- Question Progress -->
+            <div class="flex justify-between items-center mb-4">
+                <div class="text-sm font-medium text-indigo-600">
+                    Question <span id="currentQuestion">1</span>/<span id="totalQuestions">10</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 max-w-md ml-4">
+                    <div id="progressBar" class="progress-bar bg-indigo-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Timer -->
+            <div class="flex justify-end mb-4">
+                <div class="flex items-center bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full">
+                    <i class="fas fa-clock mr-2"></i>
+                    <span id="timer">30</span>s
+                </div>
+            </div>
+
+            <!-- Question -->
+            <div class="mb-6">
+                <h2 id="questionText" class="text-xl font-medium text-gray-800 mb-4"></h2>
+                <div id="questionImage" class="hidden mb-4">
+                    <img src="" alt="Question image" class="rounded-lg max-h-40 mx-auto">
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div id="optionsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6"></div>
+
+            <!-- Feedback -->
+            <div id="feedbackContainer" class="hidden p-4 rounded-lg mb-6">
+                <div class="flex items-start">
+                    <i id="feedbackIcon" class="text-2xl mr-3 mt-1"></i>
+                    <div>
+                        <h3 id="feedbackTitle" class="font-medium"></h3>
+                        <p id="feedbackText" class="text-sm"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Next Button -->
+            <div class="flex justify-center">
+                <button id="nextBtn" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg transition">
+                    Next Question <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Screen (initially hidden) -->
+        <div id="resultsScreen" class="hidden bg-white rounded-xl shadow-lg p-8 text-center">
+            <div class="mb-6">
+                <i id="resultIcon" class="fas fa-trophy text-6xl text-yellow-500 mb-4"></i>
+                <h2 class="text-3xl font-bold text-indigo-800 mb-2">Quiz Completed!</h2>
+                <p class="text-lg text-gray-600 mb-6">Your final score is</p>
+                <div class="inline-block bg-indigo-100 text-indigo-800 text-4xl font-bold px-8 py-4 rounded-lg mb-6">
+                    <span id="finalScore">0</span>/<span id="maxScore">10</span>
+            </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="text-blue-800 font-medium mb-1">Correct</div>
+                    <div id="correctCount" class="text-2xl font-bold text-blue-600">0</div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <div class="text-green-800 font-medium mb-1">Time Bonus</div>
+                    <div id="timeBonus" class="text-2xl font-bold text-green-600">0</div>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <div class="text-purple-800 font-medium mb-1">Streak</div>
+                    <div id="streakCount" class="text-2xl font-bold text-purple-600">0</div>
+                </div>
+            </div>
+            
+            <div class="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4 justify-center">
+                <button id="restartBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg transition">
+                    <i class="fas fa-redo mr-2"></i> Play Again
+                </button>
+                <button id="changeModeBtn" class="bg-white border border-indigo-600 hover:bg-indigo-50 text-indigo-600 font-medium py-2 px-6 rounded-lg transition">
+                    <i class="fas fa-cog mr-2"></i> Change Mode
+                </button>
+            </div>
+        </div>
+
+        <!-- Help Modal (initially hidden) -->
+        <div id="helpModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-indigo-800">How to Play</h3>
+                    <button id="closeHelpModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4 text-gray-700">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-indigo-500 mt-1 mr-3"></i>
+                        <p>Answer French language questions before time runs out.</p>
+                    </div>
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                        <p>Correct answers earn points based on difficulty and remaining time.</p>
+                    </div>
+                    <div class="flex items-start">
+                        <i class="fas fa-bolt text-yellow-500 mt-1 mr-3"></i>
+                        <p>Answering multiple questions correctly in a row gives bonus points!</p>
+                    </div>
+                    <div class="flex items-start">
+                        <i class="fas fa-clock text-red-500 mt-1 mr-3"></i>
+                        <p>Easy: 30s per question<br>Medium: 20s per question<br>Hard: 15s per question</p>
+                    </div>
+                    <div class="pt-4 border-t border-gray-200">
+                        <p class="text-sm text-gray-500">Created by Geoffroy Streit - Hylst</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="correctSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
+    <audio id="wrongSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
+    <audio id="timeoutSound" src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3"></audio>
+    <audio id="completeSound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3"></audio>
+    <audio id="clickSound" src="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3"></audio>
+
+    <script>
+        // Game state
+        const gameState = {
+            currentMode: null,
+            questions: [],
+            currentQuestionIndex: 0,
+            score: 0,
+            timeLeft: 30,
+            timerInterval: null,
+            selectedOption: null,
+            answered: false,
+            correctStreak: 0,
+            soundEnabled: true
+        };
+
+        // Question database by difficulty
+        const questionDatabase = {
+            easy: [
+                {
+                    question: "What does 'Bonjour' mean in English?",
+                    options: ["Goodbye", "Hello", "Thank you", "Please"],
+                    correctAnswer: 1,
+                    explanation: "'Bonjour' is the standard French greeting meaning 'Hello'.",
+                    image: "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "How do you say 'cat' in French?",
+                    options: ["Chien", "Oiseau", "Chat", "Poisson"],
+                    correctAnswer: 2,
+                    explanation: "'Chat' is the French word for 'cat'.",
+                    image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "What is the French word for 'red'?",
+                    options: ["Bleu", "Vert", "Rouge", "Jaune"],
+                    correctAnswer: 2,
+                    explanation: "'Rouge' means 'red' in French.",
+                    image: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "Which of these means 'thank you' in French?",
+                    options: ["S'il vous plaît", "Merci", "Excusez-moi", "De rien"],
+                    correctAnswer: 1,
+                    explanation: "'Merci' is the French word for 'thank you'.",
+                    image: "https://images.unsplash.com/photo-1529107386315-e1a2ed305112?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "What is the correct translation for 'water'?",
+                    options: ["Lait", "Eau", "Vin", "Jus"],
+                    correctAnswer: 1,
+                    explanation: "'Eau' means 'water' in French.",
+                    image: "https://images.unsplash.com/photo-1553410820-3c2b2c9c8f4b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                }
+            ],
+            medium: [
+                {
+                    question: "How would you say 'I would like a coffee' in French?",
+                    options: [
+                        "Je veux un café",
+                        "Je prends un café",
+                        "Je voudrais un café",
+                        "J'aime un café"
+                    ],
+                    correctAnswer: 2,
+                    explanation: "'Je voudrais un café' is the polite way to say 'I would like a coffee'.",
+                    image: "https://images.unsplash.com/photo-1512568400610-62da28bc8a13?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "What is the correct response to 'Comment ça va?'",
+                    options: [
+                        "Je m'appelle Pierre",
+                        "Ça va bien, merci",
+                        "Au revoir",
+                        "S'il vous plaît"
+                    ],
+                    correctAnswer: 1,
+                    explanation: "'Ça va bien, merci' means 'I'm fine, thank you' which is the appropriate response.",
+                    image: "https://images.unsplash.com/photo-1542103749-8ef59b94f47e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "Which phrase means 'Where is the train station?'",
+                    options: [
+                        "Quand part le train?",
+                        "Combien coûte le billet?",
+                        "Où est la gare?",
+                        "Je cherche l'hôtel"
+                    ],
+                    correctAnswer: 2,
+                    explanation: "'Où est la gare?' is the correct way to ask 'Where is the train station?'",
+                    image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "How do you say 'I don't understand' in French?",
+                    options: [
+                        "Je ne sais pas",
+                        "Je ne comprends pas",
+                        "Je ne parle pas français",
+                        "Je ne veux pas"
+                    ],
+                    correctAnswer: 1,
+                    explanation: "'Je ne comprends pas' is the correct translation for 'I don't understand'.",
+                    image: "https://images.unsplash.com/photo-1508615039623-a25605d2b022?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "What does 'Quel âge avez-vous?' mean?",
+                    options: [
+                        "What is your name?",
+                        "How old are you?",
+                        "Where are you from?",
+                        "What time is it?"
+                    ],
+                    correctAnswer: 1,
+                    explanation: "This phrase literally means 'What age do you have?' and is how you ask someone's age in French.",
+                    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                }
+            ],
+            hard: [
+                {
+                    question: "Which of these sentences uses the subjunctive mood correctly?",
+                    options: [
+                        "Il faut que je vais au marché",
+                        "Je veux que tu viens avec moi",
+                        "Il est important que nous soyons à l'heure",
+                        "Je pense qu'il a raison"
+                    ],
+                    correctAnswer: 2,
+                    explanation: "The subjunctive is used after expressions of necessity or desire like 'il est important que'. The correct form is 'soyons'.",
+                    image: "https://images.unsplash.com/photo-1541178735493-479c1a27ed24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "What is the correct past participle agreement in: 'Les lettres que j'ai _____'?",
+                    options: [
+                        "écrit",
+                        "écrite",
+                        "écrits",
+                        "écrites"
+                    ],
+                    correctAnswer: 3,
+                    explanation: "The past participle 'écrites' agrees with the preceding direct object 'les lettres' which is feminine plural.",
+                    image: "https://images.unsplash.com/photo-1544717305-2782549b5136?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "Which verb form correctly completes: 'Si j'_____ riche, je voyagerais autour du monde'?",
+                    options: [
+                        "étais",
+                        "serais",
+                        "aurais",
+                        "avais été"
+                    ],
+                    correctAnswer: 0,
+                    explanation: "This is a second conditional sentence requiring the imperfect tense ('étais') in the 'si' clause.",
+                    image: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "What is the correct translation of 'She had just left when he arrived'?",
+                    options: [
+                        "Elle venait de partir quand il est arrivé",
+                        "Elle avait juste parti quand il arrivait",
+                        "Elle a juste quitté quand il arrivait",
+                        "Elle était partie juste quand il est arrivé"
+                    ],
+                    correctAnswer: 0,
+                    explanation: "The correct translation uses 'venir de + infinitive' for 'had just' and the passé composé for the main action.",
+                    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                    question: "Which pronoun correctly replaces the underlined words: 'Je donne le livre à mon ami'?",
+                    options: [
+                        "Je le lui donne",
+                        "Je lui le donne",
+                        "Je le donne lui",
+                        "Je donne le lui"
+                    ],
+                    correctAnswer: 0,
+                    explanation: "The correct order is direct object pronoun ('le') before indirect object pronoun ('lui') before the verb.",
+                    image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
+                }
+            ]
+        };
+
+        // DOM elements
+        const elements = {
+            modeSelection: document.getElementById('modeSelection'),
+            quizContainer: document.getElementById('quizContainer'),
+            resultsScreen: document.getElementById('resultsScreen'),
+            questionText: document.getElementById('questionText'),
+            questionImage: document.getElementById('questionImage'),
+            optionsContainer: document.getElementById('optionsContainer'),
+            feedbackContainer: document.getElementById('feedbackContainer'),
+            feedbackIcon: document.getElementById('feedbackIcon'),
+            feedbackTitle: document.getElementById('feedbackTitle'),
+            feedbackText: document.getElementById('feedbackText'),
+            nextBtn: document.getElementById('nextBtn'),
+            currentQuestion: document.getElementById('currentQuestion'),
+            totalQuestions: document.getElementById('totalQuestions'),
+            progressBar: document.getElementById('progressBar'),
+            timer: document.getElementById('timer'),
+            finalScore: document.getElementById('finalScore'),
+            maxScore: document.getElementById('maxScore'),
+            correctCount: document.getElementById('correctCount'),
+            timeBonus: document.getElementById('timeBonus'),
+            streakCount: document.getElementById('streakCount'),
+            restartBtn: document.getElementById('restartBtn'),
+            changeModeBtn: document.getElementById('changeModeBtn'),
+            helpModal: document.getElementById('helpModal'),
+            closeHelpModal: document.getElementById('closeHelpModal'),
+            helpBtn: document.getElementById('helpBtn'),
+            soundToggle: document.getElementById('soundToggle'),
+            modeButtons: document.querySelectorAll('.mode-btn'),
+            // Audio elements
+            correctSound: document.getElementById('correctSound'),
+            wrongSound: document.getElementById('wrongSound'),
+            timeoutSound: document.getElementById('timeoutSound'),
+            completeSound: document.getElementById('completeSound'),
+            clickSound: document.getElementById('clickSound')
+        };
+
+        // Event listeners
+        elements.modeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                playSound('click');
+                const mode = button.dataset.mode;
+                startGame(mode);
+            });
+        });
+
+        elements.nextBtn.addEventListener('click', () => {
+            playSound('click');
+            nextQuestion();
+        });
+
+        elements.restartBtn.addEventListener('click', () => {
+            playSound('click');
+            startGame(gameState.currentMode);
+        });
+
+        elements.changeModeBtn.addEventListener('click', () => {
+            playSound('click');
+            showModeSelection();
+        });
+
+        elements.helpBtn.addEventListener('click', () => {
+            playSound('click');
+            elements.helpModal.classList.remove('hidden');
+        });
+
+        elements.closeHelpModal.addEventListener('click', () => {
+            playSound('click');
+            elements.helpModal.classList.add('hidden');
+        });
+
+        elements.soundToggle.addEventListener('click', () => {
+            gameState.soundEnabled = !gameState.soundEnabled;
+            if (gameState.soundEnabled) {
+                elements.soundToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
+                playSound('click');
+            } else {
+                elements.soundToggle.innerHTML = '<i class="fas fa-volume-mute"></i>';
+            }
+        });
+
+        // Helper functions
+        function playSound(type) {
+            if (!gameState.soundEnabled) return;
+            
+            switch(type) {
+                case 'correct':
+                    elements.correctSound.currentTime = 0;
+                    elements.correctSound.play();
+                    break;
+                case 'wrong':
+                    elements.wrongSound.currentTime = 0;
+                    elements.wrongSound.play();
+                    break;
+                case 'timeout':
+                    elements.timeoutSound.currentTime = 0;
+                    elements.timeoutSound.play();
+                    break;
+                case 'complete':
+                    elements.completeSound.currentTime = 0;
+                    elements.completeSound.play();
+                    break;
+                case 'click':
+                    elements.clickSound.currentTime = 0;
+                    elements.clickSound.play();
+                    break;
+            }
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function getTimeForMode(mode) {
+            switch(mode) {
+                case 'easy': return 30;
+                case 'medium': return 20;
+                case 'hard': return 15;
+                default: return 30;
+            }
+        }
+
+        // Game functions
+        function startGame(mode) {
+            gameState.currentMode = mode;
+            gameState.questions = shuffleArray([...questionDatabase[mode]]).slice(0, 5);
+            gameState.currentQuestionIndex = 0;
+            gameState.score = 0;
+            gameState.correctStreak = 0;
+            
+            // Hide mode selection, show quiz
+            elements.modeSelection.classList.add('hidden');
+            elements.quizContainer.classList.remove('hidden');
+            elements.resultsScreen.classList.add('hidden');
+            
+            // Set up first question
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            // Reset state for new question
+            gameState.answered = false;
+            gameState.selectedOption = null;
+            elements.feedbackContainer.classList.add('hidden');
+            elements.nextBtn.classList.add('hidden');
+            
+            // Get current question
+            const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+            
+            // Update UI
+            elements.questionText.textContent = currentQuestion.question;
+            elements.currentQuestion.textContent = gameState.currentQuestionIndex + 1;
+            elements.totalQuestions.textContent = gameState.questions.length;
+            elements.progressBar.style.width = `${(gameState.currentQuestionIndex / gameState.questions.length) * 100}%`;
+            
+            // Clear previous options
+            elements.optionsContainer.innerHTML = '';
+            
+            // Add new options
+            currentQuestion.options.forEach((option, index) => {
+                const optionElement = document.createElement('button');
+                optionElement.className = 'option bg-white border border-gray-200 hover:border-indigo-300 text-gray-800 font-medium py-3 px-4 rounded-lg text-left transition';
+                optionElement.textContent = option;
+                optionElement.dataset.index = index;
+                optionElement.addEventListener('click', () => selectOption(index));
+                elements.optionsContainer.appendChild(optionElement);
+            });
+            
+            // Show image if available
+            if (currentQuestion.image) {
+                elements.questionImage.classList.remove('hidden');
+                elements.questionImage.querySelector('img').src = currentQuestion.image;
+            } else {
+                elements.questionImage.classList.add('hidden');
+            }
+            
+            // Start timer
+            startTimer(getTimeForMode(gameState.currentMode));
+        }
+
+        function startTimer(seconds) {
+            // Clear any existing timer
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+            }
+            
+            gameState.timeLeft = seconds;
+            elements.timer.textContent = gameState.timeLeft;
+            
+            gameState.timerInterval = setInterval(() => {
+                gameState.timeLeft--;
+                elements.timer.textContent = gameState.timeLeft;
+                
+                // Change color when time is running low
+                if (gameState.timeLeft <= 5) {
+                    elements.timer.parentElement.classList.remove('bg-indigo-100', 'text-indigo-800');
+                    elements.timer.parentElement.classList.add('bg-red-100', 'text-red-800');
+                    elements.timer.parentElement.classList.add('pulse');
+                } else {
+                    elements.timer.parentElement.classList.remove('bg-red-100', 'text-red-800');
+                    elements.timer.parentElement.classList.add('bg-indigo-100', 'text-indigo-800');
+                    elements.timer.parentElement.classList.remove('pulse');
+                }
+                
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    timeExpired();
+                }
+            }, 1000);
+        }
+
+        function selectOption(optionIndex) {
+            if (gameState.answered) return;
+            
+            playSound('click');
+            gameState.selectedOption = optionIndex;
+            gameState.answered = true;
+            
+            // Highlight selected option
+            const optionElements = elements.optionsContainer.querySelectorAll('.option');
+            optionElements.forEach((el, idx) => {
+                if (idx === optionIndex) {
+                    el.classList.add('bg-indigo-100', 'border-indigo-400');
+                } else {
+                    el.classList.add('opacity-50');
+                }
+                el.classList.remove('hover:border-indigo-300');
+            });
+            
+            // Check answer
+            const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+            const isCorrect = optionIndex === currentQuestion.correctAnswer;
+            
+            // Stop timer
+            clearInterval(gameState.timerInterval);
+            
+            // Calculate time bonus (1 point per second remaining)
+            const timeBonus = Math.floor(gameState.timeLeft / 3);
+            
+            if (isCorrect) {
+                // Correct answer
+                gameState.correctStreak++;
+                const streakBonus = Math.min(gameState.correctStreak - 1, 3); // Max 3-point streak bonus
+                const questionPoints = 1 + timeBonus + streakBonus;
+                gameState.score += questionPoints;
+                
+                // Show feedback
+                showFeedback(true, currentQuestion.explanation, timeBonus, streakBonus);
+                playSound('correct');
+                
+                // Highlight correct option
+                optionElements[optionIndex].classList.add('bg-green-100', 'border-green-400');
+            } else {
+                // Wrong answer
+                gameState.correctStreak = 0;
+                showFeedback(false, currentQuestion.explanation);
+                playSound('wrong');
+                
+                // Highlight correct option
+                optionElements[currentQuestion.correctAnswer].classList.add('bg-green-100', 'border-green-400');
+                // Highlight wrong option
+                optionElements[optionIndex].classList.add('bg-red-100', 'border-red-400', 'shake');
+            }
+            
+            // Show next button
+            elements.nextBtn.classList.remove('hidden');
+        }
+
+        function showFeedback(isCorrect, explanation, timeBonus = 0, streakBonus = 0) {
+            elements.feedbackContainer.classList.remove('hidden');
+            
+            if (isCorrect) {
+                elements.feedbackContainer.className = 'bg-green-50 border border-green-200 p-4 rounded-lg mb-6 fade-in';
+                elements.feedbackIcon.className = 'fas fa-check-circle text-green-500 text-2xl mr-3 mt-1';
+                elements.feedbackTitle.textContent = 'Correct!';
+                
+                let feedbackText = explanation + '<br><br>';
+                feedbackText += `<span class="text-green-600 font-medium">+1</span> for correct answer`;
+                
+                if (timeBonus > 0) {
+                    feedbackText += `<br><span class="text-blue-600 font-medium">+${timeBonus}</span> time bonus`;
+                }
+                
+                if (streakBonus > 0) {
+                    feedbackText += `<br><span class="text-purple-600 font-medium">+${streakBonus}</span> streak bonus`;
+                }
+                
+                elements.feedbackText.innerHTML = feedbackText;
+            } else {
+                elements.feedbackContainer.className = 'bg-red-50 border border-red-200 p-4 rounded-lg mb-6 fade-in';
+                elements.feedbackIcon.className = 'fas fa-times-circle text-red-500 text-2xl mr-3 mt-1';
+                elements.feedbackTitle.textContent = 'Incorrect';
+                elements.feedbackText.textContent = explanation;
+            }
+        }
+
+        function timeExpired() {
+            if (gameState.answered) return;
+            
+            playSound('timeout');
+            gameState.answered = true;
+            gameState.correctStreak = 0;
+            
+            // Highlight all options as expired
+            const optionElements = elements.optionsContainer.querySelectorAll('.option');
+            optionElements.forEach(el => {
+                el.classList.add('opacity-50');
+                el.classList.remove('hover:border-indigo-300');
+            });
+            
+            // Show correct answer
+            const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+            optionElements[currentQuestion.correctAnswer].classList.add('bg-green-100', 'border-green-400');
+            
+            // Show feedback
+            showFeedback(false, "Time's up! " + currentQuestion.explanation);
+            
+            // Show next button
+            elements.nextBtn.classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            gameState.currentQuestionIndex++;
+            
+            if (gameState.currentQuestionIndex < gameState.questions.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            elements.quizContainer.classList.add('hidden');
+            elements.resultsScreen.classList.remove('hidden');
+            
+            // Calculate stats
+            const maxPossibleScore = gameState.questions.length * 5; // 1 base + 4 max bonus
+            const correctAnswers = Math.floor(gameState.score / 2); // Rough estimate
+            
+            // Update UI
+            elements.finalScore.textContent = gameState.score;
+            elements.maxScore.textContent = maxPossibleScore;
+            elements.correctCount.textContent = correctAnswers;
+            elements.timeBonus.textContent = gameState.score - correctAnswers; // Rough estimate
+            elements.streakCount.textContent = gameState.correctStreak;
+            
+            // Set result icon based on performance
+            const percentage = (gameState.score / maxPossibleScore) * 100;
+            const resultIcon = elements.resultIcon;
+            
+            if (percentage >= 80) {
+                resultIcon.className = 'fas fa-trophy text-6xl text-yellow-500 mb-4 pulse';
+            } else if (percentage >= 50) {
+                resultIcon.className = 'fas fa-award text-6xl text-blue-400 mb-4';
+            } else {
+                resultIcon.className = 'fas fa-star text-6xl text-purple-400 mb-4';
+            }
+            
+            playSound('complete');
+        }
+
+        function showModeSelection() {
+            elements.modeSelection.classList.remove('hidden');
+            elements.quizContainer.classList.add('hidden');
+            elements.resultsScreen.classList.add('hidden');
+        }
+
+        // Initialize
+        showModeSelection();
+    </script>
+</body>
+</html>

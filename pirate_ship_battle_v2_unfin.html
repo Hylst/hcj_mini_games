@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pirate Ship Battle | Enhanced by Geoffroy Streit - Hylst</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes wave {
+            0% { transform: translateX(0) translateY(0); }
+            50% { transform: translateX(50px) translateY(10px); }
+            100% { transform: translateX(0) translateY(0); }
+        }
+        
+        @keyframes shipRock {
+            0% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+            100% { transform: rotate(-5deg); }
+        }
+        
+        @keyframes explosion {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        @keyframes rain {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 50px; }
+        }
+        
+        @keyframes lightning {
+            0%, 100% { opacity: 0; }
+            10%, 30%, 50%, 70%, 90% { opacity: 0.8; }
+            20%, 40%, 60%, 80% { opacity: 0.3; }
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+        
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
+        
+        @keyframes sink {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(100px) rotate(90deg); }
+        }
+        
+        @keyframes treasureGlow {
+            0%, 100% { box-shadow: 0 0 10px 5px rgba(255, 215, 0, 0.5); }
+            50% { box-shadow: 0 0 20px 10px rgba(255, 215, 0, 0.8); }
+        }
+        
+        .wave-animation {
+            animation: wave 8s infinite ease-in-out;
+        }
+        
+        .ship-rocking {
+            animation: shipRock 4s infinite ease-in-out;
+        }
+        
+        .explosion {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #ff6600, #ff0000);
+            border-radius: 50%;
+            animation: explosion 0.5s forwards;
+            pointer-events: none;
+        }
+        
+        .rain-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(transparent, transparent 45%, rgba(255, 255, 255, 0.3) 50%, transparent 55%, transparent);
+            background-size: 5px 5px;
+            animation: rain 0.5s linear infinite;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .lightning-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            animation: lightning 0.5s forwards;
+            pointer-events: none;
+        }
+        
+        .fog-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(200, 200, 200, 0.3), transparent);
+            pointer-events: none;
+        }
+        
+        .health-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .cannon-ball {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #000;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .splash {
+            position: absolute;
+            width: 30px;
+            height: 15px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: fadeOut 1s forwards;
+        }
+        
+        .damage-text {
+            position: absolute;
+            color: red;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+            animation: floatUp 1s forwards;
+            pointer-events: none;
+        }
+        
+        .treasure {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #FFD700, #DAA520);
+            border-radius: 50%;
+            animation: treasureGlow 2s infinite;
+            pointer-events: none;
+        }
+        
+        .ship-sinking {
+            animation: sink 3s forwards;
+        }
+        
+        .upgrade-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .upgrade-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .ribbon {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 150px;
+            height: 150px;
+            overflow: hidden;
+        }
+        
+        .ribbon-content {
+            position: absolute;
+            display: block;
+            width: 225px;
+            padding: 15px 0;
+            background-color: #8B4513;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+            color: #fff;
+            font-size: 13px;
+            text-align: center;
+            right: -25px;
+            top: 30px;
+            transform: rotate(45deg);
+        }
+    </style>
+</head>
+<body class="bg-blue-900 overflow-hidden h-screen flex flex-col font-pirate">
+    <!-- Ribbon -->
+    <div class="ribbon">
+        <span class="ribbon-content">Enhanced by Geoffroy Streit - Hylst</span>
+    </div>
+    
+    <!-- Game Title -->
+    <div class="text-center py-4 bg-blue-800 text-white shadow-lg border-b-4 border-yellow-500">
+        <h1 class="text-4xl font-bold text-yellow-300">Pirate Ship Battle</h1>
+        <p class="text-yellow-200 italic">Command your ship and conquer the seas!</p>
+    </div>
+    
+    <!-- Game Stats -->
+    <div class="flex justify-between px-4 py-2 bg-blue-700 text-white border-b-2 border-blue-600">
+        <div class="flex items-center space-x-6">
+            <div class="flex items-center">
+                <span class="font-bold mr-2">Gold:</span> 
+                <span id="gold" class="text-yellow-300">100</span> 
+                <i class="fas fa-coins text-yellow-400 ml-1"></i>
+            </div>
+            <div class="flex items-center">
+                <span class="font-bold mr-2">Kills:</span> 
+                <span id="kills" class="text-red-300">0</span> 
+                <i class="fas fa-skull text-gray-200 ml-1"></i>
+            </div>
+            <div class="flex items-center">
+                <span class="font-bold mr-2">Level:</span> 
+                <span id="level" class="text-green-300">1</span>
+                <i class="fas fa-level-up-alt text-green-400 ml-1"></i>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div id="weather-icon" class="text-xl">
+                <i class="fas fa-sun text-yellow-300"></i>
+            </div>
+            <button id="pause-btn" class="bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded transition-all duration-300 transform hover:scale-105">
+                <i class="fas fa-pause"></i> Pause
+            </button>
+        </div>
+    </div>
+    
+    <!-- Game Area -->
+    <div id="game-container" class="flex-1 relative overflow-hidden">
+        <!-- Weather effects will be added here dynamically -->
+        <div id="weather-effects"></div>
+        
+        <!-- Ocean background with waves -->
+        <div class="absolute inset-0 bg-gradient-to-b from-blue-600 to-blue-800 overflow-hidden">
+            <div class="absolute bottom-0 w-full h-32 bg-blue-500 wave-animation"></div>
+            <div class="absolute bottom-0 w-full h-24 bg-blue-400 wave-animation" style="animation-delay: 0.5s;"></div>
+            
+            <!-- Distant islands -->
+            <div class="absolute bottom-32 left-10 w-40 h-20 bg-green-800 rounded-t-full opacity-70"></div>
+            <div class="absolute bottom-28 right-20 w-32 h-16 bg-green-700 rounded-t-full opacity-60"></div>
+        </div>
+        
+        <!-- Player Ship -->
+        <div id="player-ship" class="absolute bottom-20 left-1/4 w-32 h-32 ship-rocking">
+            <div class="relative w-full h-full">
+                <!-- Hull -->
+                <div class="absolute bottom-0 w-full h-16 bg-[#5D4037] rounded-t-full border-t-4 border-[#3E2723]"></div>
+                
+                <!-- Mast -->
+                <div class="absolute bottom-16 left-1/2 transform -translate-x-1/2 w-3 h-24 bg-[#3E2723]"></div>
+                
+                <!-- Sail -->
+                <div class="absolute bottom-28 left-1/2 transform -translate-x-1/2 w-24 h-4 bg-[#795548]"></div>
+                <div class="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-20 h-16 bg-[#8D6E63] clip-sail"></div>
+                
+                <!-- Cannons -->
+                <div class="absolute bottom-16 left-1/4 w-6 h-6 bg-[#3E2723] rounded-full"></div>
+                <div class="absolute bottom-16 right-1/4 w-6 h-6 bg-[#3E2723] rounded-full"></div>
+                
+                <!-- Oars -->
+                <div class="absolute bottom-0 left-1/4 w-8 h-4 bg-[#3E2723]"></div>
+                <div class="absolute bottom-0 right-1/4 w-8 h-4 bg-[#3E2723]"></div>
+                
+                <!-- Flag -->
+                <img src="https://cdn-icons-png.flaticon.com/512/477/477103.png" class="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-8 h-8">
+                
+                <!-- Jolly Roger -->
+                <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-8 h-8">
+                    <i class="fas fa-skull text-white text-xl"></i>
+                </div>
+            </div>
+            
+            <!-- Player Ship Stats -->
+            <div class="absolute -top-8 left-0 right-0 text-center">
+                <div class="inline-block bg-black bg-opacity-70 text-white px-3 py-1 rounded-lg border border-yellow-600">
+                    <div class="flex items-center">
+                        <span class="mr-2"><i class="fas fa-heart text-red-400"></i></span>
+                        <div class="w-24 h-2 bg-gray-300 rounded-full">
+                            <div id="player-health" class="health-bar h-full bg-green-500 rounded-full" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center mt-1">
+                        <span class="mr-2"><i class="fas fa-users text-blue-400"></i></span>
+                        <div class="w-24 h-2 bg-gray-300 rounded-full">
+                            <div id="player-crew" class="health-bar h-full bg-blue-400 rounded-full" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Enemy Ships Container -->
+        <div id="enemy-ships" class="absolute inset-0"></div>
+        
+        <!-- Projectiles Container -->
+        <div id="projectiles" class="absolute inset-0"></div>
+        
+        <!-- Effects Container -->
+        <div id="effects" class="absolute inset-0"></div>
+        
+        <!-- Treasure Container -->
+        <div id="treasures" class="absolute inset-0"></div>
+    </div>
+    
+    <!-- Controls -->
+    <div class="bg-blue-800 p-4 flex justify-between items-center border-t-2 border-blue-600">
+        <div class="flex space-x-4">
+            <button id="move-left" class="bg-blue-600 hover:bg-blue-700 w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-110">
+                <i class="fas fa-arrow-left text-white text-xl"></i>
+            </button>
+            <button id="move-right" class="bg-blue-600 hover:bg-blue-700 w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-110">
+                <i class="fas fa-arrow-right text-white text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="flex space-x-4">
+            <button id="fire-left" class="bg-red-600 hover:bg-red-700 w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-110">
+                <i class="fas fa-fire text-white text-xl"></i>
+            </button>
+            <button id="fire-right" class="bg-red-600 hover:bg-red-700 w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-110">
+                <i class="fas fa-fire text-white text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="flex space-x-4">
+            <button id="repair" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded flex items-center transition-transform duration-200 hover:scale-105">
+                <i class="fas fa-tools mr-2"></i> Repair (50g)
+            </button>
+            <button id="recruit" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded flex items-center transition-transform duration-200 hover:scale-105">
+                <i class="fas fa-users mr-2"></i> Recruit (30g)
+            </button>
+        </div>
+    </div>
+    
+    <!-- Game Messages -->
+    <div id="game-message" class="absolute top-1/2 left-0 right-0 transform -translate-y-1/2 text-center text-white text-2xl font-bold pointer-events-none opacity-0 transition-opacity duration-300"></div>
+    
+    <!-- Pause Menu -->
+    <div id="pause-menu" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center hidden z-50">
+        <div class="bg-blue-800 p-8 rounded-lg max-w-md w-full text-white border-4 border-yellow-500">
+            <h2 class="text-3xl font-bold mb-4 text-center text-yellow-300">Game Paused</h2>
+            <div class="mb-6">
+                <h3 class="text-xl font-semibold mb-2 text-center border-b border-yellow-500 pb-2">Captain's Log</h3>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                    <div class="bg-blue-900 p-3 rounded-lg">
+                        <p class="flex items-center"><i class="fas fa-coins text-yellow-400 mr-2"></i> Gold: <span id="pause-gold" class="text-yellow-300 ml-auto">0</span></p>
+                        <p class="flex items-center mt-2"><i class="fas fa-skull text-gray-300 mr-2"></i> Kills: <span id="pause-kills" class="text-red-300 ml-auto">0</span></p>
+                    </div>
+                    <div class="bg-blue-900 p-3 rounded-lg">
+                        <p class="flex items-center"><i class="fas fa-level-up-alt text-green-400 mr-2"></i> Level: <span id="pause-level" class="text-green-300 ml-auto">1</span></p>
+                        <p class="flex items-center mt-2"><i class="fas fa-clock text-blue-300 mr-2"></i> Time: <span id="pause-time" class="text-blue-300 ml-auto">0:00</span></p>
+                    </div>
+                </div>
+                <div class="bg-blue-900 p-3 rounded-lg mt-4">
+                    <p class="flex items-center"><i class="fas fa-heart text-red-400 mr-2"></i> Ship Health: <span id="pause-health" class="text-green-400 ml-auto">100%</span></p>
+                    <p class="flex items-center mt-2"><i class="fas fa-users text-blue-400 mr-2"></i> Crew Health: <span id="pause-crew" class="text-blue-300 ml-auto">100%</span></p>
+                </div>
+            </div>
+            <div class="flex flex-col space-y-4">
+                <button id="resume-btn" class="bg-green-600 hover:bg-green-700 py-2 rounded transition-transform duration-200 hover:scale-105">
+                    <i class="fas fa-play mr-2"></i> Resume Game
+                </button>
+                <button id="upgrade-btn" class="bg-purple-600 hover:bg-purple-700 py-2 rounded transition-transform duration-200 hover:scale-105">
+                    <i class="fas fa-arrow-up mr-2"></i> Ship Upgrades
+                </button>
+                <button id="restart-btn" class="bg-yellow-600 hover:bg-yellow-700 py-2 rounded transition-transform duration-200 hover:scale-105">
+                    <i class="fas fa-redo mr-2"></i> Restart Game
+                </button>
+                <button id="quit-btn" class="bg-red-600 hover:bg-red-700 py-2 rounded transition-transform duration-200 hover:scale-105">
+                    <i class="fas fa-times mr-2"></i> Quit Game
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Upgrade Menu -->
+    <div id="upgrade-menu" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center hidden z-50">
+        <div class="bg-blue-800 p-8 rounded-lg max-w-md w-full text-white border-4 border-yellow-500">
+            <h2 class="text-3xl font-bold mb-4 text-center text-yellow-300">Ship Upgrades</h2>
+            <div class="mb-6">
+                <div class="bg-blue-900 p-4 rounded-lg mb-4">
+                    <h3 class="text-xl font-semibold mb-2 flex items-center">
+                        <i class="fas fa-fire mr-2 text-red-400"></i> Cannons
+                    </h3>
+                    <p class="text-sm text-gray-300 mb-3">Upgrade your firepower to deal more damage</p>
+                    <button id="upgrade-damage" class="upgrade-btn w-full bg-red-700 hover:bg-red-800 py-2 rounded flex justify-between items-center px-4">
+                        <span>Damage: <span id="damage-level">Lv.1</span></span>
+                        <span class="text-yellow-300">Cost: <span id="damage-cost">100g</span></span>
+                    </button>
+                </div>
+                
+                <div class="bg-blue-900 p-4 rounded-lg mb-4">
+                    <h3 class="text-xl font-semibold mb-2 flex items-center">
+                        <i class="fas fa-bolt mr-2 text-yellow-400"></i> Fire Rate
+                    </h3>
+                    <p class="text-sm text-gray-300 mb-3">Shoot faster by reducing cannon cooldown</p>
+                    <button id="upgrade-firerate" class="upgrade-btn w-full bg-yellow-700 hover:bg-yellow-800 py-2 rounded flex justify-between items-center px-4">
+                        <span>Fire Rate: <span id="firerate-level">Lv.1</span></span>
+                        <span class="text-yellow-300">Cost: <span id="firerate-cost">150g</span></span>
+                    </button>
+                </div>
+                
+                <div class="bg-blue-900 p-4 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-2 flex items-center">
+                        <i class="fas fa-shield-alt mr-2 text-green-400"></i> Hull Strength
+                    </h3>
+                    <p class="text-sm text-gray-300 mb-3">Increase your ship's maximum health</p>
+                    <button id="upgrade-health" class="upgrade-btn w-full bg-green-700 hover:bg-green-800 py-2 rounded flex justify-between items-center px-4">
+                        <span>Health: <span id="health-level">Lv.1</span></span>
+                        <span class="text-yellow-300">Cost: <span id="health-cost">200g</span></span>
+                    </button>
+                </div>
+            </div>
+            <button id="back-btn" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded transition-transform duration-200 hover:scale-105">
+                <i class="fas fa-arrow-left mr-2"></i> Back to Game
+            </button>
+        </div>
+    </div>
+    
+    <!-- Game Over Screen -->
+    <div id="game-over" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center hidden z-50">
+        <div class="bg-blue-800 p-8 rounded-lg max-w-md w-full text-white border-4 border-red-500">
+            <h2 class="text-4xl font-bold mb-4 text-center text-red-500">Game Over</h2>
+            <div class="mb-6 text-center">
+                <p class="text-xl mb-2 italic">"The sea has claimed another ship..."</p>
+                <div class="bg-blue-900 p-4 rounded-lg mt-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="flex items-center"><i class="fas fa-coins text-yellow-400 mr-2"></i> Total Gold: <span id="final-gold" class="text-yellow-300 ml-auto">0</span></p>
+                            <p class="flex items-center mt-2"><i class="fas fa-skull text-gray-300 mr-2"></i> Enemies Sunk: <span id="final-kills" class="text-red-300 ml-auto">0</span></p>
+                        </div>
+                        <div>
+                            <p class="flex items-center"><i class="fas fa-level-up-alt text-green-400 mr-2"></i> Level Reached: <span id="final-level" class="text-green-300 ml-auto">1</span></p>
+                            <p class="flex items-center mt-2"><i class="fas fa-clock text-blue-300 mr-2"></i> Survival Time: <span id="final-time" class="text-blue-300 ml-auto">0:00</span></p>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-blue-700">
+                        <p class="flex items-center"><i class="fas fa-heart text-red-400 mr-2"></i> Final Ship: <span id="final-health" class="text-green-400 ml-auto">0%</span></p>
+                        <p class="flex items-center mt-2"><i class="fas fa-users text-blue-400 mr-2"></i> Final Crew: <span id="final-crew" class="text-blue-300 ml-auto">0%</span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-col space-y-4">
+                <button id="play-again-btn" class="bg-green-600 hover:bg-green-700 py-2 rounded transition-transform duration-200 hover:scale-105">
+                    <i class="fas fa-redo mr-2"></i> Play Again
+                </button>
+                <button id="quit-game-btn" class="bg-red-600 hover:bg-red-700 py-2 rounded transition-transform duration-200 hover:scale-105">
+                    <i class="fas fa-times mr-2"></i> Quit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        const gameState = {
+            gold: 100,
+            kills: 0,
+            level: 1,
+            xp: 0,
+            xpToNextLevel: 100,
+            playerHealth: 100,
+            playerMaxHealth: 100,
+            playerCrew: 100,
+            playerMaxCrew: 100,
+            gameSpeed: 1,
+            isPaused: false,
+            isGameOver: false,
+            weather: 'clear',
+            weatherTimer: 0,
+            enemySpawnTimer: 0,
+            enemySpawnInterval: 3000,
+            lastTime: 0,
+            startTime: 0,
+            playerPosition: 25, // percentage from left
+            playerSpeed: 0,
+            leftCannonCooldown: 0,
+            rightCannonCooldown: 0,
+            cannonCooldownTime: 1000,
+            cannonDamage: 10,
+            enemies: [],
+            projectiles: [],
+            effects: [],
+            treasures: [],
+            upgrades: {
+                damage: { level: 1, cost: 100, bonus: 5 },
+                fireRate: { level: 1, cost: 150, bonus: 0.9 },
+                health: { level: 1, cost: 200, bonus: 20 }
+            }
+        };
+
+        // DOM Elements
+        const gameContainer = document.getElementById('game-container');
+        const playerShip = document.getElementById('player-ship');
+        const enemyShipsContainer = document.getElementById('enemy-ships');
+        const projectilesContainer = document.getElementById('projectiles');
+        const effectsContainer = document.getElementById('effects');
+        const treasuresContainer = document.getElementById('treasures');
+        const weatherEffectsContainer = document.getElementById('weather-effects');
+        const weatherIcon = document.getElementById('weather-icon');
+        const gameMessage = document.getElementById('game-message');
+        const pauseMenu = document.getElementById('pause-menu');
+        const upgradeMenu = document.getElementById('upgrade-menu');
+        const gameOverScreen = document.getElementById('game-over');
+        
+        // Stats Elements
+        const goldElement = document.getElementById('gold');
+        const killsElement = document.getElementById('kills');
+        const levelElement = document.getElementById('level');
+        const playerHealthElement = document.getElementById('player-health');
+        const playerCrewElement = document.getElementById('player-crew');
+        
+        // Upgrade Elements
+        const damageLevelElement = document.getElementById('damage-level');
+        const damageCostElement = document.getElementById('damage-cost');
+        const fireRateLevelElement = document.getElementById('firerate-level');
+        const fireRateCostElement = document.getElementById('firerate-cost');
+        const healthLevelElement = document.getElementById('health-level');
+        const healthCostElement = document.getElementById('health-cost');
+        
+        // Control Buttons
+        const moveLeftBtn = document.getElementById('move-left');
+        const moveRightBtn = document.getElementById('move-right');
+        const fireLeftBtn = document.getElementById('fire-left');
+        const fireRightBtn = document.getElementById('fire-right');
+        const repairBtn = document.getElementById('repair');
+        const recruitBtn = document.getElementById('recruit');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resumeBtn = document.getElementById('resume-btn');
+        const upgradeBtn = document.getElementById('upgrade-btn');
+        const backBtn = document.getElementById('back-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const quitBtn = document.getElementById('quit-btn');
+        const playAgainBtn = document.getElementById('play-again-btn');
+        const quitGameBtn = document.getElementById('quit-game-btn');
+        
+        // Upgrade Buttons
+        const upgradeDamageBtn = document.getElementById('upgrade-damage');
+        const upgradeFireRateBtn = document.getElementById('upgrade-firerate');
+        const upgradeHealthBtn = document.getElementById('upgrade-health');
+        
+        // Game Dimensions
+        const gameWidth = gameContainer.offsetWidth;
+        const gameHeight = gameContainer.offsetHeight;
+        
+        // Event Listeners
+        moveLeftBtn.addEventListener('mousedown', () => movePlayer('left'));
+        moveLeftBtn.addEventListener('touchstart', () => movePlayer('left'));
+        moveRightBtn.addEventListener('mousedown', () => movePlayer('right'));
+        moveRightBtn.addEventListener('touchstart', () => movePlayer('right'));
+        
+        moveLeftBtn.addEventListener('mouseup', stopPlayer);
+        moveLeftBtn.addEventListener('touchend', stopPlayer);
+        moveRightBtn.addEventListener('mouseup', stopPlayer);
+        moveRightBtn.addEventListener('touchend', stopPlayer);
+        
+        fireLeftBtn.addEventListener('click', () => fireCannon('left'));
+        fireRightBtn.addEventListener('click', () => fireCannon('right'));
+        
+        repairBtn.addEventListener('click', repairShip);
+        recruitBtn.addEventListener('click', recruitCrew);
+        
+        pauseBtn.addEventListener('click', togglePause);
+        resumeBtn.addEventListener('click', togglePause);
+        upgradeBtn.addEventListener('click', showUpgradeMenu);
+        backBtn.addEventListener('click', hideUpgradeMenu);
+        restartBtn.addEventListener('click', restartGame);
+        quitBtn.addEventListener('click', quitGame);
+        playAgainBtn.addEventListener('click', restartGame);
+        quitGameBtn.addEventListener('click', quitGame);
+        
+        upgradeDamageBtn.addEventListener('click', () => upgrade('damage'));
+        upgradeFireRateBtn.addEventListener('click', () => upgrade('fireRate'));
+        upgradeHealthBtn.addEventListener('click', () => upgrade('health'));
+        
+        // Keyboard Controls
+        document.addEventListener('keydown', (e) => {
+            if (gameState.isPaused || gameState.isGameOver) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    movePlayer('left');
+                    break;
+                case 'ArrowRight':
+                    movePlayer('right');
+                    break;
+                case 'a':
+                case 'A':
+                    fireCannon('left');
+                    break;
+                case 'd':
+                case 'D':
+                    fireCannon('right');
+                    break;
+                case 'r':
+                case 'R':
+                    repairShip();
+                    break;
+                case 'c':
+                case 'C':
+                    recruitCrew();
+                    break;
+                case 'u':
+                case 'U':
+                    showUpgradeMenu();
+                    break;
+                case ' ':
+                case 'Escape':
+                    togglePause();
+                    break;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                stopPlayer();
+            }
+        });
+        
+        // Game Functions
+        function movePlayer(direction) {
+            if (gameState.isPaused || gameState.isGameOver) return;
+            
+            if (direction === 'left') {
+                gameState.playerSpeed = -0.8;
+            } else if (direction === 'right') {
+                gameState.playerSpeed = 0.8;
+            }
+        }
+        
+        function stopPlayer() {
+            gameState.playerSpeed = 0;
+        }
+        
+        function fireCannon(side) {
+            if (gameState.isPaused || gameState.isGameOver) return;
+            
+            // Check cooldown
+            if (side === 'left' && gameState.leftCannonCooldown > 0) return;
+            if (side === 'right' && gameState.rightCannonCooldown > 0) return;
+            
+            // Set cooldown
+            if (side === 'left') {
+                gameState.leftCannonCooldown = gameState.cannonCooldownTime * gameState.upgrades.fireRate.bonus;
+            } else {
+                gameState.rightCannonCooldown = gameState.cannonCooldownTime * gameState.upgrades.fireRate.bonus;
+            }
+            
+            // Create projectile
+            const projectile = document.createElement('div');
+            projectile.className = 'cannon-ball';
+            
+            // Position based on side
+            const shipRect = playerShip.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            
+            let x, y;
+            if (side === 'left') {
+                x = shipRect.left - containerRect.left + 20;
+            } else {
+                x = shipRect.right - containerRect.left - 20;
+            }
+            y = shipRect.top - containerRect.top + 30;
+            
+            projectile.style.left = `${x}px`;
+            projectile.style.top = `${y}px`;
+            
+            projectilesContainer.appendChild(projectile);
+            
+            gameState.projectiles.push({
+                element: projectile,
+                x: x,
+                y: y,
+                speedX: side === 'left' ? -12 : 12,
+                speedY: -5,
+                gravity: 0.2,
+                side: side,
+                damage: gameState.cannonDamage + Math.floor(Math.random() * 5)
+            });
+            
+            // Add recoil effect
+            if (side === 'left') {
+                playerShip.style.transform = 'translateX(-5px) rotate(-5deg)';
+            } else {
+                playerShip.style.transform = 'translateX(5px) rotate(5deg)';
+            }
+            
+            setTimeout(() => {
+                playerShip.style.transform = '';
+            }, 200);
+            
+            // Add smoke effect
+            createSmoke(x, y, side);
+        }
+        
+        function createSmoke(x, y, side) {
+            for (let i = 0; i < 5; i++) {
+                const smoke = document.createElement('div');
+                smoke.className = 'absolute bg-gray-400 rounded-full';
+                smoke.style.width = `${Math.random() * 10 + 5}px`;
+                smoke.style.height = smoke.style.width;
+                smoke.style.left = `${x + (side === 'left' ? -10 : 10)}px`;
+                smoke.style.top = `${y + 10}px`;
+                smoke.style.opacity = '0.7';
+                smoke.style.animation = 'floatUp 1s forwards';
+                
+                effectsContainer.appendChild(smoke);
+                
+                setTimeout(() => {
+                    smoke.remove();
+                }, 1000);
+            }
+        }
+        
+        function repairShip() {
+            if (gameState.isPaused || gameState.isGameOver) return;
+            if (gameState.gold < 50) {
+                showMessage("Not enough gold!", "red");
+                return;
+            }
+            
+            const healAmount = 30;
+            if (gameState.playerHealth >= gameState.playerMaxHealth) {
+                showMessage("Ship already at full health!", "yellow");
+                return;
+            }
+            
+            gameState.gold -= 50;
+            gameState.playerHealth = Math.min(gameState.playerMaxHealth, gameState.playerHealth + healAmount);
+            updateStats();
+            
+            showMessage(`Ship repaired +${healAmount} HP!`, "green");
+            
+            // Healing effect
+            const healEffect = document.createElement('div');
+            healEffect.className = 'absolute bg-green-500 bg-opacity-30 rounded-full';
+            healEffect.style.width = '100px';
+            healEffect.style.height = '100px';
+            healEffect.style.left = '50%';
+            healEffect.style.top = '50%';
+            healEffect.style.transform = 'translate(-50%, -50%)';
+            healEffect.style.animation = 'fadeOut 1s forwards';
+            
+            playerShip.appendChild(healEffect);
+            
+            setTimeout(() => {
+                healEffect.remove();
+            }, 1000);
+        }
+        
+        function recruitCrew() {
+            if (gameState.isPaused || gameState.isGameOver) return;
+            if (gameState.gold < 30) {
+                showMessage("Not enough gold!", "red");
+                return;
+            }
+            
+            const recruitAmount = 20;
+            if (gameState.playerCrew >= gameState.playerMaxCrew) {
+                showMessage("Crew already at full strength!", "yellow");
+                return;
+            }
+            
+            gameState.gold -= 30;
+            gameState.playerCrew = Math.min(gameState.playerMaxCrew, gameState.playerCrew + recruitAmount);
+            updateStats();
+            
+            showMessage(`Recruited +${recruitAmount} crew!`, "blue");
+            
+            // Crew effect
+            for (let i = 0; i < 5; i++) {
+                const crewMember = document.createElement('div');
+                crewMember.className = 'absolute bg-blue-500 rounded-full';
+                crewMember.style.width = '10px';
+                crewMember.style.height = '10px';
+                crewMember.style.left = `${Math.random() * 30 + 35}%`;
+                crewMember.style.bottom = `${Math.random() * 20 + 10}px`;
+                crewMember.style.animation = 'floatUp 1s forwards';
+                
+                playerShip.appendChild(crewMember);
+                
+                setTimeout(() => {
+                    crewMember.remove();
+                }, 1000);
+            }
+        }
+        
+        function createEnemy() {
+            if (gameState.isPaused || gameState.isGameOver) return;
+            
+            const enemy = document.createElement('div');
+            enemy.className = 'absolute bottom-20 w-32 h-32 ship-rocking';
+            
+            // Random type (small, medium, large)
+            const type = Math.random() > 0.7 ? 'large' : (Math.random() > 0.5 ? 'medium' : 'small');
+            let health, speed, goldReward, xpReward;
+            
+            switch(type) {
+                case 'small':
+                    health = 40 + (gameState.level * 5);
+                    speed = 2;
+                    goldReward = 20 + Math.floor(gameState.level * 1.5);
+                    xpReward = 10;
+                    enemy.style.width = '64px';
+                    enemy.style.height = '64px';
+                    break;
+                case 'medium':
+                    health = 70 + (gameState.level * 8);
+                    speed = 1.5;
+                    goldReward = 40 + Math.floor(gameState.level * 2);
+                    xpReward = 20;
+                    enemy.style.width = '96px';
+                    enemy.style.height = '96px';
+                    break;
+                case 'large':
+                    health = 120 + (gameState.level * 12);
+                    speed = 1;
+                    goldReward = 70 + Math.floor(gameState.level * 3);
+                    xpReward = 40;
+                    enemy.style.width = '128px';
+                    enemy.style.height = '128px';
+                    break;
+            }
+            
+            // Random position (right side of screen)
+            const x = gameWidth;
+            const y = gameHeight - 100 - Math.random() * 100;
+            
+            enemy.style.left = `${x}px`;
+            enemy.style.bottom = `${gameHeight - y}px`;
+            
+            // Enemy ship design
+            enemy.innerHTML = `
+                <div class="relative w-full h-full">
+                    <div class="absolute bottom-0 w-full h-16 bg-[#5D4037] rounded-t-full border-t-4 border-[#3E2723]"></div>
+                    <div class="absolute bottom-16 left-1/2 transform -translate-x-1/2 w-3 h-24 bg-[#3E2723]"></div>
+                    <div class="absolute bottom-28 left-1/2 transform -translate-x-1/2 w-24 h-4 bg-[#795548]"></div>
+                    <div class="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-20 h-16 bg-[#8D6E63] clip-sail"></div>
+                    <div class="absolute bottom-16 left-1/4 w-6 h-6 bg-[#3E2723] rounded-full"></div>
+                    <div class="absolute bottom-16 right-1/4 w-6 h-6 bg-[#3E2723] rounded-full"></div>
+                    <div class="absolute bottom-0 left-1/4 w-8 h-4 bg-[#3E2723]"></div>
+                    <div class="absolute bottom-0 right-1/4 w-8 h-4 bg-[#3E2723]"></div>
+                    <img src="https://cdn-icons-png.flaticon.com/512/477/477103.png" class="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-8 h-8">
+                </div>
+                <div class="absolute -top-8 left-0 right-0 text-center">
+                    <div class="inline-block bg-black bg-opacity-70 text-white px-3 py-1 rounded-lg border border-red-600">
+                        <div class="flex items-center">
+                            <span class="mr-2"><i class="fas fa-heart text-red-400"></i></span>
+                            <div class="w-20 h-2 bg-gray-300 rounded-full">
+                                <div class="health-bar h-full bg-red-500 rounded-full" style="width: 100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            enemyShipsContainer.appendChild(enemy);
+            
+            gameState.enemies.push({
+                element: enemy,
+                x: x,
+                y: y,
+                speed: speed,
+                health: health,
+                maxHealth: health,
+                type: type,
+                goldReward: goldReward,
+                xpReward: xpReward,
+                fireTimer: 0,
+                fireInterval: 2000 + Math.random() * 2000,
+                healthBar: enemy.querySelector('.health-bar')
+            });
+        }
+        
+        function createTreasure() {
+            if (gameState.isPaused || gameState.isGameOver) return;
+            
+            const treasure = document.createElement('div');
+            treasure.className = 'treasure';
+            
+            // Random position
+            const x = gameWidth;
+            const y = gameHeight - 50 - Math.random() * 100;
+            
+            treasure.style.left = `${x}px`;
+            treasure.style.top = `${y}px`;
+            
+            treasuresContainer.appendChild(treasure);
+            
+            gameState.treasures.push({
+                element: treasure,
+                x: x,
+                y: y,
+                speed: 1.5,
+                value: 10 + Math.floor(Math.random() * 20)
+            });
+        }
+        
+        function updatePlayerPosition() {
+            gameState.playerPosition = Math.max(0, Math.min(100, gameState.playerPosition + gameState.playerSpeed * gameState.gameSpeed));
+            
+            const x = (gameWidth * gameState.playerPosition / 100) - (playerShip.offsetWidth / 2);
+            playerShip.style.left = `${x}px`;
+        }
+        
+        function updateProjectiles(timestamp, deltaTime) {
+            for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
+                const projectile = gameState.projectiles[i];
+                
+                // Update position
+                projectile.x += projectile.speedX * gameState.gameSpeed;
+                projectile.y += projectile.speedY * gameState.gameSpeed;
+                projectile.speedY += projectile.gravity * gameState.gameSpeed;
+                
+                // Update DOM
+                projectile.element.style.left = `${projectile.x}px`;
+                projectile.element.style.top = `${projectile.y}px`;
+                
+                // Check if out of bounds
+                if (projectile.x < 0 || projectile.x > gameWidth || projectile.y > gameHeight) {
+                    // Create splash effect if hitting water
+                    if (projectile.y > gameHeight - 50) {
+                        createSplash(projectile.x, gameHeight - 50);
+                    }
+                    
+                    projectile.element.remove();
+                    gameState.projectiles.splice(i, 1);
+                    continue;
+                }
+                
+                // Check collision with enemies (player projectiles)
+                if (projectile.side === 'left' || projectile.side === 'right') {
+                    for (let j = gameState.enemies.length - 1; j >= 0; j--) {
+                        const enemy = gameState.enemies[j];
+                        const enemyRect = enemy.element.getBoundingClientRect();
+                        const containerRect = gameContainer.getBoundingClientRect();
+                        
+                        const projectileLeft = projectile.x;
+                        const projectileTop = projectile.y;
+                        
+                        if (
+                            projectileLeft > enemyRect.left - containerRect.left &&
+                            projectileLeft < enemyRect.right - containerRect.left &&
+                            projectileTop > enemyRect.top - containerRect.top &&
+                            projectileTop < enemyRect.bottom - containerRect.top
+                        ) {
+                            // Hit enemy
+                            const damage = projectile.damage;
+                            enemy.health -= damage;
+                            
+                            // Update health bar
+                            const healthPercent = (enemy.health / enemy.maxHealth) * 100;
+                            enemy.healthBar.style.width = `${healthPercent}%`;
+                            
+                            // Create explosion
+                            createExplosion(projectile.x, projectile.y);
+                            
+                            // Show damage text
+                            createDamageText(projectile.x, projectile.y, damage);
+                            
+                            // Remove projectile
+                            projectile.element.remove();
+                            gameState.projectiles.splice(i, 1);
+                            
+                            // Check if enemy is destroyed
+                            if (enemy.health <= 0) {
+                                // Reward player
+                                gameState.gold += enemy.goldReward;
+                                gameState.kills++;
+                                gameState.xp += enemy.xpReward;
+                                checkLevelUp();
+                                updateStats();
+                                
+                                // Create sinking effect
+                                createSinkingEffect(enemy);
+                                
+                                // Remove enemy
+                                enemy.element.remove();
+                                gameState.enemies.splice(j, 1);
+                                
+                                showMessage(`Enemy sunk! +${enemy.goldReward}g`, "gold");
+                            }
+                            
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Update cannon cooldowns
+            if (gameState.leftCannonCooldown > 0) {
+                gameState.leftCannonCooldown -= deltaTime;
+            }
+            if (gameState.rightCannonCooldown > 0) {
+                gameState.rightCannonCooldown -= deltaTime;
+            }
+        }
+        
+        function updateTreasures(timestamp, deltaTime) {
+            for (let i = gameState.treasures.length - 1; i >= 0; i--) {
+                const treasure = gameState.treasures[i];
+                
+                // Move treasure
+                treasure.x -= treasure.speed * gameState.gameSpeed;
+                treasure.element.style.left = `${treasure.x}px`;
+                
+                // Check if out of bounds
+                if (treasure.x < -30) {
+                    treasure.element.remove();
+                    gameState.treasures.splice(i, 1);
+                    continue;
+                }
+                
+                // Check collision with player
+                const playerRect = playerShip.getBoundingClientRect();
+                const containerRect = gameContainer.getBoundingClientRect();
+                
+                const treasureLeft = treasure.x;
+                const treasureTop = treasure.y;
+                
+                if (
+                    treasureLeft > playerRect.left - containerRect.left &&
+                    treasureLeft < playerRect.right - containerRect.left &&
+                    treasureTop > playerRect.top - containerRect.top &&
+                    treasureTop < playerRect.bottom - containerRect.top
+                ) {
+                    // Collect treasure
+                    gameState.gold += treasure.value;
+                    updateStats();
+                    
+                    // Create collection effect
+                    createGoldEffect(treasure.x, treasure.y, treasure.value);
+                    
+                    // Remove treasure
+                    treasure.element.remove();
+                    gameState.treasures.splice(i, 1);
+                    
+                    showMessage(`Treasure collected! +${treasure.value}g`, "gold");
+                }
+            }
+        }
+        
+        function updateEnemies(timestamp, deltaTime) {
+            for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+                const enemy = gameState.enemies[i];
+                
+                // Move enemy
+                enemy.x -= enemy.speed * gameState.gameSpeed;
+                enemy.element.style.left = `${enemy.x}px`;
+                
+                // Check if out of bounds
+                if (enemy.x < -enemy.element.offsetWidth) {
+                    enemy.element.remove();
+                    gameState.enemies.splice(i, 1);
+                    continue;
+                }
+                
+                // Enemy firing logic
+                enemy.fireTimer += deltaTime;
+                if (enemy.fireTimer >= enemy.fireInterval) {
+                    enemy.fireTimer = 0;
+                    enemyFire(enemy);
+                }
+                
+                // Check collision with player (for ramming damage)
+                const playerRect = playerShip.getBoundingClientRect();
+                const enemyRect = enemy.element.getBoundingClientRect();
+                
+                if (
+                    playerRect.right > enemyRect.left &&
+                    playerRect.left < enemyRect.right &&
+                    playerRect.bottom > enemyRect.top &&
+                    playerRect.top < enemyRect.bottom
+                ) {
+                    // Collision with player
+                    const damage = 5 + Math.floor(Math.random() * 10);
+                    takeDamage(damage);
+                    
+                    // Push player back
+                    gameState.playerPosition = Math.max(0, gameState.playerPosition - 5);
+                    
+                    // Create explosion
+                    const explosionX = (playerRect.left + enemyRect.left) / 2 - gameContainer.getBoundingClientRect().left;
+                    const explosionY = (playerRect.top + enemyRect.top) / 2 - gameContainer.getBoundingClientRect().top;
+                    createExplosion(explosionX, explosionY);
+                    
+                    // Show damage text
+                    createDamageText(explosionX, explosionY, damage);
+                    
+                    // Remove enemy
+                    enemy.element.remove();
+                    gameState.enemies.splice(i, 1);
+                    
+                    showMessage(`Ramming damage! -${damage} HP`, "red");
+                }
+            }
+        }
+        
+        function enemyFire(enemy) {
+            if (gameState.isPaused || gameState.isGameOver) return;
+            
+            // Create projectile
+            const projectile = document.createElement('div');
+            projectile.className = 'cannon-ball';
+            projectile.style.backgroundColor = '#8B4513'; // Different color for enemy cannonballs
+            
+            // Position at enemy ship
+            const enemyRect = enemy.element.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            
+            const x = enemyRect.left - containerRect.left + 10;
+            const y = enemyRect.top - containerRect.top + 30;
+            
+            projectile.style.left = `${x}px`;
+            projectile.style.top = `${y}px`;
+            
+            projectilesContainer.appendChild(projectile);
+            
+            // Calculate direction to player
+            const playerRect = playerShip.getBoundingClientRect();
+            const targetX = playerRect.left - containerRect.left + playerRect.width / 2;
+            const targetY = playerRect.top - containerRect.top + playerRect.height / 2;
+            
+            const dx = targetX - x;
+            const dy = targetY - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            const speed = 5;
+            const speedX = (dx / distance) * speed;
+            const speedY = (dy / distance) * speed;
+            
+            gameState.projectiles.push({
+                element: projectile,
+                x: x,
+                y: y,
+                speedX: speedX,
+                speedY: speedY,
+                gravity: 0.1,
+                side: 'enemy',
+                damage: 5 + Math.floor(Math.random() * 5)
+            });
+            
+            // Recoil effect
+            enemy.element.style.transform = 'translateX(5px) rotate(5deg)';
+            setTimeout(() => {
+                enemy.element.style.transform = '';
+            }, 200);
+            
+            // Smoke effect
+            createSmoke(x, y, 'left');
+        }
+        
+        function checkPlayerHit() {
+            const playerRect = playerShip.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            
+            for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
+                const projectile = gameState.projectiles[i];
+                
+                if (projectile.side === 'enemy') {
+                    const projectileLeft = projectile.x;
+                    const projectileTop = projectile.y;
+                    
+                    if (
+                        projectileLeft > playerRect.left - containerRect.left &&
+                        projectileLeft < playerRect.right - containerRect.left &&
+                        projectileTop > playerRect.top - containerRect.top &&
+                        projectileTop < playerRect.bottom - containerRect.top
+                    ) {
+                        // Hit player
+                        const damage = projectile.damage;
+                        takeDamage(damage);
+                        
+                        // Create explosion
+                        createExplosion(projectile.x, projectile.y);
+                        
+                        // Show damage text
+                        createDamageText(projectile.x, projectile.y, damage);
+                        
+                        // Remove projectile
+                        projectile.element.remove();
+                        gameState.projectiles.splice(i, 1);
+                        
+                        showMessage(`Hit! -${damage} HP`, "red");
+                    }
+                }
+            }
+        }
+        
+        function takeDamage(amount) {
+            // Reduce damage based on crew health (better crew can avoid some damage)
+            const crewEffect = gameState.playerCrew / gameState.playerMaxCrew;
+            const actualDamage = Math.max(1, amount * (0.5 + 0.5 * (1 - crewEffect)));
+            
+            gameState.playerHealth -= actualDamage;
+            
+            // Crew also takes damage but less
+            gameState.playerCrew -= actualDamage * 0.5;
+            
+            // Clamp values
+            gameState.playerHealth = Math.max(0, gameState.playerHealth);
+            gameState.playerCrew = Math.max(0, gameState.playerCrew);
+            
+            updateStats();
+            
+            // Shake effect
+            playerShip.style.animation = 'none';
+            void playerShip.offsetWidth; // Trigger reflow
+            playerShip.style.animation = 'shipRock 0.1s 3';
+            
+            // Check if game over
+            if (gameState.playerHealth <= 0 || gameState.playerCrew <= 0) {
+                gameOver();
+            }
+        }
+        
+        function createExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = `${x}px`;
+            explosion.style.top = `${y}px`;
+            
+            effectsContainer.appendChild(explosion);
+            
+            setTimeout(() => {
+                explosion.remove();
+            }, 500);
+        }
+        
+        function createSplash(x, y) {
+            const splash = document.createElement('div');
+            splash.className = 'splash';
+            splash.style.left = `${x}px`;
+            splash.style.top = `${y}px`;
+            
+            effectsContainer.appendChild(splash);
+        }
+        
+        function createGoldEffect(x, y, amount) {
+            for (let i = 0; i < 5; i++) {
+                const coin = document.createElement('div');
+                coin.className = 'absolute bg-yellow-400 rounded-full';
+                coin.style.width = '10px';
+                coin.style.height = '10px';
+                coin.style.left = `${x}px`;
+                coin.style.top = `${y}px`;
+                coin.style.animation = `floatUp ${Math.random() * 1 + 0.5}s forwards`;
+                
+                effectsContainer.appendChild(coin);
+                
+                setTimeout(() => {
+                    coin.remove();
+                }, 1000);
+            }
+            
+            const goldText = document.createElement('div');
+            goldText.className = 'damage-text';
+            goldText.textContent = `+${amount}g`;
+            goldText.style.color = 'gold';
+            goldText.style.left = `${x}px`;
+            goldText.style.top = `${y}px`;
+            
+            effectsContainer.appendChild(goldText);
+            
+            setTimeout(() => {
+                goldText.remove();
+            }, 1000);
+        }
+        
+        function createDamageText(x, y, amount) {
+            const damageText = document.createElement('div');
+            damageText.className = 'damage-text';
+            damageText.textContent = `-${amount}`;
+            damageText.style.left = `${x}px`;
+            damageText.style.top = `${y}px`;
+            
+            effectsContainer.appendChild(damageText);
+            
+            setTimeout(() => {
+                damageText.remove();
+            }, 1000);
+        }
+        
+        function createSinkingEffect(enemy) {
+            const sinkingEffect = document.createElement('div');
+            sinkingEffect.className = 'absolute overflow-hidden';
+            sinkingEffect.style.left = `${enemy.x}px`;
+            sinkingEffect.style.bottom = `${gameHeight - enemy.y}px`;
+            sinkingEffect.style.width = `${enemy.element.offsetWidth}px`;
+            sinkingEffect.style.height = `${enemy.element.offsetHeight}px`;
+            
+            // Clone the enemy ship for the effect
+            const shipClone = enemy.element.cloneNode(true);
+            shipClone.style.position = 'relative';
+            shipClone.classList.add('ship-sinking');
+            
+            // Add bubbles
+            for (let i = 0; i < 20; i++) {
+                const bubble = document.createElement('div');
+                bubble.className = 'absolute bg-white rounded-full opacity-70';
+                bubble.style.width = `${Math.random() * 10 + 5}px`;
+                bubble.style.height = bubble.style.width;
+                bubble.style.left = `${Math.random() * 100}%`;
+                bubble.style.bottom = '0';
+                bubble.style.animation = `floatUp ${Math.random() * 2 + 1}s forwards`;
+                
+                shipClone.appendChild(bubble);
+            }
+            
+            sinkingEffect.appendChild(shipClone);
+            effectsContainer.appendChild(sinkingEffect);
+            
+            setTimeout(() => {
+                sinkingEffect.remove();
+            }, 3000);
+        }
+        
+        function updateWeather(timestamp, deltaTime) {
+            gameState.weatherTimer += deltaTime;
+            
+            // Change weather every 15-30 seconds
+            if (gameState.weatherTimer > 15000 + Math.random() * 15000) {
+                gameState.weatherTimer = 0;
+                
+                const weatherTypes = ['clear', 'rain', 'storm', 'fog'];
+                const newWeather = weatherTypes[Math.floor(Math.random() * weatherTypes.length)];
+                
+                if (newWeather !== gameState.weather) {
+                    gameState.weather = newWeather;
+                    applyWeatherEffects();
+                    
+                    let weatherMessage = "";
+                    let weatherColor = "lightblue";
+                    let weatherIcon = "fa-sun";
+                    
+                    switch(newWeather) {
+                        case 'rain':
+                            weatherMessage = "Rain is falling! Visibility reduced.";
+                            weatherColor = "blue";
+                            weatherIcon = "fa-cloud-rain";
+                            break;
+                        case 'storm':
+                            weatherMessage = "Storm approaching! Rough seas ahead!";
+                            weatherColor = "purple";
+                            weatherIcon = "fa-bolt";
+                            break;
+                        case 'fog':
+                            weatherMessage = "Fog rolling in! Enemies harder to spot.";
+                            weatherColor = "gray";
+                            weatherIcon = "fa-smog";
+                            break;
+                        default:
+                            weatherMessage = "Weather cleared! Smooth sailing.";
+                            weatherColor = "yellow";
+                            weatherIcon = "fa-sun";
+                    }
+                    
+                    // Update weather icon
+                    weatherIcon.innerHTML = `<i class="fas ${weatherIcon} text-${weatherColor}-300"></i>`;
+                    
+                    showMessage(weatherMessage, weatherColor);
+                }
+            }
+        }
+        
+        function applyWeatherEffects() {
+            // Clear all weather effects
+            weatherEffectsContainer.innerHTML = '';
+            
+            switch(gameState.weather) {
+                case 'rain':
+                    const rain = document.createElement('div');
+                    rain.className = 'rain-effect';
+                    rain.style.opacity = '0.5';
+                    weatherEffectsContainer.appendChild(rain);
+                    break;
+                    
+                case 'storm':
+                    const heavyRain = document.createElement('div');
+                    heavyRain.className = 'rain-effect';
+                    heavyRain.style.opacity = '0.8';
+                    weatherEffectsContainer.appendChild(heavyRain);
+                    
+                    // Add lightning flashes
+                    const lightning = document.createElement('div');
+                    lightning.className = 'lightning-effect';
+                    weatherEffectsContainer.appendChild(lightning);
+                    
+                    setInterval(() => {
+                        if (!gameState.isPaused && !gameState.isGameOver) {
+                            lightning.style.display = 'block';
+                            lightning.style.animation = 'none';
+                            void lightning.offsetWidth;
+                            lightning.style.animation = 'lightning 0.5s forwards';
+                        }
+                    }, 3000 + Math.random() * 3000);
+                    break;
+                    
+                case 'fog':
+                    const fog = document.createElement('div');
+                    fog.className = 'fog-effect';
+                    weatherEffectsContainer.appendChild(fog);
+                    break;
+            }
+        }
+        
+        function checkLevelUp() {
+            if (gameState.xp >= gameState.xpToNextLevel) {
+                gameState.level++;
+                gameState.xp -= gameState.xpToNextLevel;
+                gameState.xpToNextLevel = Math.floor(gameState.xpToNextLevel * 1.5);
+                
+                // Reward for leveling up
+                const reward = gameState.level * 50;
+                gameState.gold += reward;
+                
+                showMessage(`Level Up! +${reward}g bonus`, "purple");
+                updateStats();
+                
+                // Level up effect
+                const levelEffect = document.createElement('div');
+                levelEffect.className = 'absolute inset-0 flex items-center justify-center';
+                levelEffect.innerHTML = `
+                    <div class="text-white text-4xl font-bold text-center">
+                        <div class="text-yellow-300">LEVEL UP!</div>
+                        <div class="text-xl mt-2">Now at Level ${gameState.level}</div>
+                    </div>
+                `;
+                levelEffect.style.animation = 'fadeOut 2s forwards';
+                levelEffect.style.textShadow = '2px 2px 4px black';
+                
+                effectsContainer.appendChild(levelEffect);
+                
+                setTimeout(() => {
+                    levelEffect.remove();
+                }, 2000);
+            }
+        }
+        
+        function upgrade(type) {
+            const upgradeInfo = gameState.upgrades[type];
+            
+            if (gameState.gold < upgradeInfo.cost) {
+                showMessage("Not enough gold for upgrade!", "red");
+                return;
+            }
+            
+            gameState.gold -= upgradeInfo.cost;
+            upgradeInfo.level++;
+            
+            // Increase cost for next level
+            upgradeInfo.cost = Math.floor(upgradeInfo.cost * 1.5);
+            
+            // Apply upgrade
+            switch(type) {
+                case 'damage':
+                    gameState.cannonDamage += upgradeInfo.bonus;
+                    damageLevelElement.textContent = `Lv.${upgradeInfo.level}`;
+                    damageCostElement.textContent = `${upgradeInfo.cost}g`;
+                    showMessage(`Cannon Damage Increased! (+${upgradeInfo.bonus})`, "red");
+                    break;
+                    
+                case 'fireRate':
+                    gameState.upgrades.fireRate.bonus *= 0.9; // Reduce cooldown
+                    fireRateLevelElement.textContent = `Lv.${upgradeInfo.level}`;
+                    fireRateCostElement.textContent = `${upgradeInfo.cost}g`;
+                    showMessage(`Fire Rate Increased!`, "yellow");
+                    break;
+                    
+                case 'health':
+                    gameState.playerMaxHealth += upgradeInfo.bonus;
+                    gameState.playerHealth += upgradeInfo.bonus;
+                    healthLevelElement.textContent = `Lv.${upgradeInfo.level}`;
+                    healthCostElement.textContent = `${upgradeInfo.cost}g`;
+                    showMessage(`Max Health Increased! (+${upgradeInfo.bonus})`, "green");
+                    break;
+            }
+            
+            updateStats();
+            
+            // Upgrade effect
+            const upgradeEffect = document.createElement('div');
+            upgradeEffect.className = 'absolute inset-0 bg-purple-500 bg-opacity-30';
+            upgradeEffect.style.animation = 'fadeOut 1s forwards';
+            
+            effectsContainer.appendChild(upgradeEffect);
+            
+            setTimeout(() => {
+                upgradeEffect.remove();
+            }, 1000);
+        }
+        
+        function updateStats() {
+            goldElement.textContent = gameState.gold;
+            killsElement.textContent = gameState.kills;
+            levelElement.textContent = gameState.level;
+            
+            const healthPercent = (gameState.playerHealth / gameState.playerMaxHealth) * 100;
+            const crewPercent = (gameState.playerCrew / gameState.playerMaxCrew) * 100;
+            
+            playerHealthElement.style.width = `${healthPercent}%`;
+            playerCrewElement.style.width = `${crewPercent}%`;
+            
+            // Change color based on health
+            if (healthPercent < 30) {
+                playerHealthElement.classList.remove('bg-green-500', 'bg-yellow-500');
+                playerHealthElement.classList.add('bg-red-500');
+            } else if (healthPercent < 60) {
+                playerHealthElement.classList.remove('bg-green-500', 'bg-red-500');
+                playerHealthElement.classList.add('bg-yellow-500');
+            } else {
+                playerHealthElement.classList.remove('bg-yellow-500', 'bg-red-500');
+                playerHealthElement.classList.add('bg-green-500');
+            }
+            
+            // Change color based on crew
+            if (crewPercent < 30) {
+                playerCrewElement.classList.remove('bg-blue-400', 'bg-blue-300');
+                playerCrewElement.classList.add('bg-blue-200');
+            } else if (crewPercent < 60) {
+                playerCrewElement.classList.remove('bg-blue-400', 'bg-blue-200');
+                playerCrewElement.classList.add('bg-blue-300');
+            } else {
+                playerCrewElement.classList.remove('bg-blue-300', 'bg-blue-200');
+                playerCrewElement.classList.add('bg-blue-400');
+            }
+            
+            // Update upgrade buttons
+            damageLevelElement.textContent = `Lv.${gameState.upgrades.damage.level}`;
+            damageCostElement.textContent = `${gameState.upgrades.damage.cost}g`;
+            
+            fireRateLevelElement.textContent = `Lv.${gameState.upgrades.fireRate.level}`;
+            fireRateCostElement.textContent = `${gameState.upgrades.fireRate.cost}g`;
+            
+            healthLevelElement.textContent = `Lv.${gameState.upgrades.health.level}`;
+            healthCostElement.textContent = `${gameState.upgrades.health.cost}g`;
+        }
+        
+        function formatTime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+        
+        function showMessage(text, color) {
+            gameMessage.textContent = text;
+            gameMessage.style.color = color;
+            gameMessage.style.opacity = '1';
+            gameMessage.style.textShadow = '2px 2px 4px black';
+            
+            setTimeout(() => {
+                gameMessage.style.opacity = '0';
+            }, 2000);
+        }
+        
+        function togglePause() {
+            gameState.isPaused = !gameState.isPaused;
+            
+            if (gameState.isPaused) {
+                pauseMenu.classList.remove('hidden');
+                
+                // Update pause menu stats
+                document.getElementById('pause-gold').textContent = gameState.gold;
+                document.getElementById('pause-kills').textContent = gameState.kills;
+                document.getElementById('pause-level').textContent = gameState.level;
+                document.getElementById('pause-time').textContent = formatTime(performance.now() - gameState.startTime);
+                
+                const healthPercent = (gameState.playerHealth / gameState.playerMaxHealth) * 100;
+                const crewPercent = (gameState.playerCrew / gameState.playerMaxCrew) * 100;
+                
+                document.getElementById('pause-health').textContent = `${Math.round(healthPercent)}%`;
+                document.getElementById('pause-crew').textContent = `${Math.round(crewPercent)}%`;
+            } else {
+                pauseMenu.classList.add('hidden');
+                gameState.lastTime = performance.now(); // Reset timer to avoid large delta
+            }
+        }
+        
+        function showUpgradeMenu() {
+            gameState.isPaused = true;
+            pauseMenu.classList.add('hidden');
+            upgradeMenu.classList.remove('hidden');
+        }
+        
+        function hideUpgradeMenu() {
+            gameState.isPaused = false;
+            upgradeMenu.classList.add('hidden');
+            gameState.lastTime = performance.now(); // Reset timer to avoid large delta
+        }
+        
+        function gameOver() {
+            gameState.isGameOver = true;
+            gameOverScreen.classList.remove('hidden');
+            
+            // Update final stats
+            document.getElementById('final-gold').textContent = gameState.gold;
+            document.getElementById('final-kills').textContent = gameState.kills;
+            document.getElementById('final-level').textContent = gameState.level;
+            document.getElementById('final-time').textContent = formatTime(performance.now() - gameState.startTime);
+            
+            const healthPercent = (gameState.playerHealth / gameState.playerMaxHealth) * 100;
+            const crewPercent = (gameState.playerCrew / gameState.playerMaxCrew) * 100;
+            
+            document.getElementById('final-health').textContent = `${Math.round(healthPercent)}%`;
+            document.getElementById('final-crew').textContent = `${Math.round(crewPercent)}%`;
+            
+            // Show sinking animation
+            playerShip.style.animation = 'none';
+            playerShip.style.transform = 'rotate(90deg)';
+            playerShip.style.transition = 'transform 3s ease-in-out';
+            
+            // Add bubbles
+            for (let i = 0; i < 30; i++) {
+                const bubble = document.createElement('div');
+                bubble.className = 'absolute bg-white rounded-full opacity-70';
+                bubble.style.width = `${Math.random() * 15 + 5}px`;
+                bubble.style.height = bubble.style.width;
+                bubble.style.left = `${Math.random() * 100}%`;
+                bubble.style.bottom = '0';
+                bubble.style.animation = `floatUp ${Math.random() * 3 + 1}s forwards`;
+                
+                playerShip.appendChild(bubble);
+            }
+        }
+        
+        function restartGame() {
+            // Clear all game elements
+            enemyShipsContainer.innerHTML = '';
+            projectilesContainer.innerHTML = '';
+            effectsContainer.innerHTML = '';
+            weatherEffectsContainer.innerHTML = '';
+            treasuresContainer.innerHTML = '';
+            
+            // Reset game state
+            gameState.gold = 100;
+            gameState.kills = 0;
+            gameState.level = 1;
+            gameState.xp = 0;
+            gameState.xpToNextLevel = 100;
+            gameState.playerHealth = 100;
+            gameState.playerMaxHealth = 100;
+            gameState.playerCrew = 100;
+            gameState.playerMaxCrew = 100;
+            gameState.isPaused = false;
+            gameState.isGameOver = false;
+            gameState.weather = 'clear';
+            gameState.weatherTimer = 0;
+            gameState.enemySpawnTimer = 0;
+            gameState.enemySpawnInterval = 3000;
+            gameState.playerPosition = 25;
+            gameState.playerSpeed = 0;
+            gameState.leftCannonCooldown = 0;
+            gameState.rightCannonCooldown = 0;
+            gameState.cannonCooldownTime = 1000;
+            gameState.cannonDamage = 10;
+            gameState.enemies = [];
+            gameState.projectiles = [];
+            gameState.effects = [];
+            gameState.treasures = [];
+            gameState.start
+</html>

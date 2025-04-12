@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farm Harvest Frenzy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes grow {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .grow-animation {
+            animation: grow 0.5s ease-out forwards;
+        }
+        
+        .shake-animation {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        .float-animation {
+            animation: float 2s ease-in-out infinite;
+        }
+        
+        .pulse-animation {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        .season-spring { background: linear-gradient(to bottom, #a8e6cf, #dcedc1); }
+        .season-summer { background: linear-gradient(to bottom, #64b5f6, #81d4fa); }
+        .season-fall { background: linear-gradient(to bottom, #ffb347, #ffcc33); }
+        .season-winter { background: linear-gradient(to bottom, #e0f7fa, #b2ebf2); }
+        
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .has-tooltip:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        #gameContainer {
+            background-image: url('https://images.unsplash.com/photo-1500382018106-a4070b3c8a5e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80');
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .achievement-badge {
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .achievement-badge.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .crop-tooltip {
+            min-width: 150px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header with creator credit -->
+        <div class="text-center mb-8 relative">
+            <h1 class="text-5xl font-bold text-green-800 mb-2">Farm Harvest Frenzy</h1>
+            <p class="text-xl text-green-600">Grow your farm from a small plot to a thriving agricultural empire!</p>
+            <div class="absolute top-0 right-0 text-sm text-gray-500">Created by Geoffroy Streit - Hylst</div>
+        </div>
+        
+        <!-- Achievement notification area -->
+        <div id="achievementToast" class="fixed top-4 right-4 z-50 w-64"></div>
+        
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Game Stats Panel -->
+            <div class="w-full lg:w-1/4 bg-white rounded-lg shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-green-700">Farm Stats</h2>
+                    <div id="seasonDisplay" class="px-3 py-1 rounded-full text-white font-bold bg-green-500">Spring</div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">Money:</span>
+                        <span id="money" class="font-bold text-green-600">$100</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">Day:</span>
+                        <span id="day" class="font-bold">1</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">Experience:</span>
+                        <div class="w-3/4">
+                            <div class="h-4 bg-gray-200 rounded-full overflow-hidden">
+                                <div id="xpBar" class="h-full bg-yellow-500 progress-bar" style="width: 0%"></div>
+                            </div>
+                            <span id="xpText" class="text-xs">0/100 XP</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">Level:</span>
+                        <span id="level" class="font-bold">1</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">Achievements:</span>
+                        <span id="achievementCount" class="font-bold">0/12</span>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h3 class="font-bold mb-2">Inventory</h3>
+                        <div id="inventory" class="grid grid-cols-3 gap-2">
+                            <!-- Items will be added here dynamically -->
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <button id="nextDayBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center">
+                            <span>Next Day</span>
+                            <i class="fas fa-sun ml-2"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Music toggle button -->
+                    <div class="mt-4">
+                        <button id="musicToggle" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center">
+                            <i class="fas fa-music mr-2"></i>
+                            <span>Toggle Music</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Game Area -->
+            <div class="w-full lg:w-2/4">
+                <div id="gameContainer" class="rounded-lg shadow-lg overflow-hidden relative h-96">
+                    <div id="farmGrid" class="grid grid-cols-5 grid-rows-3 gap-4 p-6 h-full">
+                        <!-- Farm plots will be added here dynamically -->
+                    </div>
+                    
+                    <div id="farmer" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    
+                    <div id="weatherEffect" class="absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-500 flex items-center justify-center"></div>
+                    
+                    <!-- Day progress indicator -->
+                    <div id="dayProgress" class="absolute bottom-0 left-0 right-0 h-1 bg-gray-200">
+                        <div class="h-full bg-blue-500 progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 bg-white rounded-lg shadow-lg p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-bold">Event Log</h3>
+                        <button id="clearLogBtn" class="text-xs text-gray-500 hover:text-blue-500">Clear Log</button>
+                    </div>
+                    <div id="eventLog" class="h-32 overflow-y-auto text-sm space-y-1">
+                        <div class="text-gray-500 italic">Welcome to your farm! Plant some crops to get started.</div>
+                    </div>
+                </div>
+                
+                <!-- Mini-game area -->
+                <div class="mt-4 bg-white rounded-lg shadow-lg p-4 hidden" id="miniGameContainer">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-bold">Pest Control Mini-Game</h3>
+                        <button id="closeMiniGameBtn" class="text-xs text-gray-500 hover:text-red-500">Close</button>
+                    </div>
+                    <div class="text-center py-4">
+                        <div class="relative h-32 bg-gray-100 rounded-lg mb-4 overflow-hidden" id="pestGameArea">
+                            <div class="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                                <p class="text-gray-500">Click on pests to protect your crops!</p>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Pests Eliminated: <span id="pestScore">0</span></span>
+                            <span>Time Left: <span id="pestTime">10</span>s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Shop and Upgrades Panel -->
+            <div class="w-full lg:w-1/4 bg-white rounded-lg shadow-lg p-6">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-green-700 mb-4">Shop</h2>
+                    
+                    <div class="flex justify-between mb-4 border-b">
+                        <button id="shopTab" class="font-bold border-b-2 border-green-500 text-green-700 pb-2">Seeds</button>
+                        <button id="upgradesTab" class="text-gray-500 hover:text-green-700 pb-2">Upgrades</button>
+                        <button id="achievementsTab" class="text-gray-500 hover:text-green-700 pb-2">Achievements</button>
+                    </div>
+                    
+                    <div id="shopItems" class="space-y-4">
+                        <!-- Shop items will be added here dynamically -->
+                    </div>
+                    
+                    <div id="upgradeItems" class="space-y-4 hidden">
+                        <!-- Upgrade items will be added here dynamically -->
+                    </div>
+                    
+                    <div id="achievementsList" class="space-y-4 hidden">
+                        <!-- Achievements will be added here dynamically -->
+                    </div>
+                </div>
+                
+                <div class="mt-6">
+                    <h3 class="font-bold mb-2">Current Bonuses</h3>
+                    <div id="bonuses" class="text-sm space-y-2">
+                        <div><i class="fas fa-check text-green-500 mr-2"></i> None yet - buy upgrades!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Background music -->
+    <audio id="backgroundMusic" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- Sound effects -->
+    <audio id="harvestSound">
+        <source src="https://www.soundjay.com/buttons/sounds/button-09.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="plantSound">
+        <source src="https://www.soundjay.com/buttons/sounds/button-03.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="coinSound">
+        <source src="https://www.soundjay.com/buttons/sounds/button-10.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="achievementSound">
+        <source src="https://www.soundjay.com/buttons/sounds/button-21.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="pestSound">
+        <source src="https://www.soundjay.com/buttons/sounds/button-42.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // Game State
+        const gameState = {
+            money: 100,
+            day: 1,
+            xp: 0,
+            level: 1,
+            xpToNextLevel: 100,
+            season: 'spring',
+            weather: 'sunny',
+            inventory: {},
+            unlockedCrops: ['carrot', 'wheat'],
+            unlockedUpgrades: [],
+            farmerPosition: { x: 0, y: 0 },
+            plots: Array(15).fill(null).map(() => ({ 
+                crop: null, 
+                growth: 0, 
+                water: 0,
+                fertilizer: false 
+            })),
+            events: [],
+            achievements: {
+                firstHarvest: false,
+                level5: false,
+                level10: false,
+                allCrops: false,
+                millionaire: false,
+                perfectSeason: false,
+                pestHunter: false,
+                cropMaster: false,
+                speedFarmer: false,
+                collector: false,
+                fertilizerKing: false,
+                irrigationExpert: false
+            },
+            stats: {
+                totalHarvests: 0,
+                totalMoneyEarned: 0,
+                cropsPlanted: {},
+                daysPlayed: 0,
+                pestsDefeated: 0,
+                fastestHarvest: 0
+            },
+            miniGameActive: false
+        };
+
+        // Crop Data
+        const crops = {
+            carrot: {
+                name: 'Carrot',
+                price: 10,
+                growthTime: 3,
+                sellPrice: 20,
+                season: ['spring', 'fall'],
+                icon: '🥕',
+                color: 'bg-orange-100'
+            },
+            wheat: {
+                name: 'Wheat',
+                price: 15,
+                growthTime: 4,
+                sellPrice: 30,
+                season: ['spring', 'summer'],
+                icon: '🌾',
+                color: 'bg-yellow-100'
+            },
+            corn: {
+                name: 'Corn',
+                price: 25,
+                growthTime: 5,
+                sellPrice: 50,
+                season: ['summer'],
+                icon: '🌽',
+                color: 'bg-yellow-50'
+            },
+            pumpkin: {
+                name: 'Pumpkin',
+                price: 40,
+                growthTime: 6,
+                sellPrice: 80,
+                season: ['fall'],
+                icon: '🎃',
+                color: 'bg-orange-50'
+            },
+            potato: {
+                name: 'Potato',
+                price: 20,
+                growthTime: 4,
+                sellPrice: 45,
+                season: ['spring', 'fall'],
+                icon: '🥔',
+                color: 'bg-yellow-100'
+            },
+            strawberry: {
+                name: 'Strawberry',
+                price: 30,
+                growthTime: 3,
+                sellPrice: 60,
+                season: ['spring', 'summer'],
+                icon: '🍓',
+                color: 'bg-red-100'
+            },
+            tomato: {
+                name: 'Tomato',
+                price: 35,
+                growthTime: 5,
+                sellPrice: 70,
+                season: ['summer'],
+                icon: '🍅',
+                color: 'bg-red-50'
+            }
+        };
+
+        // Upgrades
+        const upgrades = {
+            wateringCan: {
+                name: 'Watering Can',
+                description: 'All crops grow 20% faster',
+                price: 100,
+                effect: 'growthSpeed',
+                modifier: 0.8,
+                icon: '🚿',
+                category: 'growth'
+            },
+            fertilizer: {
+                name: 'Fertilizer',
+                description: 'Increase yield by 30%',
+                price: 150,
+                effect: 'yield',
+                modifier: 1.3,
+                icon: '🧪',
+                category: 'yield'
+            },
+            scarecrow: {
+                name: 'Scarecrow',
+                description: 'Prevents crop loss from pests',
+                price: 200,
+                effect: 'pestProtection',
+                modifier: 0,
+                icon: '🦉',
+                category: 'protection'
+            },
+            irrigation: {
+                name: 'Irrigation System',
+                description: 'Automatically waters crops',
+                price: 300,
+                effect: 'autoWater',
+                modifier: 0,
+                icon: '💧',
+                category: 'automation'
+            },
+            greenhouse: {
+                name: 'Greenhouse',
+                description: 'Grow any crop in any season',
+                price: 500,
+                effect: 'seasonProof',
+                modifier: 0,
+                icon: '🏡',
+                category: 'growth'
+            },
+            tractor: {
+                name: 'Tractor',
+                description: 'Harvest multiple crops at once',
+                price: 400,
+                effect: 'multiHarvest',
+                modifier: 0,
+                icon: '🚜',
+                category: 'efficiency'
+            }
+        };
+
+        // Achievements
+        const achievements = {
+            firstHarvest: {
+                name: "First Harvest",
+                description: "Harvest your first crop",
+                icon: "🌱",
+                reward: 50,
+                unlocked: false
+            },
+            level5: {
+                name: "Level 5 Farmer",
+                description: "Reach level 5",
+                icon: "⭐",
+                reward: 100,
+                unlocked: false
+            },
+            level10: {
+                name: "Level 10 Farmer",
+                description: "Reach level 10",
+                icon: "🌟🌟",
+                reward: 250,
+                unlocked: false
+            },
+            allCrops: {
+                name: "Crop Collector",
+                description: "Unlock all crop types",
+                icon: "🌽🍓🥕",
+                reward: 200,
+                unlocked: false
+            },
+            millionaire: {
+                name: "Millionaire",
+                description: "Earn $1000 in total",
+                icon: "💰",
+                reward: 500,
+                unlocked: false
+            },
+            perfectSeason: {
+                name: "Perfect Season",
+                description: "Harvest 10 crops in a single season",
+                icon: "🍂",
+                reward: 150,
+                unlocked: false
+            },
+            pestHunter: {
+                name: "Pest Hunter",
+                description: "Defeat 20 pests in mini-games",
+                icon: "🐛",
+                reward: 100,
+                unlocked: false
+            },
+            cropMaster: {
+                name: "Crop Master",
+                description: "Harvest 50 crops in total",
+                icon: "👨‍🌾",
+                reward: 300,
+                unlocked: false
+            },
+            speedFarmer: {
+                name: "Speed Farmer",
+                description: "Harvest a crop in under 2 days",
+                icon: "⏱️",
+                reward: 150,
+                unlocked: false
+            },
+            collector: {
+                name: "Seed Collector",
+                description: "Collect 50 seeds in total",
+                icon: "🌰",
+                reward: 100,
+                unlocked: false
+            },
+            fertilizerKing: {
+                name: "Fertilizer King",
+                description: "Use fertilizer on 20 crops",
+                icon: "🧴",
+                reward: 120,
+                unlocked: false
+            },
+            irrigationExpert: {
+                name: "Irrigation Expert",
+                description: "Buy all irrigation upgrades",
+                icon: "💦",
+                reward: 200,
+                unlocked: false
+            }
+        };
+
+        // Seasons
+        const seasons = ['spring', 'summer', 'fall', 'winter'];
+        const seasonNames = {
+            spring: 'Spring',
+            summer: 'Summer',
+            fall: 'Fall',
+            winter: 'Winter'
+        };
+
+        // Weather
+        const weatherTypes = {
+            sunny: { name: 'Sunny', effect: '☀️', bonus: 1.1, class: 'bg-yellow-100 bg-opacity-30' },
+            rainy: { name: 'Rainy', effect: '🌧️', bonus: 1.2, class: 'bg-blue-100 bg-opacity-30' },
+            cloudy: { name: 'Cloudy', effect: '☁️', bonus: 1, class: 'bg-gray-100 bg-opacity-30' },
+            stormy: { name: 'Stormy', effect: '⛈️', bonus: 0.8, class: 'bg-gray-400 bg-opacity-30' },
+            snowy: { name: 'Snowy', effect: '❄️', bonus: 0.7, class: 'bg-blue-100 bg-opacity-30' }
+        };
+
+        // DOM Elements
+        const moneyDisplay = document.getElementById('money');
+        const dayDisplay = document.getElementById('day');
+        const xpBar = document.getElementById('xpBar');
+        const xpText = document.getElementById('xpText');
+        const levelDisplay = document.getElementById('level');
+        const inventoryDisplay = document.getElementById('inventory');
+        const eventLog = document.getElementById('eventLog');
+        const farmGrid = document.getElementById('farmGrid');
+        const nextDayBtn = document.getElementById('nextDayBtn');
+        const shopItems = document.getElementById('shopItems');
+        const upgradeItems = document.getElementById('upgradeItems');
+        const achievementsList = document.getElementById('achievementsList');
+        const shopTab = document.getElementById('shopTab');
+        const upgradesTab = document.getElementById('upgradesTab');
+        const achievementsTab = document.getElementById('achievementsTab');
+        const seasonDisplay = document.getElementById('seasonDisplay');
+        const weatherEffect = document.getElementById('weatherEffect');
+        const farmer = document.getElementById('farmer');
+        const bonusesDisplay = document.getElementById('bonuses');
+        const achievementToast = document.getElementById('achievementToast');
+        const achievementCount = document.getElementById('achievementCount');
+        const musicToggle = document.getElementById('musicToggle');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const miniGameContainer = document.getElementById('miniGameContainer');
+        const pestGameArea = document.getElementById('pestGameArea');
+        const pestScore = document.getElementById('pestScore');
+        const pestTime = document.getElementById('pestTime');
+        const closeMiniGameBtn = document.getElementById('closeMiniGameBtn');
+        const dayProgress = document.getElementById('dayProgress');
+        
+        // Audio Elements
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const harvestSound = document.getElementById('harvestSound');
+        const plantSound = document.getElementById('plantSound');
+        const coinSound = document.getElementById('coinSound');
+        const achievementSound = document.getElementById('achievementSound');
+        const pestSound = document.getElementById('pestSound');
+
+        // Game Variables
+        let selectedItem = null;
+        let selectedPlot = null;
+        let musicPlaying = false;
+        let dayTimer = null;
+        let dayProgressValue = 0;
+        let miniGameInterval;
+        let miniGameTimeLeft = 10;
+        let miniGameScore = 0;
+
+        // Initialize Game
+        function initGame() {
+            updateDisplays();
+            renderFarm();
+            renderShop();
+            renderUpgrades();
+            renderAchievements();
+            updateSeasonDisplay();
+            
+            // Set initial weather
+            changeWeather();
+            
+            // Add event listeners
+            nextDayBtn.addEventListener('click', advanceDay);
+            shopTab.addEventListener('click', () => toggleTabs('shop'));
+            upgradesTab.addEventListener('click', () => toggleTabs('upgrades'));
+            achievementsTab.addEventListener('click', () => toggleTabs('achievements'));
+            musicToggle.addEventListener('click', toggleMusic);
+            clearLogBtn.addEventListener('click', clearEventLog);
+            closeMiniGameBtn.addEventListener('click', closeMiniGame);
+            
+            // Initialize crop stats
+            Object.keys(crops).forEach(crop => {
+                gameState.stats.cropsPlanted[crop] = 0;
+            });
+            
+            // Add initial inventory items
+            addToInventory('carrot', 5);
+            addToInventory('wheat', 3);
+            
+            // Add tooltip to farmer
+            farmer.classList.add('has-tooltip');
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap';
+            tooltip.textContent = 'Press M to toggle music';
+            farmer.appendChild(tooltip);
+            
+            logEvent('Welcome to Farm Harvest Frenzy! Plant some crops to get started.');
+            
+            // Start day progression animation
+            startDayTimer();
+        }
+
+        // Start day timer animation
+        function startDayTimer() {
+            dayProgressValue = 0;
+            dayProgress.children[0].style.width = '0%';
+            
+            if (dayTimer) clearInterval(dayTimer);
+            
+            dayTimer = setInterval(() => {
+                dayProgressValue += 1;
+                dayProgress.children[0].style.width = `${dayProgressValue}%`;
+                
+                if (dayProgressValue >= 100) {
+                    clearInterval(dayTimer);
+                }
+            }, 100);
+        }
+
+        // Toggle between shop, upgrades and achievements tabs
+        function toggleTabs(tab) {
+            shopTab.classList.remove('border-b-2', 'border-green-500', 'text-green-700');
+            shopTab.classList.add('text-gray-500');
+            upgradesTab.classList.remove('border-b-2', 'border-green-500', 'text-green-700');
+            upgradesTab.classList.add('text-gray-500');
+            achievementsTab.classList.remove('border-b-2', 'border-green-500', 'text-green-700');
+            achievementsTab.classList.add('text-gray-500');
+            
+            shopItems.classList.add('hidden');
+            upgradeItems.classList.add('hidden');
+            achievementsList.classList.add('hidden');
+            
+            switch(tab) {
+                case 'shop':
+                    shopTab.classList.add('border-b-2', 'border-green-500', 'text-green-700');
+                    shopTab.classList.remove('text-gray-500');
+                    shopItems.classList.remove('hidden');
+                    break;
+                case 'upgrades':
+                    upgradesTab.classList.add('border-b-2', 'border-green-500', 'text-green-700');
+                    upgradesTab.classList.remove('text-gray-500');
+                    upgradeItems.classList.remove('hidden');
+                    break;
+                case 'achievements':
+                    achievementsTab.classList.add('border-b-2', 'border-green-500', 'text-green-700');
+                    achievementsTab.classList.remove('text-gray-500');
+                    achievementsList.classList.remove('hidden');
+                    break;
+            }
+        }
+
+        // Toggle background music
+        function toggleMusic() {
+            if (musicPlaying) {
+                backgroundMusic.pause();
+                musicPlaying = false;
+                musicToggle.innerHTML = '<i class="fas fa-music mr-2"></i><span>Music Off</span>';
+                logEvent('Music turned off');
+            } else {
+                backgroundMusic.play();
+                musicPlaying = true;
+                musicToggle.innerHTML = '<i class="fas fa-music mr-2"></i><span>Music On</span>';
+                logEvent('Music turned on');
+            }
+        }
+
+        // Clear event log
+        function clearEventLog() {
+            eventLog.innerHTML = '<div class="text-gray-500 italic">Event log cleared.</div>';
+        }
+
+        // Update all displays
+        function updateDisplays() {
+            moneyDisplay.textContent = `$${gameState.money}`;
+            dayDisplay.textContent = gameState.day;
+            xpBar.style.width = `${(gameState.xp / gameState.xpToNextLevel) * 100}%`;
+            xpText.textContent = `${gameState.xp}/${gameState.xpToNextLevel} XP`;
+            levelDisplay.textContent = gameState.level;
+            
+            // Update achievement count
+            const unlockedCount = Object.values(gameState.achievements).filter(a => a).length;
+            achievementCount.textContent = `${unlockedCount}/${Object.keys(gameState.achievements).length}`;
+            
+            // Update inventory display
+            inventoryDisplay.innerHTML = '';
+            for (const [item, quantity] of Object.entries(gameState.inventory)) {
+                if (quantity > 0) {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'bg-gray-100 rounded p-2 text-center cursor-pointer hover:bg-gray-200 transition';
+                    itemDiv.innerHTML = `
+                        <div class="text-2xl">${crops[item]?.icon || '🌱'}</div>
+                        <div class="text-xs">${quantity}</div>
+                    `;
+                    itemDiv.addEventListener('click', () => selectItem(item));
+                    if (selectedItem === item) {
+                        itemDiv.classList.add('ring-2', 'ring-green-500');
+                    }
+                    
+                    // Add tooltip
+                    const crop = crops[item];
+                    if (crop) {
+                        itemDiv.classList.add('has-tooltip', 'relative');
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap mb-1';
+                        tooltip.textContent = `${crop.name} Seed`;
+                        itemDiv.appendChild(tooltip);
+                    }
+                    
+                    inventoryDisplay.appendChild(itemDiv);
+                }
+            }
+            
+            // Update bonuses display
+            bonusesDisplay.innerHTML = '';
+            if (gameState.unlockedUpgrades.length === 0) {
+                bonusesDisplay.innerHTML = '<div><i class="fas fa-check text-green-500 mr-2"></i> None yet - buy upgrades!</div>';
+            } else {
+                gameState.unlockedUpgrades.forEach(upgradeId => {
+                    const upgrade = upgrades[upgradeId];
+                    const bonusDiv = document.createElement('div');
+                    bonusDiv.className = 'flex items-center';
+                    bonusDiv.innerHTML = `
+                        <i class="fas fa-check text-green-500 mr-2"></i>
+                        <span>${upgrade.name}: ${upgrade.description}</span>
+                    `;
+                    bonusesDisplay.appendChild(bonusDiv);
+                });
+            }
+        }
+
+        // Render the farm plots
+        function renderFarm() {
+            farmGrid.innerHTML = '';
+            gameState.plots.forEach((plot, index) => {
+                const plotDiv = document.createElement('div');
+                plotDiv.className = 'bg-brown-500 bg-gradient-to-b from-yellow-100 to-yellow-300 rounded-lg flex items-center justify-center cursor-pointer h-20 relative overflow-hidden hover:shadow-md transition';
+                
+                if (plot.crop) {
+                    const crop = crops[plot.crop];
+                    const growthPercent = (plot.growth / crop.growthTime) * 100;
+                    const isInSeason = crop.season.includes(gameState.season);
+                    
+                    plotDiv.innerHTML = `
+                        <div class="absolute top-0 left-0 right-0 h-1 bg-gray-200">
+                            <div class="h-full bg-green-500 progress-bar" style="width: ${growthPercent}%"></div>
+                        </div>
+                        <div class="text-4xl grow-animation ${!isInSeason ? 'opacity-70' : ''}">${crop.icon}</div>
+                        <div class="absolute bottom-1 right-1 text-xs">
+                            ${plot.water > 0 ? '💧' : ''}
+                            ${plot.fertilizer ? '🧪' : ''}
+                            ${!isInSeason ? '❄️' : ''}
+                        </div>
+                    `;
+                    
+                    if (growthPercent >= 100) {
+                        plotDiv.classList.add('bg-gradient-to-b', 'from-green-100', 'to-green-300');
+                        plotDiv.addEventListener('click', () => harvestPlot(index));
+                    } else {
+                        plotDiv.addEventListener('click', () => showPlotInfo(index));
+                    }
+                    
+                    // Add crop tooltip
+                    plotDiv.classList.add('has-tooltip', 'relative');
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'tooltip crop-tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap mb-1';
+                    tooltip.innerHTML = `
+                        <div class="font-bold">${crop.name}</div>
+                        <div>Growth: ${Math.round(growthPercent)}%</div>
+                        <div>${isInSeason ? 'In season' : 'Out of season'}</div>
+                        ${growthPercent >= 100 ? '<div class="text-green-300">Ready to harvest!</div>' : ''}
+                    `;
+                    plotDiv.appendChild(tooltip);
+                } else {
+                    plotDiv.innerHTML = '<div class="text-2xl text-gray-500">+</div>';
+                    plotDiv.addEventListener('click', () => selectPlot(index));
+                    
+                    // Add empty plot tooltip
+                    plotDiv.classList.add('has-tooltip', 'relative');
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap mb-1';
+                    tooltip.textContent = 'Empty plot - Click to plant';
+                    plotDiv.appendChild(tooltip);
+                }
+                
+                if (selectedPlot === index) {
+                    plotDiv.classList.add('ring-2', 'ring-blue-500');
+                }
+                
+                farmGrid.appendChild(plotDiv);
+            });
+        }
+
+        // Show plot information
+        function showPlotInfo(index) {
+            const plot = gameState.plots[index];
+            if (!plot.crop) return;
+            
+            const crop = crops[plot.crop];
+            const growthPercent = (plot.growth / crop.growthTime) * 100;
+            const isInSeason = crop.season.includes(gameState.season);
+            
+            logEvent(`Plot ${index + 1}: ${crop.name} (${Math.round(growthPercent)}% grown) - ${isInSeason ? 'In season' : 'Out of season'}`);
+        }
+
+        // Render the shop
+        function renderShop() {
+            shopItems.innerHTML = '';
+            gameState.unlockedCrops.forEach(cropId => {
+                const crop = crops[cropId];
+                const inSeason = crop.season.includes(gameState.season);
+                
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `bg-white border rounded-lg p-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition ${inSeason ? '' : 'opacity-70'}`;
+                
+                itemDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="text-3xl mr-3 ${crop.color} p-2 rounded-full">${crop.icon}</div>
+                        <div>
+                            <div class="font-bold">${crop.name}</div>
+                            <div class="text-xs ${inSeason ? 'text-green-500' : 'text-gray-500'}">
+                                ${inSeason ? 'In season' : 'Out of season'} • Grows in ${crop.growthTime} days
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-green-600">$${crop.price}</div>
+                        <div class="text-xs">Sells for $${crop.sellPrice}</div>
+                    </div>
+                `;
+                
+                if (inSeason) {
+                    itemDiv.addEventListener('click', () => buyItem(cropId));
+                } else {
+                    itemDiv.innerHTML += '<div class="absolute inset-0 bg-gray-100 bg-opacity-50 cursor-not-allowed"></div>';
+                }
+                
+                shopItems.appendChild(itemDiv);
+            });
+            
+            // Add unlockable crops that player doesn't have yet
+            Object.keys(crops).forEach(cropId => {
+                if (!gameState.unlockedCrops.includes(cropId)) {
+                    const crop = crops[cropId];
+                    const unlockLevel = cropId === 'corn' ? 3 : 
+                                       cropId === 'pumpkin' ? 5 : 
+                                       cropId === 'potato' ? 2 :
+                                       cropId === 'strawberry' ? 4 :
+                                       cropId === 'tomato' ? 6 : 0;
+                    
+                    if (gameState.level >= unlockLevel) {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'bg-gray-100 border rounded-lg p-3 flex justify-between items-center relative';
+                        
+                        itemDiv.innerHTML = `
+                            <div class="flex items-center">
+                                <div class="text-3xl mr-3 ${crop.color} p-2 rounded-full">${crop.icon}</div>
+                                <div>
+                                    <div class="font-bold">${crop.name}</div>
+                                    <div class="text-xs text-gray-500">Unlock at level ${unlockLevel}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold text-green-600">$${crop.price}</div>
+                                <div class="text-xs">Sells for $${crop.sellPrice}</div>
+                            </div>
+                            <div class="absolute inset-0 bg-gray-100 bg-opacity-70 flex items-center justify-center">
+                                <button class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm unlock-btn" data-crop="${cropId}">
+                                    Unlock ($${crop.price * 2})
+                                </button>
+                            </div>
+                        `;
+                        
+                        shopItems.appendChild(itemDiv);
+                    }
+                }
+            });
+            
+            // Add event listener for unlock buttons
+            document.querySelectorAll('.unlock-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cropId = btn.dataset.crop;
+                    const crop = crops[cropId];
+                    const unlockCost = crop.price * 2;
+                    
+                    if (gameState.money >= unlockCost) {
+                        gameState.money -= unlockCost;
+                        gameState.unlockedCrops.push(cropId);
+                        updateDisplays();
+                        renderShop();
+                        logEvent(`Unlocked ${crop.name} seeds!`);
+                        coinSound.play();
+                        
+                        // Check for achievement
+                        if (Object.keys(crops).every(crop => gameState.unlockedCrops.includes(crop))) {
+                            unlockAchievement('allCrops');
+                        }
+                    } else {
+                        logEvent('Not enough money to unlock this crop!');
+                    }
+                });
+            });
+        }
+
+        // Render upgrades
+        function renderUpgrades() {
+            upgradeItems.innerHTML = '';
+            Object.keys(upgrades).forEach(upgradeId => {
+                const upgrade = upgrades[upgradeId];
+                const owned = gameState.unlockedUpgrades.includes(upgradeId);
+                
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `bg-white border rounded-lg p-3 ${owned ? 'opacity-70' : ''}`;
+                
+                itemDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="text-2xl">${upgrade.icon}</div>
+                        <div class="font-bold text-green-600">$${upgrade.price}</div>
+                    </div>
+                    <div class="text-sm mb-3">${upgrade.description}</div>
+                    ${owned ? 
+                        '<div class="text-center text-green-500 font-bold">Owned</div>' : 
+                        '<button class="w-full bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded unlock-upgrade-btn" data-upgrade="' + upgradeId + '">Buy</button>'
+                    }
+                `;
+                
+                upgradeItems.appendChild(itemDiv);
+            });
+            
+            // Add event listener for upgrade buttons
+            document.querySelectorAll('.unlock-upgrade-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const upgradeId = btn.dataset.upgrade;
+                    const upgrade = upgrades[upgradeId];
+                    
+                    if (gameState.money >= upgrade.price) {
+                        gameState.money -= upgrade.price;
+                        gameState.unlockedUpgrades.push(upgradeId);
+                        updateDisplays();
+                        renderUpgrades();
+                        logEvent(`Purchased ${upgrade.name} upgrade!`);
+                        coinSound.play();
+                        
+                        // Check for irrigation expert achievement
+                        if (upgradeId === 'irrigation' || upgradeId === 'greenhouse') {
+                            if (gameState.unlockedUpgrades.includes('irrigation') && 
+                                gameState.unlockedUpgrades.includes('greenhouse')) {
+                                unlockAchievement('irrigationExpert');
+                            }
+                        }
+                    } else {
+                        logEvent('Not enough money for this upgrade!');
+                    }
+                });
+            });
+        }
+
+        // Render achievements
+        function renderAchievements() {
+            achievementsList.innerHTML = '';
+            Object.keys(achievements).forEach(achievementId => {
+                const achievement = achievements[achievementId];
+                const unlocked = gameState.achievements[achievementId];
+                
+                const achievementDiv = document.createElement('div');
+                achievementDiv.className = `bg-white border rounded-lg p-3 ${unlocked ? '' : 'opacity-50'}`;
+                
+                achievementDiv.innerHTML = `
+                    <div class="flex items-center mb-2">
+                        <div class="text-2xl mr-3">${achievement.icon}</div>
+                        <div>
+                            <div class="font-bold">${achievement.name}</div>
+                            <div class="text-xs">${achievement.description}</div>
+                        </div>
+                    </div>
+                    ${unlocked ? 
+                        `<div class="text-green-500 text-sm">Reward: $${achievement.reward} • Unlocked!</div>` : 
+                        `<div class="text-gray-500 text-sm">Reward: $${achievement.reward} • Locked</div>`
+                    }
+                `;
+                
+                achievementsList.appendChild(achievementDiv);
+            });
+        }
+
+        // Unlock an achievement
+        function unlockAchievement(achievementId) {
+            if (!gameState.achievements[achievementId]) {
+                gameState.achievements[achievementId] = true;
+                const achievement = achievements[achievementId];
+                
+                // Add reward money
+                gameState.money += achievement.reward;
+                
+                // Show achievement toast
+                const toast = document.createElement('div');
+                toast.className = 'achievement-badge bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-2 rounded-lg shadow-lg';
+                toast.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="text-2xl mr-3">${achievement.icon}</div>
+                        <div>
+                            <div class="font-bold">Achievement Unlocked!</div>
+                            <div>${achievement.name}</div>
+                            <div class="text-xs mt-1">+$${achievement.reward}</div>
+                        </div>
+                    </div>
+                `;
+                
+                achievementToast.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 10);
+                
+                // Play sound and log event
+                achievementSound.play();
+                logEvent(`Achievement unlocked: ${achievement.name}! +$${achievement.reward}`);
+                
+                // Remove toast after delay
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, 5000);
+                
+                // Update displays
+                updateDisplays();
+                renderAchievements();
+            }
+        }
+
+        // Select an item from inventory
+        function selectItem(item) {
+            selectedItem = item;
+            updateDisplays();
+            logEvent(`Selected ${crops[item].name} seeds`);
+        }
+
+        // Select a plot to plant
+        function selectPlot(index) {
+            if (selectedItem) {
+                if (gameState.plots[index].crop) {
+                    logEvent('This plot already has a crop!');
+                    return;
+                }
+                
+                if (gameState.inventory[selectedItem] > 0) {
+                    gameState.plots[index].crop = selectedItem;
+                    gameState.plots[index].growth = 0;
+                    gameState.plots[index].water = 0;
+                    
+                    // Use fertilizer if available
+                    if (gameState.unlockedUpgrades.includes('fertilizer')) {
+                        gameState.plots[index].fertilizer = true;
+                        gameState.stats.cropsPlanted[selectedItem]++;
+                        
+                        // Check for fertilizer king achievement
+                        if (Object.values(gameState.stats.cropsPlanted).reduce((a, b) => a + b, 0) >= 20) {
+                            unlockAchievement('fertilizerKing');
+                        }
+                    }
+                    
+                    addToInventory(selectedItem, -1);
+                    plantSound.play();
+                    
+                    // Track crop planting stats
+                    gameState.stats.cropsPlanted[selectedItem] = (gameState.stats.cropsPlanted[selectedItem] || 0) + 1;
+                    
+                    // Animate farmer
+                    animateFarmerToPlot(index, () => {
+                        logEvent(`Planted ${crops[selectedItem].name} in plot ${index + 1}`);
+                        renderFarm();
+                        
+                        // Check for speed farmer achievement if growth time is very short
+                        const crop = crops[selectedItem];
+                        if (crop.growthTime <= 2) {
+                            unlockAchievement('speedFarmer');
+                        }
+                    });
+                } else {
+                    logEvent(`No ${crops[selectedItem].name} seeds left!`);
+                }
+            } else {
+                logEvent('Select a seed from your inventory first!');
+            }
+        }
+
+        // Harvest a plot
+        function harvestPlot(index) {
+            const plot = gameState.plots[index];
+            const crop = crops[plot.crop];
+            
+            // Calculate sell price with bonuses
+            let sellPrice = crop.sellPrice;
+            
+            // Weather bonus
+            sellPrice *= weatherTypes[gameState.weather].bonus;
+            
+            // Fertilizer bonus
+            if (plot.fertilizer && gameState.unlockedUpgrades.includes('fertilizer')) {
+                sellPrice *= upgrades.fertilizer.modifier;
+            }
+            
+            sellPrice = Math.round(sellPrice);
+            
+            gameState.money += sellPrice;
+            gameState.stats.totalMoneyEarned += sellPrice;
+            gameState.stats.totalHarvests++;
+            addXP(10);
+            
+            // Check for first harvest achievement
+            if (gameState.stats.totalHarvests === 1) {
+                unlockAchievement('firstHarvest');
+            }
+            
+            // Check for crop master achievement
+            if (gameState.stats.totalHarvests >= 50) {
+                unlockAchievement('cropMaster');
+            }
+            
+            // Check for millionaire achievement
+            if (gameState.stats.totalMoneyEarned >= 1000) {
+                unlockAchievement('millionaire');
+            }
+            
+            // Chance to get extra seeds
+            if (Math.random() < 0.3) {
+                addToInventory(plot.crop, 1);
+                logEvent(`Harvested ${crop.name} for $${sellPrice} and got an extra seed!`);
+                
+                // Check for collector achievement
+                const totalSeeds = Object.values(gameState.inventory).reduce((a, b) => a + b, 0);
+                if (totalSeeds >= 50) {
+                    unlockAchievement('collector');
+                }
+            } else {
+                logEvent(`Harvested ${crop.name} for $${sellPrice}!`);
+            }
+            
+            // Reset plot
+            plot.crop = null;
+            plot.growth = 0;
+            plot.water = 0;
+            plot.fertilizer = false;
+            
+            harvestSound.play();
+            
+            // Animate farmer
+            animateFarmerToPlot(index, () => {
+                updateDisplays();
+                renderFarm();
+            });
+        }
+
+        // Buy an item from the shop
+        function buyItem(item) {
+            const crop = crops[item];
+            
+            if (gameState.money >= crop.price) {
+                gameState.money -= crop.price;
+                addToInventory(item, 1);
+                coinSound.play();
+                logEvent(`Bought 1 ${crop.name} seed for $${crop.price}`);
+                updateDisplays();
+            } else {
+                logEvent('Not enough money to buy this seed!');
+            }
+        }
+
+        // Add to inventory
+        function addToInventory(item, quantity) {
+            if (!gameState.inventory[item]) {
+                gameState.inventory[item] = 0;
+            }
+            gameState.inventory[item] += quantity;
+            updateDisplays();
+        }
+
+        // Add XP
+        function addXP(amount) {
+            gameState.xp += amount;
+            
+            // Check for level up
+            if (gameState.xp >= gameState.xpToNextLevel) {
+                gameState.level++;
+                gameState.xp -= gameState.xpToNextLevel;
+                gameState.xpToNextLevel = Math.floor(gameState.xpToNextLevel * 1.5);
+                logEvent(`Level up! You're now level ${gameState.level}`);
+                
+                // Check for level achievements
+                if (gameState.level >= 5 && !gameState.achievements.level5) {
+                    unlockAchievement('level5');
+                }
+                
+                if (gameState.level >= 10 && !gameState.achievements.level10) {
+                    unlockAchievement('level10');
+                }
+                
+                // Check for new crop unlocks
+                checkForUnlocks();
+            }
+            
+            updateDisplays();
+        }
+
+        // Check for new unlocks based on level
+        function checkForUnlocks() {
+            if (gameState.level >= 2 && !gameState.unlockedCrops.includes('potato')) {
+                gameState.unlockedCrops.push('potato');
+                logEvent('New crop unlocked: Potato!');
+                renderShop();
+            }
+            
+            if (gameState.level >= 3 && !gameState.unlockedCrops.includes('corn')) {
+                gameState.unlockedCrops.push('corn');
+                logEvent('New crop unlocked: Corn!');
+                renderShop();
+            }
+            
+            if (gameState.level >= 4 && !gameState.unlockedCrops.includes('strawberry')) {
+                gameState.unlockedCrops.push('strawberry');
+                logEvent('New crop unlocked: Strawberry!');
+                renderShop();
+            }
+            
+            if (gameState.level >= 5 && !gameState.unlockedCrops.includes('pumpkin')) {
+                gameState.unlockedCrops.push('pumpkin');
+                logEvent('New crop unlocked: Pumpkin!');
+                renderShop();
+            }
+            
+            if (gameState.level >= 6 && !gameState.unlockedCrops.includes('tomato')) {
+                gameState.unlockedCrops.push('tomato');
+                logEvent('New crop unlocked: Tomato!');
+                renderShop();
+            }
+        }
+
+        // Advance to the next day
+        function advanceDay() {
+            gameState.day++;
+            gameState.stats.daysPlayed++;
+            
+            // Start new day timer animation
+            startDayTimer();
+            
+            // Change season every 10 days
+            if (gameState.day % 10 === 0) {
+                const currentSeasonIndex = seasons.indexOf(gameState.season);
+                const nextSeasonIndex = (currentSeasonIndex + 1) % seasons.length;
+                gameState.season = seasons[nextSeasonIndex];
+                updateSeasonDisplay();
+                logEvent(`Season changed to ${seasonNames[gameState.season]}!`);
+                
+                // Check for perfect season achievement
+                const harvestsThisSeason = gameState.plots.filter(p => p.growth >= crops[p.crop]?.growthTime).length;
+                if (harvestsThisSeason >= 10) {
+                    unlockAchievement('perfectSeason');
+                }
+            }
+            
+            // Change weather
+            changeWeather();
+            
+            // Grow crops
+            let cropsGrown = 0;
+            gameState.plots.forEach(plot => {
+                if (plot.crop) {
+                    const crop = crops[plot.crop];
+                    let isInSeason = crop.season.includes(gameState.season);
+                    
+                    // Greenhouse makes all crops season-proof
+                    if (gameState.unlockedUpgrades.includes('greenhouse')) {
+                        isInSeason = true;
+                    }
+                    
+                    const growthRate = isInSeason ? 1 : 0.5; // Half speed out of season
+                    
+                    // Apply watering can bonus if owned
+                    if (gameState.unlockedUpgrades.includes('wateringCan')) {
+                        plot.growth += growthRate * upgrades.wateringCan.modifier;
+                    } else {
+                        plot.growth += growthRate;
+                    }
+                    
+                    // Irrigation system automatically waters crops
+                    if (gameState.unlockedUpgrades.includes('irrigation')) {
+                        plot.water = 2; // Keeps crops watered for 2 days
+                    } else {
+                        // Reduce water level
+                        if (plot.water > 0) {
+                            plot.water--;
+                        }
+                    }
+                    
+                    cropsGrown++;
+                }
+            });
+            
+            // Random events
+            if (Math.random() < 0.2) {
+                const eventTypes = [
+                    { 
+                        message: 'A friendly neighbor gave you some seeds!', 
+                        action: () => {
+                            const randomCrop = gameState.unlockedCrops[Math.floor(Math.random() * gameState.unlockedCrops.length)];
+                            addToInventory(randomCrop, 2);
+                        }
+                    },
+                    { 
+                        message: 'A storm damaged some crops!', 
+                        action: () => {
+                            gameState.plots.forEach(plot => {
+                                if (plot.crop && Math.random() < 0.3 && !gameState.unlockedUpgrades.includes('scarecrow')) {
+                                    plot.crop = null;
+                                    plot.growth = 0;
+                                }
+                            });
+                        }
+                    },
+                    { 
+                        message: 'The market prices are high today! All crops sell for 20% more.', 
+                        action: () => {
+                            // Prices will be higher when selling next day
+                        }
+                    },
+                    { 
+                        message: 'Pests are attacking your crops!', 
+                        action: () => {
+                            startPestMiniGame();
+                        }
+                    },
+                    { 
+                        message: 'You found a rare seed while walking around!', 
+                        action: () => {
+                            const rareCrops = Object.keys(crops).filter(c => !gameState.unlockedCrops.includes(c));
+                            if (rareCrops.length > 0) {
+                                const randomCrop = rareCrops[Math.floor(Math.random() * rareCrops.length)];
+                                addToInventory(randomCrop, 1);
+                                logEvent(`You found a rare ${crops[randomCrop].name} seed!`);
+                            } else {
+                                const randomCrop = gameState.unlockedCrops[Math.floor(Math.random() * gameState.unlockedCrops.length)];
+                                addToInventory(randomCrop, 3);
+                            }
+                        }
+                    }
+                ];
+                
+                const randomEvent = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+                randomEvent.action();
+                logEvent(randomEvent.message);
+            }
+            
+            if (cropsGrown > 0) {
+                logEvent(`Day ${gameState.day} - Your crops are growing!`);
+            } else {
+                logEvent(`Day ${gameState.day} - Plant some crops to earn money!`);
+            }
+            
+            updateDisplays();
+            renderFarm();
+        }
+
+        // Start pest mini-game
+        function startPestMiniGame() {
+            gameState.miniGameActive = true;
+            miniGameScore = 0;
+            miniGameTimeLeft = 10;
+            
+            pestScore.textContent = miniGameScore;
+            pestTime.textContent = miniGameTimeLeft;
+            
+            miniGameContainer.classList.remove('hidden');
+            miniGameContainer.classList.add('pulse-animation');
+            
+            // Clear any existing pests
+            pestGameArea.innerHTML = '<div class="absolute top-0 left-0 w-full h-full flex items-center justify-center"><p class="text-gray-500">Click on pests to protect your crops!</p></div>';
+            
+            // Start timer
+            miniGameInterval = setInterval(() => {
+                miniGameTimeLeft--;
+                pestTime.textContent = miniGameTimeLeft;
+                
+                if (miniGameTimeLeft <= 0) {
+                    endMiniGame();
+                }
+                
+                // Add new pest
+                if (miniGameTimeLeft > 0 && Math.random() < 0.5) {
+                    addPest();
+                }
+            }, 1000);
+            
+            // Add initial pests
+            for (let i = 0; i < 3; i++) {
+                addPest();
+            }
+        }
+
+        // Add a pest to the mini-game
+        function addPest() {
+            const pest = document.createElement('div');
+            pest.className = 'absolute text-2xl cursor-pointer';
+            pest.innerHTML = '🐛';
+            pest.style.left = `${Math.random() * 80 + 10}%`;
+            pest.style.top = `${Math.random() * 80 + 10}%`;
+            
+            pest.addEventListener('click', () => {
+                pestSound.play();
+                miniGameScore++;
+                pestScore.textContent = miniGameScore;
+                pest.remove();
+                
+                // Add explosion effect
+                const explosion = document.createElement('div');
+                explosion.className = 'absolute text-2xl animate-ping text-red-500';
+                explosion.innerHTML = '💥';
+                explosion.style.left = pest.style.left;
+                explosion.style.top = pest.style.top;
+                pestGameArea.appendChild(explosion);
+                
+                setTimeout(() => explosion.remove(), 300);
+            });
+            
+            pestGameArea.appendChild(pest);
+        }
+
+        // End the mini-game
+        function endMiniGame() {
+            clearInterval(miniGameInterval);
+            gameState.miniGameActive = false;
+            
+            // Update stats
+            gameState.stats.pestsDefeated += miniGameScore;
+            
+            // Check for pest hunter achievement
+            if (gameState.stats.pestsDefeated >= 20) {
+                unlockAchievement('pestHunter');
+            }
+            
+            // Reward player
+            const reward = miniGameScore * 5;
+            gameState.money += reward;
+            logEvent(`Pest control game over! Defeated ${miniGameScore} pests. Earned $${reward}.`);
+            
+            closeMiniGame();
+        }
+
+        // Close the mini-game
+        function closeMiniGame() {
+            clearInterval(miniGameInterval);
+            miniGameContainer.classList.add('hidden');
+            miniGameContainer.classList.remove('pulse-animation');
+            gameState.miniGameActive = false;
+            updateDisplays();
+        }
+
+        // Update season display
+        function updateSeasonDisplay() {
+            seasonDisplay.textContent = seasonNames[gameState.season];
+            seasonDisplay.className = 'px-3 py-1 rounded-full text-white font-bold';
+            
+            switch(gameState.season) {
+                case 'spring':
+                    seasonDisplay.classList.add('bg-green-500');
+                    document.getElementById('gameContainer').classList.add('season-spring');
+                    document.getElementById('gameContainer').classList.remove('season-summer', 'season-fall', 'season-winter');
+                    break;
+                case 'summer':
+                    seasonDisplay.classList.add('bg-yellow-500');
+                    document.getElementById('gameContainer').classList.add('season-summer');
+                    document.getElementById('gameContainer').classList.remove('season-spring', 'season-fall', 'season-winter');
+                    break;
+                case 'fall':
+                    seasonDisplay.classList.add('bg-orange-500');
+                    document.getElementById('gameContainer').classList.add('season-fall');
+                    document.getElementById('gameContainer').classList.remove('season-spring', 'season-summer', 'season-winter');
+                    break;
+                case 'winter':
+                    seasonDisplay.classList.add('bg-blue-500');
+                    document.getElementById('gameContainer').classList.add('season-winter');
+                    document.getElementById('gameContainer').classList.remove('season-spring', 'season-summer', 'season-fall');
+                    break;
+            }
+        }
+
+        // Change weather
+        function changeWeather() {
+            const weatherOptions = ['sunny', 'rainy', 'cloudy'];
+            if (gameState.season === 'winter') weatherOptions.push('snowy');
+            if (gameState.season === 'summer') weatherOptions.push('stormy');
+            
+            gameState.weather = weatherOptions[Math.floor(Math.random() * weatherOptions.length)];
+            const weather = weatherTypes[gameState.weather];
+            
+            weatherEffect.className = `absolute inset-0 pointer-events-none transition-opacity duration-500 flex items-center justify-center text-6xl ${weather.class}`;
+            weatherEffect.innerHTML = weather.effect;
+            weatherEffect.style.opacity = '0.7';
+            
+            setTimeout(() => {
+                weatherEffect.style.opacity = '0';
+            }, 2000);
+            
+            logEvent(`Weather today: ${weather.name}`);
+        }
+
+        // Animate farmer to plot
+        function animateFarmerToPlot(plotIndex, callback) {
+            const plot = farmGrid.children[plotIndex];
+            const plotRect = plot.getBoundingClientRect();
+            const farmerRect = farmer.getBoundingClientRect();
+            
+            const startX = farmerRect.left + farmerRect.width / 2;
+            const startY = farmerRect.top + farmerRect.height / 2;
+            const endX = plotRect.left + plotRect.width / 2;
+            const endY = plotRect.top + plotRect.height / 2;
+            
+            // Create a temporary farmer for animation
+            const tempFarmer = farmer.cloneNode(true);
+            tempFarmer.style.position = 'fixed';
+            tempFarmer.style.left = `${startX}px`;
+            tempFarmer.style.top = `${startY}px`;
+            tempFarmer.style.transform = 'translate(-50%, -50%)';
+            tempFarmer.style.zIndex = '100';
+            tempFarmer.classList.add('float-animation');
+            document.body.appendChild(tempFarmer);
+            
+            // Hide original farmer during animation
+            farmer.style.visibility = 'hidden';
+            
+            // Animate to plot
+            tempFarmer.style.transition = 'all 0.5s ease-in-out';
+            setTimeout(() => {
+                tempFarmer.style.left = `${endX}px`;
+                tempFarmer.style.top = `${endY}px`;
+                
+                setTimeout(() => {
+                    // Do action (plant/harvest)
+                    tempFarmer.classList.remove('float-animation');
+                    tempFarmer.classList.add('grow-animation');
+                    
+                    setTimeout(() => {
+                        tempFarmer.classList.remove('grow-animation');
+                        tempFarmer.classList.add('float-animation');
+                        
+                        // Animate back to original position
+                        setTimeout(() => {
+                            tempFarmer.style.left = `${startX}px`;
+                            tempFarmer.style.top = `${startY}px`;
+                            
+                            setTimeout(() => {
+                                // Remove temp farmer and show original
+                                tempFarmer.remove();
+                                farmer.style.visibility = 'visible';
+                                
+                                if (callback) callback();
+                            }, 500);
+                        }, 300);
+                    }, 300);
+                }, 500);
+            }, 10);
+        }
+
+        // Log an event
+        function logEvent(message) {
+            const eventDiv = document.createElement('div');
+            eventDiv.className = 'text-sm';
+            eventDiv.innerHTML = `<span class="text-gray-500">Day ${gameState.day}:</span> ${message}`;
+            eventLog.insertBefore(eventDiv, eventLog.firstChild);
+            
+            // Limit to 20 events
+            if (eventLog.children.length > 20) {
+                eventLog.removeChild(eventLog.lastChild);
+            }
+        }
+
+        // Start the game
+        window.onload = initGame;
+    </script>
+</body>
+</html>
