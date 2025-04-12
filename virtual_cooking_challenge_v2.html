@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Cooking Challenge | Geoffroy Streit - Hylst</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes chop {
+            0% { transform: translateY(0) rotate(0); }
+            50% { transform: translateY(5px) rotate(5deg); }
+            100% { transform: translateY(0) rotate(0); }
+        }
+        
+        @keyframes sizzle {
+            0% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0.8; transform: scale(1); }
+        }
+        
+        @keyframes flip {
+            0% { transform: rotateY(0); }
+            50% { transform: rotateY(180deg); }
+            100% { transform: rotateY(0); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+            100% { transform: translateX(0); }
+        }
+        
+        .chopping {
+            animation: chop 0.3s infinite;
+        }
+        
+        .sizzling {
+            animation: sizzle 1s infinite;
+        }
+        
+        .flipping {
+            animation: flip 0.5s;
+        }
+        
+        .pulsing {
+            animation: pulse 1s infinite;
+        }
+        
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .shaking {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .ingredient-drag {
+            cursor: grab;
+            transition: transform 0.2s;
+        }
+        
+        .ingredient-drag:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+        
+        .station-highlight {
+            box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.7);
+            transition: box-shadow 0.3s;
+        }
+        
+        .dish-complete {
+            transform: scale(1);
+            transition: transform 0.5s, opacity 0.5s;
+        }
+        
+        .dish-complete:hover {
+            transform: scale(1.05);
+        }
+        
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .has-tooltip:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+        }
+        
+        .glow {
+            filter: drop-shadow(0 0 8px currentColor);
+        }
+        
+        .ingredient-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #f59e0b;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .streak-counter {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+        
+        .combo-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px #000;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body class="bg-amber-50 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8 relative">
+            <div class="absolute top-0 left-0">
+                <button id="sound-toggle" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-2 rounded-full">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+            </div>
+            
+            <h1 class="text-4xl font-bold text-amber-800 mb-2 floating">Virtual Cooking Challenge</h1>
+            <p class="text-lg text-amber-700">Test your culinary skills against the clock!</p>
+            
+            <div class="flex justify-between items-center mt-6 bg-amber-100 rounded-lg p-4 shadow-md relative">
+                <div class="text-left">
+                    <h3 class="font-semibold text-amber-800">Time: <span id="timer" class="font-mono">03:00</span></h3>
+                    <div class="w-full bg-gray-200 rounded-full h-4 mt-1">
+                        <div id="time-bar" class="bg-amber-600 h-4 rounded-full progress-bar" style="width: 100%"></div>
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <h3 class="font-semibold text-amber-800">Score: <span id="score">0</span></h3>
+                    <div class="flex justify-center mt-1" id="score-display">
+                        <i class="fas fa-star text-amber-400"></i>
+                        <i class="fas fa-star text-gray-300 ml-1"></i>
+                        <i class="fas fa-star text-gray-300 ml-1"></i>
+                    </div>
+                </div>
+                
+                <div class="text-right">
+                    <h3 class="font-semibold text-amber-800">Orders: <span id="orders-completed">0</span>/5</h3>
+                    <div class="w-full bg-gray-200 rounded-full h-4 mt-1">
+                        <div id="orders-bar" class="bg-green-600 h-4 rounded-full progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div id="streak-display" class="absolute -top-3 -right-3 hidden">
+                    <div class="streak-counter">
+                        <span id="streak-count">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="combo-display" class="combo-animation"></div>
+        </header>
+        
+        <!-- Game Area -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Ingredients Panel -->
+            <div class="bg-white p-4 rounded-lg shadow-md relative">
+                <h2 class="text-xl font-bold text-amber-800 mb-4 border-b pb-2">Ingredients</h2>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="ingredient-drag bg-amber-100 p-2 rounded-lg text-center cursor-pointer relative" draggable="true" data-ingredient="tomato">
+                        <i class="fas fa-apple-alt text-red-500 text-3xl glow"></i>
+                        <p class="text-sm mt-1">Tomato</p>
+                        <div class="ingredient-count hidden">0</div>
+                    </div>
+                    <div class="ingredient-drag bg-amber-100 p-2 rounded-lg text-center cursor-pointer relative" draggable="true" data-ingredient="onion">
+                        <i class="fas fa-ring text-purple-500 text-3xl glow"></i>
+                        <p class="text-sm mt-1">Onion</p>
+                        <div class="ingredient-count hidden">0</div>
+                    </div>
+                    <div class="ingredient-drag bg-amber-100 p-2 rounded-lg text-center cursor-pointer relative" draggable="true" data-ingredient="meat">
+                        <i class="fas fa-drumstick-bite text-amber-700 text-3xl glow"></i>
+                        <p class="text-sm mt-1">Meat</p>
+                        <div class="ingredient-count hidden">0</div>
+                    </div>
+                    <div class="ingredient-drag bg-amber-100 p-2 rounded-lg text-center cursor-pointer relative" draggable="true" data-ingredient="cheese">
+                        <i class="fas fa-cheese text-yellow-400 text-3xl glow"></i>
+                        <p class="text-sm mt-1">Cheese</p>
+                        <div class="ingredient-count hidden">0</div>
+                    </div>
+                    <div class="ingredient-drag bg-amber-100 p-2 rounded-lg text-center cursor-pointer relative" draggable="true" data-ingredient="lettuce">
+                        <i class="fas fa-leaf text-green-500 text-3xl glow"></i>
+                        <p class="text-sm mt-1">Lettuce</p>
+                        <div class="ingredient-count hidden">0</div>
+                    </div>
+                    <div class="ingredient-drag bg-amber-100 p-2 rounded-lg text-center cursor-pointer relative" draggable="true" data-ingredient="bread">
+                        <i class="fas fa-bread-slice text-amber-600 text-3xl glow"></i>
+                        <p class="text-sm mt-1">Bread</p>
+                        <div class="ingredient-count hidden">0</div>
+                    </div>
+                    <div class="ingredient-drag bg-amber-100 p-2 rounded-lg text-center cursor-pointer relative" draggable="true" data-ingredient="bellpepper">
+                        <i class="fas fa-pepper-hot text-red-600 text-3xl glow"></i>
+                        <p class="text-sm mt-1">Bell Pepper</p>
+                        <div class="ingredient-count hidden">0</div>
+                    </div>
+                    <div class="ingredient-drag bg-amber-100 p-2 rounded-lg text-center cursor-pointer relative" draggable="true" data-ingredient="mushroom">
+                        <i class="fas fa-mushroom text-amber-800 text-3xl glow"></i>
+                        <p class="text-sm mt-1">Mushroom</p>
+                        <div class="ingredient-count hidden">0</div>
+                    </div>
+                    <div class="ingredient-drag bg-amber-100 p-2 rounded-lg text-center cursor-pointer relative" draggable="true" data-ingredient="egg">
+                        <i class="fas fa-egg text-yellow-200 text-3xl glow"></i>
+                        <p class="text-sm mt-1">Egg</p>
+                        <div class="ingredient-count hidden">0</div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex justify-between">
+                    <button id="restock-btn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm">
+                        <i class="fas fa-sync-alt mr-2"></i>Restock (10s)
+                    </button>
+                    <button id="powerup-btn" class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg text-sm">
+                        <i class="fas fa-bolt mr-2"></i>Power-Up
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Cooking Stations -->
+            <div class="space-y-4">
+                <!-- Chopping Station -->
+                <div id="chopping-station" class="bg-white p-4 rounded-lg shadow-md station" data-station="chopping">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xl font-bold text-amber-800">Chopping Station</h2>
+                        <span class="bg-amber-200 text-amber-800 px-2 py-1 rounded-full text-xs">Chop Ingredients</span>
+                    </div>
+                    <div class="bg-amber-50 rounded-lg p-4 h-32 flex items-center justify-center">
+                        <div id="chopping-board" class="relative w-full h-full flex items-center justify-center">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3144/3144466.png" class="w-16 absolute opacity-20" alt="chopping board">
+                            <div id="chopping-content" class="z-10"></div>
+                        </div>
+                    </div>
+                    <div id="chopping-progress" class="mt-3 hidden">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium text-amber-700">Chopping...</span>
+                            <span class="text-sm font-medium text-amber-700"><span id="chop-count">0</span>/10</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="chop-bar" class="bg-amber-600 h-2.5 rounded-full progress-bar" style="width: 0%"></div>
+                        </div>
+                        <button id="chop-btn" class="mt-2 w-full bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-lg">
+                            <i class="fas fa-utensils mr-2"></i>Chop!
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Cooking Station -->
+                <div id="cooking-station" class="bg-white p-4 rounded-lg shadow-md station" data-station="cooking">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xl font-bold text-amber-800">Cooking Station</h2>
+                        <span class="bg-red-200 text-red-800 px-2 py-1 rounded-full text-xs">Cook Ingredients</span>
+                    </div>
+                    <div class="bg-amber-50 rounded-lg p-4 h-32 flex items-center justify-center">
+                        <div id="cooking-pan" class="relative w-full h-full flex items-center justify-center">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3144/3144487.png" class="w-20 absolute opacity-20" alt="frying pan">
+                            <div id="cooking-content" class="z-10"></div>
+                        </div>
+                    </div>
+                    <div id="cooking-controls" class="mt-3 hidden">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium text-red-700">Cooking...</span>
+                            <span class="text-sm font-medium text-red-700">Heat: <span id="heat-level">Medium</span></span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="cook-bar" class="bg-red-600 h-2.5 rounded-full progress-bar" style="width: 0%"></div>
+                        </div>
+                        <div class="flex space-x-2 mt-2">
+                            <button id="heat-down" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">
+                                <i class="fas fa-temperature-low mr-2"></i>Lower
+                            </button>
+                            <button id="flip-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg">
+                                <i class="fas fa-sync-alt mr-2"></i>Flip
+                            </button>
+                            <button id="heat-up" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">
+                                <i class="fas fa-temperature-high mr-2"></i>Higher
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Special Station -->
+                <div id="special-station" class="bg-white p-4 rounded-lg shadow-md station" data-station="special">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xl font-bold text-amber-800">Special Station</h2>
+                        <span class="bg-purple-200 text-purple-800 px-2 py-1 rounded-full text-xs">Power-Ups</span>
+                    </div>
+                    <div class="bg-amber-50 rounded-lg p-4 h-32 flex items-center justify-center">
+                        <div id="special-content" class="relative w-full h-full flex items-center justify-center">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3144/3144454.png" class="w-20 absolute opacity-20" alt="special station">
+                            <div id="special-items" class="z-10 grid grid-cols-2 gap-2 w-full h-full p-2"></div>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-center text-sm text-gray-600">
+                        <p>Use power-ups to boost your cooking!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order & Assembly -->
+            <div class="space-y-4">
+                <!-- Current Order -->
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xl font-bold text-amber-800">Current Order</h2>
+                        <span class="bg-green-200 text-green-800 px-2 py-1 rounded-full text-xs">Time Bonus: +<span id="time-bonus">50</span></span>
+                    </div>
+                    <div id="current-order" class="bg-green-50 rounded-lg p-4 min-h-32">
+                        <div id="order-description" class="text-center text-gray-500 italic py-8">
+                            Drag ingredients to stations to start cooking!
+                        </div>
+                        <div id="order-items" class="grid grid-cols-3 gap-2 hidden">
+                            <!-- Order items will be inserted here -->
+                        </div>
+                    </div>
+                    <button id="submit-order" class="mt-3 w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg hidden">
+                        <i class="fas fa-paper-plane mr-2"></i>Submit Order
+                    </button>
+                </div>
+                
+                <!-- Assembly Station -->
+                <div id="assembly-station" class="bg-white p-4 rounded-lg shadow-md station" data-station="assembly">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xl font-bold text-amber-800">Assembly Station</h2>
+                        <span class="bg-blue-200 text-blue-800 px-2 py-1 rounded-full text-xs">Build Dish</span>
+                    </div>
+                    <div class="bg-amber-50 rounded-lg p-4 h-48 flex items-center justify-center">
+                        <div id="assembly-plate" class="relative w-full h-full flex items-center justify-center">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3144/3144476.png" class="w-24 absolute opacity-20" alt="plate">
+                            <div id="assembly-content" class="z-10 grid grid-cols-2 gap-1 w-full h-full p-4"></div>
+                        </div>
+                    </div>
+                    <button id="clear-assembly" class="mt-3 w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">
+                        <i class="fas fa-trash-alt mr-2"></i>Clear Plate
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recipe Book (Hidden by default) -->
+        <div id="recipe-book" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div class="sticky top-0 bg-amber-600 text-white p-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold">Recipe Book</h2>
+                    <button id="close-recipe-book" class="text-white hover:text-amber-200">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="mb-8">
+                        <h3 class="text-lg font-semibold text-amber-800 mb-2">How to Play</h3>
+                        <ol class="list-decimal pl-5 space-y-2 text-gray-700">
+                            <li>Drag ingredients to the appropriate stations</li>
+                            <li>Complete the mini-games at each station</li>
+                            <li>Assemble the dish according to the order</li>
+                            <li>Submit before time runs out for bonus points!</li>
+                            <li>Complete orders quickly to build combos</li>
+                            <li>Use power-ups to boost your performance</li>
+                        </ol>
+                    </div>
+                    
+                    <h3 class="text-lg font-semibold text-amber-800 mb-4">Sample Recipes</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="border border-amber-200 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <div class="bg-amber-100 p-2 rounded-full mr-3">
+                                    <i class="fas fa-hamburger text-amber-600 text-xl"></i>
+                                </div>
+                                <h4 class="font-bold text-amber-800">Classic Burger</h4>
+                            </div>
+                            <ul class="space-y-1 text-sm text-gray-700">
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Chop: Tomato, Onion, Lettuce</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Cook: Meat patty (flip 2x)</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Assemble: Bread + Cheese + Patty + Veggies</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="border border-amber-200 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <div class="bg-amber-100 p-2 rounded-full mr-3">
+                                    <i class="fas fa-pizza-slice text-red-500 text-xl"></i>
+                                </div>
+                                <h4 class="font-bold text-amber-800">Veggie Pizza</h4>
+                            </div>
+                            <ul class="space-y-1 text-sm text-gray-700">
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Chop: Tomato, Onion, Bell Pepper, Mushroom</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Cook: (None, just assemble)</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Assemble: Bread + Cheese + Chopped Veggies</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="border border-amber-200 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <div class="bg-amber-100 p-2 rounded-full mr-3">
+                                    <i class="fas fa-egg text-yellow-200 text-xl"></i>
+                                </div>
+                                <h4 class="font-bold text-amber-800">Breakfast Platter</h4>
+                            </div>
+                            <ul class="space-y-1 text-sm text-gray-700">
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Chop: Tomato, Onion, Mushroom</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Cook: Eggs (flip 1x)</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Assemble: Bread + Eggs + Veggies</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="border border-amber-200 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <div class="bg-amber-100 p-2 rounded-full mr-3">
+                                    <i class="fas fa-leaf text-green-500 text-xl"></i>
+                                </div>
+                                <h4 class="font-bold text-amber-800">Garden Salad</h4>
+                            </div>
+                            <ul class="space-y-1 text-sm text-gray-700">
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Chop: Lettuce, Tomato, Onion, Bell Pepper</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Cook: (None, just assemble)</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i> Assemble: All chopped veggies</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <h3 class="text-lg font-semibold text-amber-800 mb-2">Power-Ups</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-purple-50 rounded-lg p-4">
+                                <div class="flex items-center mb-2">
+                                    <div class="bg-purple-100 p-2 rounded-full mr-3">
+                                        <i class="fas fa-bolt text-purple-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-purple-800">Speed Boost</h4>
+                                </div>
+                                <p class="text-sm text-gray-700">Temporarily increases your chopping and cooking speed</p>
+                            </div>
+                            
+                            <div class="bg-blue-50 rounded-lg p-4">
+                                <div class="flex items-center mb-2">
+                                    <div class="bg-blue-100 p-2 rounded-full mr-3">
+                                        <i class="fas fa-stopwatch text-blue-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-blue-800">Time Freeze</h4>
+                                </div>
+                                <p class="text-sm text-gray-700">Freezes the timer for 10 seconds</p>
+                            </div>
+                            
+                            <div class="bg-green-50 rounded-lg p-4">
+                                <div class="flex items-center mb-2">
+                                    <div class="bg-green-100 p-2 rounded-full mr-3">
+                                        <i class="fas fa-star text-green-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-green-800">Score Multiplier</h4>
+                                </div>
+                                <p class="text-sm text-gray-700">Doubles points for your next completed order</p>
+                            </div>
+                            
+                            <div class="bg-red-50 rounded-lg p-4">
+                                <div class="flex items-center mb-2">
+                                    <div class="bg-red-100 p-2 rounded-full mr-3">
+                                        <i class="fas fa-fire text-red-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-red-800">Auto-Cook</h4>
+                                </div>
+                                <p class="text-sm text-gray-700">Automatically completes current cooking task</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Over Modal (Hidden by default) -->
+        <div id="game-over-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 text-center">
+                <h2 class="text-3xl font-bold text-amber-800 mb-4">Game Over!</h2>
+                <div class="text-xl mb-6">
+                    <p>You completed <span id="final-orders" class="font-bold">0</span> orders</p>
+                    <p>with a score of <span id="final-score" class="font-bold">0</span> points!</p>
+                    <p class="text-lg mt-2">Max Combo: <span id="final-combo" class="font-bold text-red-600">0</span>x</p>
+                </div>
+                <div class="flex justify-center mb-6">
+                    <div id="final-stars" class="flex">
+                        <i class="fas fa-star text-gray-300 text-3xl mx-1"></i>
+                        <i class="fas fa-star text-gray-300 text-3xl mx-1"></i>
+                        <i class="fas fa-star text-gray-300 text-3xl mx-1"></i>
+                    </div>
+                </div>
+                <div class="flex justify-center space-x-4">
+                    <button id="play-again-btn" class="bg-amber-600 hover:bg-amber-700 text-white py-3 px-6 rounded-lg text-lg font-semibold">
+                        <i class="fas fa-redo mr-2"></i>Play Again
+                    </button>
+                    <button id="share-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg text-lg font-semibold">
+                        <i class="fas fa-share-alt mr-2"></i>Share
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="text-center mt-8 text-gray-600">
+            <button id="help-btn" class="bg-amber-100 hover:bg-amber-200 text-amber-800 py-2 px-4 rounded-lg">
+                <i class="fas fa-question-circle mr-2"></i>Help & Recipes
+            </button>
+            <p class="mt-4">Virtual Cooking Challenge - Created by Geoffroy Streit - Hylst</p>
+        </footer>
+    </div>
+
+    <audio id="chop-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-chopping-vegetables-2431.mp3" preload="auto"></audio>
+    <audio id="sizzle-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-cooking-pan-frying-1710.mp3" preload="auto"></audio>
+    <audio id="flip-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-frying-pan-flip-1711.mp3" preload="auto"></audio>
+    <audio id="success-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" preload="auto"></audio>
+    <audio id="fail-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3" preload="auto"></audio>
+    <audio id="powerup-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3" preload="auto"></audio>
+    <audio id="combo-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3" preload="auto"></audio>
+
+    <script>
+        // Game State
+        const gameState = {
+            timeLeft: 180, // 3 minutes in seconds
+            score: 0,
+            ordersCompleted: 0,
+            currentOrder: null,
+            activeStation: null,
+            choppedIngredients: [],
+            cookedIngredients: [],
+            assembledIngredients: [],
+            isChopping: false,
+            isCooking: false,
+            chopProgress: 0,
+            cookProgress: 0,
+            cookHeat: 1, // 0: low, 1: medium, 2: high
+            cookFlipCount: 0,
+            timerInterval: null,
+            gameActive: false,
+            soundEnabled: true,
+            ingredientCounts: {},
+            lastOrderTime: 0,
+            currentStreak: 0,
+            maxStreak: 0,
+            powerUps: {
+                speedBoost: 0,
+                timeFreeze: 0,
+                scoreMultiplier: 0,
+                autoCook: 0
+            },
+            restockCooldown: 0
+        };
+
+        // Sample Orders
+        const orders = [
+            {
+                name: "Classic Burger",
+                description: "A juicy burger with fresh veggies",
+                ingredients: [
+                    { name: "bread", type: "assembly", processed: false },
+                    { name: "cheese", type: "assembly", processed: false },
+                    { name: "meat", type: "cooking", processed: false, cookTime: 10, flipNeeded: 2 },
+                    { name: "tomato", type: "chopping", processed: false, chopsNeeded: 8 },
+                    { name: "onion", type: "chopping", processed: false, chopsNeeded: 10 },
+                    { name: "lettuce", type: "chopping", processed: false, chopsNeeded: 5 }
+                ],
+                timeBonus: 50,
+                basePoints: 100
+            },
+            {
+                name: "Cheese Sandwich",
+                description: "Simple grilled cheese sandwich",
+                ingredients: [
+                    { name: "bread", type: "assembly", processed: false },
+                    { name: "cheese", type: "assembly", processed: false },
+                    { name: "bread", type: "assembly", processed: false }
+                ],
+                timeBonus: 30,
+                basePoints: 60
+            },
+            {
+                name: "Salad Bowl",
+                description: "Fresh vegetable salad",
+                ingredients: [
+                    { name: "lettuce", type: "chopping", processed: false, chopsNeeded: 8 },
+                    { name: "tomato", type: "chopping", processed: false, chopsNeeded: 8 },
+                    { name: "onion", type: "chopping", processed: false, chopsNeeded: 5 },
+                    { name: "bellpepper", type: "chopping", processed: false, chopsNeeded: 6 }
+                ],
+                timeBonus: 40,
+                basePoints: 80
+            },
+            {
+                name: "Veggie Pizza",
+                description: "Colorful vegetable pizza",
+                ingredients: [
+                    { name: "bread", type: "assembly", processed: false },
+                    { name: "cheese", type: "assembly", processed: false },
+                    { name: "tomato", type: "chopping", processed: false, chopsNeeded: 6 },
+                    { name: "onion", type: "chopping", processed: false, chopsNeeded: 6 },
+                    { name: "bellpepper", type: "chopping", processed: false, chopsNeeded: 6 },
+                    { name: "mushroom", type: "chopping", processed: false, chopsNeeded: 6 }
+                ],
+                timeBonus: 60,
+                basePoints: 120
+            },
+            {
+                name: "Breakfast Platter",
+                description: "Hearty breakfast with eggs",
+                ingredients: [
+                    { name: "bread", type: "assembly", processed: false },
+                    { name: "egg", type: "cooking", processed: false, cookTime: 8, flipNeeded: 1 },
+                    { name: "tomato", type: "chopping", processed: false, chopsNeeded: 5 },
+                    { name: "onion", type: "chopping", processed: false, chopsNeeded: 5 },
+                    { name: "mushroom", type: "chopping", processed: false, chopsNeeded: 5 }
+                ],
+                timeBonus: 40,
+                basePoints: 90
+            }
+        ];
+
+        // Power-Ups
+        const powerUps = [
+            {
+                name: "Speed Boost",
+                icon: "bolt",
+                color: "purple",
+                description: "Temporarily increases chopping and cooking speed",
+                duration: 15,
+                effect: () => {
+                    gameState.powerUps.speedBoost = gameState.powerUps.speedBoost + 1;
+                    showComboMessage("Speed Boost Activated!");
+                    playSound('powerup');
+                }
+            },
+            {
+                name: "Time Freeze",
+                icon: "stopwatch",
+                color: "blue",
+                description: "Freezes the timer for 10 seconds",
+                duration: 10,
+                effect: () => {
+                    gameState.powerUps.timeFreeze = gameState.powerUps.timeFreeze + 1;
+                    showComboMessage("Time Frozen!");
+                    playSound('powerup');
+                }
+            },
+            {
+                name: "Score Multiplier",
+                icon: "star",
+                color: "green",
+                description: "Doubles points for next order",
+                duration: 1,
+                effect: () => {
+                    gameState.powerUps.scoreMultiplier = gameState.powerUps.scoreMultiplier + 1;
+                    showComboMessage("Score Multiplier Active!");
+                    playSound('powerup');
+                }
+            },
+            {
+                name: "Auto-Cook",
+                icon: "fire",
+                color: "red",
+                description: "Automatically completes current cooking task",
+                duration: 0,
+                effect: () => {
+                    if (gameState.activeStation === 'chopping' && gameState.isChopping) {
+                        finishChopping();
+                    } else if (gameState.activeStation === 'cooking' && gameState.isCooking) {
+                        finishCooking(true);
+                    }
+                    gameState.powerUps.autoCook = gameState.powerUps.autoCook + 1;
+                    showComboMessage("Auto-Cook Used!");
+                    playSound('powerup');
+                }
+            }
+        ];
+
+        // DOM Elements
+        const elements = {
+            timer: document.getElementById('timer'),
+            timeBar: document.getElementById('time-bar'),
+            score: document.getElementById('score'),
+            ordersCompleted: document.getElementById('orders-completed'),
+            ordersBar: document.getElementById('orders-bar'),
+            timeBonus: document.getElementById('time-bonus'),
+            streakDisplay: document.getElementById('streak-display'),
+            streakCount: document.getElementById('streak-count'),
+            comboDisplay: document.getElementById('combo-display'),
+            
+            // Stations
+            choppingStation: document.getElementById('chopping-station'),
+            choppingContent: document.getElementById('chopping-content'),
+            choppingProgress: document.getElementById('chopping-progress'),
+            chopCount: document.getElementById('chop-count'),
+            chopBar: document.getElementById('chop-bar'),
+            chopBtn: document.getElementById('chop-btn'),
+            
+            cookingStation: document.getElementById('cooking-station'),
+            cookingContent: document.getElementById('cooking-content'),
+            cookingControls: document.getElementById('cooking-controls'),
+            heatLevel: document.getElementById('heat-level'),
+            cookBar: document.getElementById('cook-bar'),
+            heatUp: document.getElementById('heat-up'),
+            heatDown: document.getElementById('heat-down'),
+            flipBtn: document.getElementById('flip-btn'),
+            
+            assemblyStation: document.getElementById('assembly-station'),
+            assemblyContent: document.getElementById('assembly-content'),
+            clearAssembly: document.getElementById('clear-assembly'),
+            
+            specialStation: document.getElementById('special-station'),
+            specialItems: document.getElementById('special-items'),
+            
+            // Order
+            currentOrder: document.getElementById('current-order'),
+            orderDescription: document.getElementById('order-description'),
+            orderItems: document.getElementById('order-items'),
+            submitOrder: document.getElementById('submit-order'),
+            
+            // Modals
+            recipeBook: document.getElementById('recipe-book'),
+            closeRecipeBook: document.getElementById('close-recipe-book'),
+            helpBtn: document.getElementById('help-btn'),
+            
+            gameOverModal: document.getElementById('game-over-modal'),
+            finalOrders: document.getElementById('final-orders'),
+            finalScore: document.getElementById('final-score'),
+            finalStars: document.getElementById('final-stars'),
+            finalCombo: document.getElementById('final-combo'),
+            playAgainBtn: document.getElementById('play-again-btn'),
+            shareBtn: document.getElementById('share-btn'),
+            
+            // Controls
+            soundToggle: document.getElementById('sound-toggle'),
+            restockBtn: document.getElementById('restock-btn'),
+            powerupBtn: document.getElementById('powerup-btn')
+        };
+
+        // Audio Elements
+        const sounds = {
+            chop: document.getElementById('chop-sound'),
+            sizzle: document.getElementById('sizzle-sound'),
+            flip: document.getElementById('flip-sound'),
+            success: document.getElementById('success-sound'),
+            fail: document.getElementById('fail-sound'),
+            powerup: document.getElementById('powerup-sound'),
+            combo: document.getElementById('combo-sound')
+        };
+
+        // Play sound
+        function playSound(type) {
+            if (!gameState.soundEnabled) return;
+            
+            try {
+                sounds[type].currentTime = 0;
+                sounds[type].play();
+            } catch (e) {
+                console.log("Error playing sound:", e);
+            }
+        }
+
+        // Initialize game
+        function initGame() {
+            // Reset game state
+            gameState.timeLeft = 180;
+            gameState.score = 0;
+            gameState.ordersCompleted = 0;
+            gameState.currentOrder = null;
+            gameState.activeStation = null;
+            gameState.choppedIngredients = [];
+            gameState.cookedIngredients = [];
+            gameState.assembledIngredients = [];
+            gameState.isChopping = false;
+            gameState.isCooking = false;
+            gameState.chopProgress = 0;
+            gameState.cookProgress = 0;
+            gameState.cookHeat = 1;
+            gameState.cookFlipCount = 0;
+            gameState.gameActive = true;
+            gameState.lastOrderTime = 0;
+            gameState.currentStreak = 0;
+            gameState.maxStreak = 0;
+            gameState.powerUps = {
+                speedBoost: 0,
+                timeFreeze: 0,
+                scoreMultiplier: 0,
+                autoCook: 0
+            };
+            gameState.restockCooldown = 0;
+            
+            // Initialize ingredient counts
+            const ingredients = ['tomato', 'onion', 'meat', 'cheese', 'lettuce', 'bread', 'bellpepper', 'mushroom', 'egg'];
+            ingredients.forEach(ing => {
+                gameState.ingredientCounts[ing] = 3;
+            });
+            
+            // Update UI
+            updateTimer();
+            updateScore();
+            updateOrdersCompleted();
+            updateStreakDisplay();
+            updateIngredientCounts();
+            updatePowerUpButton();
+            updateRestockButton();
+            
+            elements.orderDescription.classList.remove('hidden');
+            elements.orderItems.classList.add('hidden');
+            elements.submitOrder.classList.add('hidden');
+            elements.choppingProgress.classList.add('hidden');
+            elements.cookingControls.classList.add('hidden');
+            elements.choppingContent.innerHTML = '';
+            elements.cookingContent.innerHTML = '';
+            elements.assemblyContent.innerHTML = '';
+            elements.specialItems.innerHTML = '';
+            
+            // Start timer
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            gameState.timerInterval = setInterval(updateGameTimer, 1000);
+            
+            // Generate first order
+            generateNewOrder();
+            
+            // Setup drag and drop
+            setupDragAndDrop();
+            
+            // Hide modals
+            elements.recipeBook.classList.add('hidden');
+            elements.gameOverModal.classList.add('hidden');
+            
+            // Setup event listeners
+            setupEventListeners();
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Clear assembly station
+            elements.clearAssembly.addEventListener('click', () => {
+                gameState.assembledIngredients = [];
+                elements.assemblyContent.innerHTML = '';
+                
+                // Reset assembly ingredients in current order
+                if (gameState.currentOrder) {
+                    gameState.currentOrder.ingredients.forEach(ing => {
+                        if (ing.type === 'assembly') {
+                            ing.processed = false;
+                        }
+                    });
+                    
+                    // Update order items display
+                    updateOrderItemsDisplay();
+                    elements.submitOrder.classList.add('hidden');
+                }
+            });
+            
+            // Restock ingredients
+            elements.restockBtn.addEventListener('click', () => {
+                if (gameState.restockCooldown > 0) return;
+                
+                const ingredients = ['tomato', 'onion', 'meat', 'cheese', 'lettuce', 'bread', 'bellpepper', 'mushroom', 'egg'];
+                ingredients.forEach(ing => {
+                    gameState.ingredientCounts[ing] += 2;
+                });
+                
+                updateIngredientCounts();
+                gameState.restockCooldown = 10;
+                updateRestockButton();
+                
+                // Start cooldown timer
+                const cooldownInterval = setInterval(() => {
+                    gameState.restockCooldown--;
+                    updateRestockButton();
+                    
+                    if (gameState.restockCooldown <= 0) {
+                        clearInterval(cooldownInterval);
+                    }
+                }, 1000);
+            });
+            
+            // Power-up button
+            elements.powerupBtn.addEventListener('click', () => {
+                if (gameState.powerUps.scoreMultiplier > 0 || 
+                    gameState.powerUps.speedBoost > 0 || 
+                    gameState.powerUps.timeFreeze > 0) {
+                    return; // Already have a power-up active
+                }
+                
+                // Get random power-up
+                const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
+                randomPowerUp.effect();
+                
+                // Add to special station
+                addPowerUpToSpecialStation(randomPowerUp);
+                
+                // Update power-up button
+                updatePowerUpButton();
+            });
+            
+            // Toggle sound
+            elements.soundToggle.addEventListener('click', () => {
+                gameState.soundEnabled = !gameState.soundEnabled;
+                elements.soundToggle.innerHTML = gameState.soundEnabled ? 
+                    '<i class="fas fa-volume-up"></i>' : '<i class="fas fa-volume-mute"></i>';
+            });
+        }
+
+        // Update game timer
+        function updateGameTimer() {
+            if (gameState.powerUps.timeFreeze > 0) {
+                // Time is frozen, don't decrement
+                gameState.powerUps.timeFreeze--;
+                if (gameState.powerUps.timeFreeze <= 0) {
+                    showComboMessage("Time Freeze Ended");
+                }
+                return;
+            }
+            
+            gameState.timeLeft--;
+            updateTimer();
+            
+            // Update power-up durations
+            if (gameState.powerUps.speedBoost > 0) {
+                gameState.powerUps.speedBoost--;
+                if (gameState.powerUps.speedBoost <= 0) {
+                    showComboMessage("Speed Boost Ended");
+                }
+            }
+            
+            if (gameState.timeLeft <= 0) {
+                endGame();
+            }
+        }
+
+        // Update timer display
+        function updateTimer() {
+            const minutes = Math.floor(gameState.timeLeft / 60);
+            const seconds = gameState.timeLeft % 60;
+            elements.timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update progress bar
+            const percent = (gameState.timeLeft / 180) * 100;
+            elements.timeBar.style.width = `${percent}%`;
+            
+            // Change color when time is running low
+            if (gameState.timeLeft <= 30) {
+                elements.timeBar.classList.remove('bg-amber-600');
+                elements.timeBar.classList.add('bg-red-600');
+                elements.timer.classList.add('text-red-600');
+                elements.timer.classList.remove('text-amber-800');
+                
+                // Pulse animation when time is very low
+                if (gameState.timeLeft <= 10) {
+                    elements.timer.classList.add('pulsing');
+                }
+            } else {
+                elements.timeBar.classList.remove('bg-red-600');
+                elements.timeBar.classList.add('bg-amber-600');
+                elements.timer.classList.remove('text-red-600');
+                elements.timer.classList.add('text-amber-800');
+                elements.timer.classList.remove('pulsing');
+            }
+        }
+
+        // Update score display
+        function updateScore() {
+            elements.score.textContent = gameState.score;
+            
+            // Update stars based on score
+            const stars = document.querySelectorAll('#score-display i');
+            stars.forEach((star, index) => {
+                if (gameState.score >= (index + 1) * 100) {
+                    star.classList.remove('text-gray-300');
+                    star.classList.add('text-amber-400');
+                } else {
+                    star.classList.remove('text-amber-400');
+                    star.classList.add('text-gray-300');
+                }
+            });
+        }
+
+        // Update orders completed display
+        function updateOrdersCompleted() {
+            elements.ordersCompleted.textContent = gameState.ordersCompleted;
+            
+            // Update progress bar
+            const percent = (gameState.ordersCompleted / 5) * 100;
+            elements.ordersBar.style.width = `${percent}%`;
+        }
+
+        // Update streak display
+        function updateStreakDisplay() {
+            if (gameState.currentStreak > 1) {
+                elements.streakDisplay.classList.remove('hidden');
+                elements.streakCount.textContent = gameState.currentStreak;
+            } else {
+                elements.streakDisplay.classList.add('hidden');
+            }
+        }
+
+        // Show combo message
+        function showComboMessage(message) {
+            elements.comboDisplay.textContent = message;
+            elements.comboDisplay.style.opacity = '1';
+            
+            setTimeout(() => {
+                elements.comboDisplay.style.opacity = '0';
+            }, 2000);
+        }
+
+        // Update ingredient counts display
+        function updateIngredientCounts() {
+            const ingredientElements = document.querySelectorAll('.ingredient-drag');
+            ingredientElements.forEach(el => {
+                const ingredient = el.dataset.ingredient;
+                const count = gameState.ingredientCounts[ingredient] || 0;
+                const countElement = el.querySelector('.ingredient-count');
+                
+                if (count <= 0) {
+                    el.classList.add('opacity-50');
+                    el.setAttribute('draggable', 'false');
+                    countElement.classList.add('hidden');
+                } else {
+                    el.classList.remove('opacity-50');
+                    el.setAttribute('draggable', 'true');
+                    countElement.textContent = count;
+                    countElement.classList.remove('hidden');
+                }
+            });
+        }
+
+        // Update restock button
+        function updateRestockButton() {
+            if (gameState.restockCooldown > 0) {
+                elements.restockBtn.disabled = true;
+                elements.restockBtn.innerHTML = `<i class="fas fa-sync-alt mr-2"></i>Restock (${gameState.restockCooldown}s)`;
+                elements.restockBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                elements.restockBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+            } else {
+                elements.restockBtn.disabled = false;
+                elements.restockBtn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>Restock (10s)';
+                elements.restockBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                elements.restockBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            }
+        }
+
+        // Update power-up button
+        function updatePowerUpButton() {
+            if (gameState.powerUps.scoreMultiplier > 0 || 
+                gameState.powerUps.speedBoost > 0 || 
+                gameState.powerUps.timeFreeze > 0) {
+                elements.powerupBtn.disabled = true;
+                elements.powerupBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                elements.powerupBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                
+                // Show active power-up
+                let activePowerUp = '';
+                if (gameState.powerUps.speedBoost > 0) {
+                    activePowerUp = 'Speed Boost';
+                } else if (gameState.powerUps.timeFreeze > 0) {
+                    activePowerUp = 'Time Freeze';
+                } else if (gameState.powerUps.scoreMultiplier > 0) {
+                    activePowerUp = 'Score Multiplier';
+                }
+                
+                elements.powerupBtn.innerHTML = `<i class="fas fa-bolt mr-2"></i>${activePowerUp} Active`;
+            } else {
+                elements.powerupBtn.disabled = false;
+                elements.powerupBtn.innerHTML = '<i class="fas fa-bolt mr-2"></i>Power-Up';
+                elements.powerupBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+                elements.powerupBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            }
+        }
+
+        // Add power-up to special station
+        function addPowerUpToSpecialStation(powerUp) {
+            const powerUpElement = document.createElement('div');
+            powerUpElement.className = `bg-${powerUp.color}-100 p-2 rounded-full cursor-pointer tooltip-container relative`;
+            powerUpElement.innerHTML = `
+                <i class="fas fa-${powerUp.icon} text-${powerUp.color}-600 text-xl"></i>
+                <div class="tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 bg-${powerUp.color}-600 text-white text-sm px-3 py-2 rounded opacity-0 transition-opacity">
+                    ${powerUp.name}: ${powerUp.description}
+                </div>
+            `;
+            
+            powerUpElement.addEventListener('click', () => {
+                powerUp.effect();
+                elements.specialItems.removeChild(powerUpElement);
+            });
+            
+            elements.specialItems.appendChild(powerUpElement);
+        }
+
+        // Generate a new random order
+        function generateNewOrder() {
+            if (gameState.ordersCompleted >= 5) {
+                endGame();
+                return;
+            }
+            
+            // Update streak
+            const now = Date.now();
+            if (now - gameState.lastOrderTime < 30000) { // 30 seconds between orders for streak
+                gameState.currentStreak++;
+                gameState.maxStreak = Math.max(gameState.maxStreak, gameState.currentStreak);
+                
+                if (gameState.currentStreak > 1) {
+                    showComboMessage(`Combo x${gameState.currentStreak}!`);
+                    playSound('combo');
+                }
+            } else {
+                gameState.currentStreak = 0;
+            }
+            gameState.lastOrderTime = now;
+            updateStreakDisplay();
+            
+            const randomOrder = orders[Math.floor(Math.random() * orders.length)];
+            gameState.currentOrder = JSON.parse(JSON.stringify(randomOrder)); // Deep copy
+            
+            // Update UI
+            elements.orderDescription.classList.add('hidden');
+            elements.orderItems.classList.remove('hidden');
+            elements.orderItems.innerHTML = '';
+            elements.timeBonus.textContent = gameState.currentOrder.timeBonus;
+            
+            // Create order items
+            gameState.currentOrder.ingredients.forEach(ingredient => {
+                const item = document.createElement('div');
+                item.className = 'bg-amber-100 rounded p-1 text-center';
+                item.innerHTML = `
+                    <i class="fas fa-${getIngredientIcon(ingredient.name)} text-${getIngredientColor(ingredient.name)} text-xl"></i>
+                    <p class="text-xs mt-1">${ingredient.name}</p>
+                    ${ingredient.type === 'chopping' ? '<span class="text-xs block">(Chop)</span>' : ''}
+                    ${ingredient.type === 'cooking' ? '<span class="text-xs block">(Cook)</span>' : ''}
+                `;
+                item.dataset.ingredient = ingredient.name;
+                item.dataset.type = ingredient.type;
+                elements.orderItems.appendChild(item);
+            });
+            
+            // Show submit button when order is ready
+            elements.submitOrder.classList.add('hidden');
+        }
+
+        // Get icon for ingredient
+        function getIngredientIcon(ingredient) {
+            const icons = {
+                tomato: 'apple-alt',
+                onion: 'ring',
+                meat: 'drumstick-bite',
+                cheese: 'cheese',
+                lettuce: 'leaf',
+                bread: 'bread-slice',
+                bellpepper: 'pepper-hot',
+                mushroom: 'mushroom',
+                egg: 'egg'
+            };
+            return icons[ingredient] || 'question';
+        }
+
+        // Get color for ingredient
+        function getIngredientColor(ingredient) {
+            const colors = {
+                tomato: 'red-500',
+                onion: 'purple-500',
+                meat: 'amber-700',
+                cheese: 'yellow-400',
+                lettuce: 'green-500',
+                bread: 'amber-600',
+                bellpepper: 'red-600',
+                mushroom: 'amber-800',
+                egg: 'yellow-200'
+            };
+            return colors[ingredient] || 'gray-500';
+        }
+
+        // Setup drag and drop functionality
+        function setupDragAndDrop() {
+            const ingredients = document.querySelectorAll('.ingredient-drag');
+            const stations = document.querySelectorAll('.station');
+            
+            // Add drag start event to ingredients
+            ingredients.forEach(ingredient => {
+                ingredient.addEventListener('dragstart', (e) => {
+                    const ing = ingredient.dataset.ingredient;
+                    if (gameState.ingredientCounts[ing] <= 0) {
+                        e.preventDefault();
+                        return;
+                    }
+                    
+                    e.dataTransfer.setData('text/plain', ing);
+                    setTimeout(() => {
+                        ingredient.classList.add('opacity-50');
+                    }, 0);
+                });
+                
+                ingredient.addEventListener('dragend', () => {
+                    ingredient.classList.remove('opacity-50');
+                });
+            });
+            
+            // Add drag over and drop events to stations
+            stations.forEach(station => {
+                station.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    station.classList.add('station-highlight');
+                });
+                
+                station.addEventListener('dragleave', () => {
+                    station.classList.remove('station-highlight');
+                });
+                
+                station.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    station.classList.remove('station-highlight');
+                    
+                    const ingredient = e.dataTransfer.getData('text/plain');
+                    const stationType = station.dataset.station;
+                    
+                    // Check if we have this ingredient
+                    if (gameState.ingredientCounts[ingredient] <= 0) {
+                        showFeedback(station, 'Out of stock!', 'red-500');
+                        return;
+                    }
+                    
+                    // Decrement ingredient count
+                    gameState.ingredientCounts[ingredient]--;
+                    updateIngredientCounts();
+                    
+                    // Check if this ingredient is needed in the current order
+                    const orderIngredient = gameState.currentOrder.ingredients.find(
+                        item => item.name === ingredient && item.type === stationType
+                    );
+                    
+                    if (!orderIngredient) {
+                        showFeedback(station, 'Not needed!', 'red-500');
+                        return;
+                    }
+                    
+                    // Check if already processed
+                    if (orderIngredient.processed) {
+                        showFeedback(station, 'Already done!', 'amber-500');
+                        return;
+                    }
+                    
+                    // Process based on station type
+                    if (stationType === 'chopping') {
+                        startChopping(ingredient, orderIngredient);
+                    } else if (stationType === 'cooking') {
+                        startCooking(ingredient, orderIngredient);
+                    } else if (stationType === 'assembly') {
+                        addToAssembly(ingredient);
+                    } else if (stationType === 'special') {
+                        // Special station for power-ups
+                        showFeedback(station, 'Drag to other stations!', 'purple-500');
+                    }
+                });
+            });
+        }
+
+        // Show feedback message
+        function showFeedback(element, message, color) {
+            const feedback = document.createElement('div');
+            feedback.className = `absolute bg-${color} text-white px-3 py-1 rounded-full text-sm`;
+            feedback.textContent = message;
+            
+            const rect = element.getBoundingClientRect();
+            feedback.style.top = `${rect.top - 30}px`;
+            feedback.style.left = `${rect.left + rect.width / 2 - 50}px`;
+            
+            document.body.appendChild(feedback);
+            
+            setTimeout(() => {
+                feedback.style.transition = 'all 0.3s';
+                feedback.style.opacity = '0';
+                feedback.style.transform = 'translateY(-10px)';
+                
+                setTimeout(() => {
+                    document.body.removeChild(feedback);
+                }, 300);
+            }, 1000);
+        }
+
+        // Start chopping process
+        function startChopping(ingredient, orderIngredient) {
+            gameState.activeStation = 'chopping';
+            gameState.currentChoppingIngredient = ingredient;
+            gameState.currentChoppingOrderItem = orderIngredient;
+            gameState.chopProgress = 0;
+            
+            // Update UI
+            elements.choppingContent.innerHTML = `
+                <i class="fas fa-${getIngredientIcon(ingredient)} text-${getIngredientColor(ingredient)} text-5xl"></i>
+                <div class="absolute bottom-0 left-0 right-0 text-center text-xs">
+                    ${ingredient}
+                </div>
+            `;
+            
+            elements.choppingProgress.classList.remove('hidden');
+            const chopsNeeded = orderIngredient.chopsNeeded / (gameState.powerUps.speedBoost > 0 ? 2 : 1);
+            elements.chopCount.textContent = `0/${Math.ceil(chopsNeeded)}`;
+            elements.chopBar.style.width = '0%';
+            
+            // Setup chop button
+            elements.chopBtn.onclick = () => {
+                if (gameState.isChopping) return;
+                
+                gameState.isChopping = true;
+                elements.choppingContent.firstElementChild.classList.add('chopping');
+                playSound('chop');
+                
+                setTimeout(() => {
+                    gameState.isChopping = false;
+                    elements.choppingContent.firstElementChild.classList.remove('chopping');
+                    
+                    const increment = gameState.powerUps.speedBoost > 0 ? 2 : 1;
+                    gameState.chopProgress += increment;
+                    const chopsNeeded = orderIngredient.chopsNeeded;
+                    const percent = (gameState.chopProgress / chopsNeeded) * 100;
+                    elements.chopBar.style.width = `${Math.min(100, percent)}%`;
+                    elements.chopCount.textContent = `${Math.min(chopsNeeded, gameState.chopProgress)}/${chopsNeeded}`;
+                    
+                    if (gameState.chopProgress >= chopsNeeded) {
+                        finishChopping();
+                    }
+                }, 300);
+            };
+        }
+
+        // Finish chopping process
+        function finishChopping() {
+            const ingredient = gameState.currentChoppingIngredient;
+            gameState.currentChoppingOrderItem.processed = true;
+            gameState.choppedIngredients.push(ingredient);
+            gameState.activeStation = null;
+            
+            // Update UI
+            elements.choppingProgress.classList.add('hidden');
+            elements.choppingContent.innerHTML = `
+                <i class="fas fa-${getIngredientIcon(ingredient)} text-${getIngredientColor(ingredient)} text-5xl"></i>
+                <div class="absolute bottom-0 left-0 right-0 text-center text-xs">
+                    Chopped ${ingredient}
+                </div>
+            `;
+            
+            // Mark as complete in order items
+            updateOrderItemsDisplay();
+            
+            // Check if order can be submitted
+            checkOrderCompletion();
+            
+            playSound('success');
+        }
+
+        // Update order items display
+        function updateOrderItemsDisplay() {
+            gameState.currentOrder.ingredients.forEach(ingredient => {
+                const orderItem = document.querySelector(`#order-items [data-ingredient="${ingredient.name}"]`);
+                if (orderItem) {
+                    if (ingredient.processed) {
+                        orderItem.classList.remove('bg-amber-100');
+                        orderItem.classList.add('bg-green-100');
+                        if (!orderItem.innerHTML.includes('fa-check')) {
+                            orderItem.innerHTML += '<div class="text-green-500 text-xs"><i class="fas fa-check"></i></div>';
+                        }
+                    } else {
+                        orderItem.classList.remove('bg-green-100');
+                        orderItem.classList.add('bg-amber-100');
+                        orderItem.innerHTML = `
+                            <i class="fas fa-${getIngredientIcon(ingredient.name)} text-${getIngredientColor(ingredient.name)} text-xl"></i>
+                            <p class="text-xs mt-1">${ingredient.name}</p>
+                            ${ingredient.type === 'chopping' ? '<span class="text-xs block">(Chop)</span>' : ''}
+                            ${ingredient.type === 'cooking' ? '<span class="text-xs block">(Cook)</span>' : ''}
+                        `;
+                    }
+                }
+            });
+        }
+
+        // Start cooking process
+        function startCooking(ingredient, orderIngredient) {
+            gameState.activeStation = 'cooking';
+            gameState.currentCookingIngredient = ingredient;
+            gameState.currentCookingOrderItem = orderIngredient;
+            gameState.cookProgress = 0;
+            gameState.cookHeat = 1;
+            gameState.cookFlipCount = 0;
+            
+            // Update UI
+            elements.cookingContent.innerHTML = `
+                <i class="fas fa-${getIngredientIcon(ingredient)} text-${getIngredientColor(ingredient)} text-5xl sizzling"></i>
+                <div class="absolute bottom-0 left-0 right-0 text-center text-xs">
+                    ${ingredient}
+                </div>
+            `;
+            
+            elements.cookingControls.classList.remove('hidden');
+            elements.cookBar.style.width = '0%';
+            updateHeatDisplay();
+            playSound('sizzle');
+            
+            // Start cooking interval
+            if (gameState.cookingInterval) clearInterval(gameState.cookingInterval);
+            gameState.cookingInterval = setInterval(() => {
+                if (gameState.isCooking) return;
+                
+                gameState.isCooking = true;
+                
+                // Increase progress based on heat level
+                let progressIncrease = 0;
+                if (gameState.cookHeat === 0) progressIncrease = 1; // Low heat
+                if (gameState.cookHeat === 1) progressIncrease = 2; // Medium heat
+                if (gameState.cookHeat === 2) progressIncrease = 3; // High heat
+                
+                // Apply speed boost if active
+                if (gameState.powerUps.speedBoost > 0) {
+                    progressIncrease *= 2;
+                }
+                
+                gameState.cookProgress += progressIncrease;
+                const percent = (gameState.cookProgress / orderIngredient.cookTime) * 100;
+                elements.cookBar.style.width = `${percent}%`;
+                
+                // Change color based on progress
+                if (percent > 80) {
+                    elements.cookBar.classList.remove('bg-red-600');
+                    elements.cookBar.classList.add('bg-red-800');
+                } else {
+                    elements.cookBar.classList.remove('bg-red-800');
+                    elements.cookBar.classList.add('bg-red-600');
+                }
+                
+                // Check if cooking is done
+                if (gameState.cookProgress >= orderIngredient.cookTime) {
+                    clearInterval(gameState.cookingInterval);
+                    
+                    // Check if enough flips were done
+                    if (gameState.cookFlipCount >= orderIngredient.flipNeeded) {
+                        finishCooking(true);
+                    } else {
+                        finishCooking(false);
+                    }
+                }
+                
+                gameState.isCooking = false;
+            }, 1000);
+            
+            // Setup heat controls
+            elements.heatUp.onclick = () => {
+                if (gameState.cookHeat < 2) {
+                    gameState.cookHeat++;
+                    updateHeatDisplay();
+                }
+            };
+            
+            elements.heatDown.onclick = () => {
+                if (gameState.cookHeat > 0) {
+                    gameState.cookHeat--;
+                    updateHeatDisplay();
+                }
+            };
+            
+            // Setup flip button
+            elements.flipBtn.onclick = () => {
+                elements.cookingContent.firstElementChild.classList.add('flipping');
+                gameState.cookFlipCount++;
+                playSound('flip');
+                
+                setTimeout(() => {
+                    elements.cookingContent.firstElementChild.classList.remove('flipping');
+                }, 500);
+            };
+        }
+
+        // Update heat level display
+        function updateHeatDisplay() {
+            const heatLevels = ['Low', 'Medium', 'High'];
+            elements.heatLevel.textContent = heatLevels[gameState.cookHeat];
+            
+            // Update button states
+            if (gameState.cookHeat === 0) {
+                elements.heatDown.disabled = true;
+                elements.heatDown.classList.add('opacity-50');
+            } else {
+                elements.heatDown.disabled = false;
+                elements.heatDown.classList.remove('opacity-50');
+            }
+            
+            if (gameState.cookHeat === 2) {
+                elements.heatUp.disabled = true;
+                elements.heatUp.classList.add('opacity-50');
+            } else {
+                elements.heatUp.disabled = false;
+                elements.heatUp.classList.remove('opacity-50');
+            }
+        }
+
+        // Finish cooking process
+        function finishCooking(success) {
+            const ingredient = gameState.currentCookingIngredient;
+            gameState.activeStation = null;
+            
+            clearInterval(gameState.cookingInterval);
+            elements.cookingControls.classList.add('hidden');
+            
+            if (success) {
+                gameState.currentCookingOrderItem.processed = true;
+                gameState.cookedIngredients.push(ingredient);
+                
+                elements.cookingContent.innerHTML = `
+                    <i class="fas fa-${getIngredientIcon(ingredient)} text-${getIngredientColor(ingredient)} text-5xl"></i>
+                    <div class="absolute bottom-0 left-0 right-0 text-center text-xs">
+                        Cooked ${ingredient}
+                    </div>
+                `;
+                
+                // Mark as complete in order items
+                updateOrderItemsDisplay();
+                
+                // Check if order can be submitted
+                checkOrderCompletion();
+                
+                playSound('success');
+            } else {
+                // Cooking failed (not enough flips)
+                elements.cookingContent.innerHTML = `
+                    <i class="fas
+</html>
