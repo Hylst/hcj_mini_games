@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports Slam Dunk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <style>
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes cheer {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            25% { transform: translateY(-5px) rotate(5deg); }
+            75% { transform: translateY(-5px) rotate(-5deg); }
+        }
+        
+        @keyframes wave {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(10px); }
+        }
+        
+        .basketball {
+            animation: bounce 0.5s infinite alternate;
+        }
+        
+        .crowd-person {
+            animation: cheer 2s infinite;
+        }
+        
+        .wave-1 { animation: wave 3s infinite; animation-delay: 0s; }
+        .wave-2 { animation: wave 3s infinite; animation-delay: 0.5s; }
+        .wave-3 { animation: wave 3s infinite; animation-delay: 1s; }
+        .wave-4 { animation: wave 3s infinite; animation-delay: 1.5s; }
+        .wave-5 { animation: wave 3s infinite; animation-delay: 2s; }
+        .wave-6 { animation: wave 3s infinite; animation-delay: 2.5s; }
+        
+        #court {
+            background: linear-gradient(to bottom, #1a5e1a 0%, #0d3a0d 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #ball {
+            position: absolute;
+            transition: transform 0.1s ease-out;
+        }
+        
+        #hoop {
+            position: absolute;
+        }
+        
+        #backboard {
+            position: absolute;
+        }
+        
+        .score-flash {
+            animation: flash 0.5s;
+        }
+        
+        @keyframes flash {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        #aiPlayer {
+            position: absolute;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-6 text-yellow-400">Sports Slam Dunk</h1>
+        
+        <div class="flex flex-col lg:flex-row gap-8 items-center lg:items-start">
+            <!-- Game Area -->
+            <div class="relative w-full lg:w-2/3">
+                <div id="court" class="w-full h-96 md:h-[32rem] rounded-lg shadow-lg relative overflow-hidden">
+                    <!-- Court markings -->
+                    <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-1 h-full bg-white"></div>
+                    <div class="absolute top-1/2 left-0 w-full h-1 bg-white"></div>
+                    <div class="absolute top-1/4 left-1/2 transform -translate-x-1/2 w-16 h-8 border-2 border-white rounded-full"></div>
+                    
+                    <!-- Hoop -->
+                    <div id="backboard" class="absolute top-16 right-8 w-4 h-24 bg-white"></div>
+                    <div id="hoop" class="absolute top-28 right-4 w-16 h-2 bg-orange-500 rounded-full"></div>
+                    <div class="absolute top-28 right-20 w-4 h-16 bg-white"></div>
+                    
+                    <!-- Ball -->
+                    <div id="ball" class="w-8 h-8 rounded-full bg-orange-500 shadow-lg flex items-center justify-center">
+                        <div class="w-6 h-6 rounded-full border-2 border-black"></div>
+                    </div>
+                    
+                    <!-- AI Player -->
+                    <div id="aiPlayer" class="w-12 h-24 bg-blue-500 rounded-t-full flex items-center justify-center">
+                        <div class="w-8 h-8 bg-blue-300 rounded-full"></div>
+                    </div>
+                    
+                    <!-- Crowd -->
+                    <div class="absolute bottom-0 left-0 right-0 h-16 bg-gray-800 flex justify-around">
+                        <div class="crowd-person wave-1 w-8 h-16 bg-red-500 rounded-t-full"></div>
+                        <div class="crowd-person wave-2 w-8 h-16 bg-blue-500 rounded-t-full"></div>
+                        <div class="crowd-person wave-3 w-8 h-16 bg-green-500 rounded-t-full"></div>
+                        <div class="crowd-person wave-4 w-8 h-16 bg-yellow-500 rounded-t-full"></div>
+                        <div class="crowd-person wave-5 w-8 h-16 bg-purple-500 rounded-t-full"></div>
+                        <div class="crowd-person wave-6 w-8 h-16 bg-pink-500 rounded-t-full"></div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex justify-center gap-4">
+                    <button id="dribbleBtn" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition">Dribble</button>
+                    <button id="shootBtn" class="px-4 py-2 bg-green-600 rounded hover:bg-green-700 transition">Shoot</button>
+                    <button id="dunkBtn" class="px-4 py-2 bg-red-600 rounded hover:bg-red-700 transition">Dunk</button>
+                </div>
+            </div>
+            
+            <!-- Scoreboard and Controls -->
+            <div class="w-full lg:w-1/3 bg-gray-800 p-6 rounded-lg shadow-lg">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold mb-2 text-yellow-400">Scoreboard</h2>
+                    <div class="flex justify-around items-center">
+                        <div>
+                            <div class="text-xl">Player</div>
+                            <div id="playerScore" class="text-4xl font-bold">0</div>
+                        </div>
+                        <div class="text-4xl">:</div>
+                        <div>
+                            <div class="text-xl">AI</div>
+                            <div id="aiScore" class="text-4xl font-bold">0</div>
+                        </div>
+                    </div>
+                    <div id="gameClock" class="text-2xl mt-4 font-mono">2:00</div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-xl font-bold mb-2 text-yellow-400">Controls</h3>
+                    <ul class="list-disc pl-5">
+                        <li>Click buttons or use keyboard</li>
+                        <li><span class="font-bold">Dribble:</span> Spacebar</li>
+                        <li><span class="font-bold">Shoot:</span> Arrow Up</li>
+                        <li><span class="font-bold">Dunk:</span> Arrow Down</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="difficulty" class="block mb-2">AI Difficulty</label>
+                    <select id="difficulty" class="w-full p-2 rounded bg-gray-700 border border-gray-600">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                
+                <button id="startGame" class="w-full py-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg font-bold transition">
+                    Start Game
+                </button>
+                
+                <div id="message" class="mt-4 text-center text-lg font-semibold"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        const gameState = {
+            playerScore: 0,
+            aiScore: 0,
+            gameTime: 120, // 2 minutes in seconds
+            gameActive: false,
+            ballPosition: { x: 50, y: 300 },
+            aiPosition: { x: 300, y: 200 },
+            aiDefenseMode: false,
+            difficulty: 'medium'
+        };
+        
+        // DOM elements
+        const ball = document.getElementById('ball');
+        const hoop = document.getElementById('hoop');
+        const backboard = document.getElementById('backboard');
+        const aiPlayer = document.getElementById('aiPlayer');
+        const playerScoreEl = document.getElementById('playerScore');
+        const aiScoreEl = document.getElementById('aiScore');
+        const gameClock = document.getElementById('gameClock');
+        const messageEl = document.getElementById('message');
+        const dribbleBtn = document.getElementById('dribbleBtn');
+        const shootBtn = document.getElementById('shootBtn');
+        const dunkBtn = document.getElementById('dunkBtn');
+        const startGameBtn = document.getElementById('startGame');
+        const difficultySelect = document.getElementById('difficulty');
+        
+        // Sound effects
+        const sounds = {
+            dribble: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-basketball-ball-hard-hit-2093.mp3'] }),
+            shoot: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-arrow-whoosh-1491.mp3'] }),
+            swoosh: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-basketball-ball-hit-2090.mp3'] }),
+            bounce: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-basketball-ball-bouncing-2085.mp3'] }),
+            dunk: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-basketball-ball-hard-hit-2093.mp3'], volume: 0.7 }),
+            crowd: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-people-cheering-crowd-621.mp3'] }),
+            buzzer: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-game-show-buzzer-980.mp3'] }),
+            block: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3'] })
+        };
+        
+        // Initialize game
+        function initGame() {
+            updateBallPosition();
+            updateAIPosition();
+            
+            // Event listeners
+            dribbleBtn.addEventListener('click', dribble);
+            shootBtn.addEventListener('click', shoot);
+            dunkBtn.addEventListener('click', dunk);
+            startGameBtn.addEventListener('click', startGame);
+            difficultySelect.addEventListener('change', updateDifficulty);
+            
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (!gameState.gameActive) return;
+                
+                switch(e.key) {
+                    case ' ':
+                        dribble();
+                        break;
+                    case 'ArrowUp':
+                        shoot();
+                        break;
+                    case 'ArrowDown':
+                        dunk();
+                        break;
+                }
+            });
+        }
+        
+        // Update ball position on screen
+        function updateBallPosition() {
+            ball.style.left = `${gameState.ballPosition.x}px`;
+            ball.style.top = `${gameState.ballPosition.y}px`;
+        }
+        
+        // Update AI player position
+        function updateAIPosition() {
+            aiPlayer.style.left = `${gameState.aiPosition.x}px`;
+            aiPlayer.style.top = `${gameState.aiPosition.y}px`;
+        }
+        
+        // Dribble action
+        function dribble() {
+            if (!gameState.gameActive) return;
+            
+            sounds.dribble.play();
+            
+            // Animate dribble
+            ball.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                ball.style.transform = 'translateY(0)';
+            }, 100);
+            
+            // Random chance to lose ball based on difficulty
+            const loseBallChance = Math.random();
+            let threshold = 0.05; // Easy
+            if (gameState.difficulty === 'medium') threshold = 0.1;
+            if (gameState.difficulty === 'hard') threshold = 0.15;
+            
+            if (loseBallChance < threshold) {
+                stealBall();
+            }
+        }
+        
+        // Shoot action
+        function shoot() {
+            if (!gameState.gameActive) return;
+            
+            sounds.shoot.play();
+            
+            // Animate shot
+            const startPos = gameState.ballPosition;
+            const hoopPos = { x: 80, y: 120 };
+            
+            // Calculate parabolic trajectory
+            const controlPoint = {
+                x: (startPos.x + hoopPos.x) / 2,
+                y: Math.min(startPos.y, hoopPos.y) - 150
+            };
+            
+            let progress = 0;
+            const shotInterval = setInterval(() => {
+                progress += 0.05;
+                
+                if (progress >= 1) {
+                    clearInterval(shotInterval);
+                    checkShotResult(hoopPos);
+                    return;
+                }
+                
+                // Quadratic Bezier curve calculation
+                const x = (1 - progress) * (1 - progress) * startPos.x + 
+                          2 * (1 - progress) * progress * controlPoint.x + 
+                          progress * progress * hoopPos.x;
+                
+                const y = (1 - progress) * (1 - progress) * startPos.y + 
+                          2 * (1 - progress) * progress * controlPoint.y + 
+                          progress * progress * hoopPos.y;
+                
+                gameState.ballPosition = { x, y };
+                updateBallPosition();
+                
+                // Check for AI block
+                if (progress > 0.3 && progress < 0.7 && 
+                    Math.abs(gameState.ballPosition.x - gameState.aiPosition.x) < 40 && 
+                    Math.abs(gameState.ballPosition.y - gameState.aiPosition.y) < 60) {
+                    
+                    clearInterval(shotInterval);
+                    blockShot();
+                }
+            }, 20);
+        }
+        
+        // Dunk action
+        function dunk() {
+            if (!gameState.gameActive) return;
+            
+            sounds.dunk.play();
+            sounds.crowd.play();
+            
+            // Animate dunk
+            const startPos = gameState.ballPosition;
+            const hoopPos = { x: 80, y: 120 };
+            
+            let progress = 0;
+            const dunkInterval = setInterval(() => {
+                progress += 0.05;
+                
+                if (progress >= 1) {
+                    clearInterval(dunkInterval);
+                    scorePoints(2, true);
+                    resetAfterAction();
+                    return;
+                }
+                
+                // Linear movement for dunk
+                const x = startPos.x + (hoopPos.x - startPos.x) * progress;
+                const y = startPos.y + (hoopPos.y - startPos.y) * progress;
+                
+                gameState.ballPosition = { x, y };
+                updateBallPosition();
+            }, 20);
+        }
+        
+        // Check if shot was successful
+        function checkShotResult(hoopPos) {
+            // Random chance based on distance to hoop
+            const distance = Math.sqrt(
+                Math.pow(gameState.ballPosition.x - hoopPos.x, 2) + 
+                Math.pow(gameState.ballPosition.y - hoopPos.y, 2)
+            );
+            
+            // Base chance is 60% at perfect position, decreases with distance
+            let successChance = 0.6 - (distance / 200);
+            
+            // Adjust for difficulty
+            if (gameState.difficulty === 'hard') successChance *= 0.7;
+            
+            if (Math.random() < successChance) {
+                sounds.swoosh.play();
+                sounds.crowd.play();
+                scorePoints(2);
+            } else {
+                sounds.bounce.play();
+                showMessage("Missed!", "text-red-400");
+            }
+            
+            resetAfterAction();
+        }
+        
+        // AI blocks the shot
+        function blockShot() {
+            sounds.block.play();
+            showMessage("Blocked by AI!", "text-red-400");
+            
+            // Animate block
+            gameState.ballPosition.x += 50;
+            gameState.ballPosition.y += 30;
+            updateBallPosition();
+            
+            setTimeout(() => {
+                resetAfterAction();
+            }, 1000);
+        }
+        
+        // AI steals the ball
+        function stealBall() {
+            sounds.block.play();
+            showMessage("Stolen by AI!", "text-red-400");
+            
+            // Animate steal
+            let progress = 0;
+            const stealInterval = setInterval(() => {
+                progress += 0.05;
+                
+                if (progress >= 1) {
+                    clearInterval(stealInterval);
+                    aiScorePoints(2);
+                    resetAfterAction();
+                    return;
+                }
+                
+                gameState.ballPosition.x += 3;
+                gameState.ballPosition.y -= 1;
+                updateBallPosition();
+                
+                gameState.aiPosition.x = gameState.ballPosition.x + 30;
+                gameState.aiPosition.y = gameState.ballPosition.y - 20;
+                updateAIPosition();
+            }, 20);
+        }
+        
+        // Score points for player
+        function scorePoints(points, isDunk = false) {
+            gameState.playerScore += points;
+            playerScoreEl.textContent = gameState.playerScore;
+            playerScoreEl.classList.add("score-flash");
+            
+            if (isDunk) {
+                showMessage(`Slam Dunk! +${points}`, "text-yellow-400");
+            } else {
+                showMessage(`Score! +${points}`, "text-green-400");
+            }
+            
+            setTimeout(() => {
+                playerScoreEl.classList.remove("score-flash");
+            }, 500);
+        }
+        
+        // Score points for AI
+        function aiScorePoints(points) {
+            gameState.aiScore += points;
+            aiScoreEl.textContent = gameState.aiScore;
+            aiScoreEl.classList.add("score-flash");
+            showMessage(`AI Scores! +${points}`, "text-blue-400");
+            
+            setTimeout(() => {
+                aiScoreEl.classList.remove("score-flash");
+            }, 500);
+        }
+        
+        // Reset positions after action
+        function resetAfterAction() {
+            setTimeout(() => {
+                gameState.ballPosition = { x: 50, y: 300 };
+                gameState.aiPosition = { x: 300, y: 200 };
+                updateBallPosition();
+                updateAIPosition();
+                
+                // AI might go into defense mode
+                if (Math.random() < 0.5) {
+                    gameState.aiDefenseMode = true;
+                    gameState.aiPosition = { x: 150, y: 250 };
+                    updateAIPosition();
+                }
+            }, 1000);
+        }
+        
+        // Show message to player
+        function showMessage(msg, colorClass) {
+            messageEl.textContent = msg;
+            messageEl.className = `mt-4 text-center text-lg font-semibold ${colorClass}`;
+            
+            setTimeout(() => {
+                messageEl.textContent = "";
+                messageEl.className = "mt-4 text-center text-lg font-semibold";
+            }, 2000);
+        }
+        
+        // Start the game
+        function startGame() {
+            gameState.playerScore = 0;
+            gameState.aiScore = 0;
+            gameState.gameTime = 120;
+            gameState.gameActive = true;
+            
+            playerScoreEl.textContent = "0";
+            aiScoreEl.textContent = "0";
+            updateClock();
+            
+            startGameBtn.textContent = "Restart Game";
+            showMessage("Game Started!", "text-green-400");
+            
+            // Start game timer
+            const gameInterval = setInterval(() => {
+                gameState.gameTime--;
+                updateClock();
+                
+                if (gameState.gameTime <= 0) {
+                    clearInterval(gameInterval);
+                    endGame();
+                }
+                
+                // AI random action
+                if (Math.random() < 0.02) {
+                    aiAction();
+                }
+            }, 1000);
+        }
+        
+        // AI takes action
+        function aiAction() {
+            if (!gameState.gameActive) return;
+            
+            const action = Math.random();
+            
+            if (action < 0.3) {
+                // Move to defense
+                gameState.aiDefenseMode = true;
+                gameState.aiPosition = { x: 150, y: 250 };
+                updateAIPosition();
+            } else if (action < 0.6) {
+                // Move to offense
+                gameState.aiDefenseMode = false;
+                gameState.aiPosition = { x: 300, y: 200 };
+                updateAIPosition();
+            } else {
+                // Attempt to score
+                setTimeout(() => {
+                    if (Math.random() < 0.7) {
+                        sounds.crowd.play();
+                        aiScorePoints(2);
+                    }
+                }, 1000);
+            }
+        }
+        
+        // Update game clock display
+        function updateClock() {
+            const minutes = Math.floor(gameState.gameTime / 60);
+            const seconds = gameState.gameTime % 60;
+            gameClock.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (gameState.gameTime <= 10) {
+                gameClock.classList.add("text-red-500");
+            } else {
+                gameClock.classList.remove("text-red-500");
+            }
+        }
+        
+        // End the game
+        function endGame() {
+            gameState.gameActive = false;
+            sounds.buzzer.play();
+            
+            if (gameState.playerScore > gameState.aiScore) {
+                showMessage("You Win!", "text-green-400");
+            } else if (gameState.playerScore < gameState.aiScore) {
+                showMessage("You Lose!", "text-red-400");
+            } else {
+                showMessage("Tie Game!", "text-yellow-400");
+            }
+        }
+        
+        // Update difficulty
+        function updateDifficulty() {
+            gameState.difficulty = difficultySelect.value;
+        }
+        
+        // Initialize game when loaded
+        window.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
