@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Island Survival Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes wave {
+            0% { transform: translateX(0) translateY(0); }
+            50% { transform: translateX(-50px) translateY(-10px); }
+            100% { transform: translateX(0) translateY(0); }
+        }
+        
+        @keyframes cloud {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(100px); }
+        }
+        
+        @keyframes fishSwim {
+            0% { transform: translateX(-50px) translateY(0); }
+            50% { transform: translateX(0) translateY(-10px); }
+            100% { transform: translateX(50px) translateY(0); }
+        }
+        
+        @keyframes birdFly {
+            0% { transform: translateX(-100px) translateY(0); }
+            100% { transform: translateX(calc(100vw + 100px)) translateY(-50px); }
+        }
+        
+        .wave-animation {
+            animation: wave 8s ease-in-out infinite;
+        }
+        
+        .cloud-animation {
+            animation: cloud 60s linear infinite;
+        }
+        
+        .fish-animation {
+            animation: fishSwim 5s ease-in-out infinite;
+        }
+        
+        .bird-animation {
+            animation: birdFly 30s linear infinite;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        
+        .weather-sunny {
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+        }
+        
+        .weather-rainy {
+            background: linear-gradient(to bottom, #616161, #9E9E9E);
+        }
+        
+        .weather-storm {
+            background: linear-gradient(to bottom, #424242, #212121);
+        }
+        
+        .rain {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .drop {
+            position: absolute;
+            width: 2px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 0 0 5px 5px;
+        }
+        
+        .lightning {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .has-tooltip:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .inventory-item {
+            transition: all 0.2s;
+        }
+        
+        .inventory-item:hover {
+            transform: scale(1.1);
+        }
+        
+        .notification {
+            animation: slideIn 0.5s forwards, fadeOut 0.5s 2.5s forwards;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="font-sans overflow-hidden">
+    <div id="game-container" class="weather-sunny h-screen w-screen relative overflow-hidden transition-colors duration-1000">
+        <!-- Weather Effects -->
+        <div id="rain-effect" class="rain hidden"></div>
+        <div id="lightning-effect" class="lightning"></div>
+        
+        <!-- Clouds -->
+        <div class="absolute top-10 left-1/4 cloud-animation">
+            <i class="fas fa-cloud text-white text-4xl opacity-70"></i>
+        </div>
+        <div class="absolute top-20 right-1/4 cloud-animation" style="animation-delay: -20s;">
+            <i class="fas fa-cloud text-white text-3xl opacity-60"></i>
+        </div>
+        
+        <!-- Birds -->
+        <div class="absolute top-20 left-0 bird-animation">
+            <i class="fas fa-dove text-gray-200 text-xl"></i>
+        </div>
+        
+        <!-- Island Terrain -->
+        <div class="absolute bottom-0 w-full h-2/3">
+            <!-- Ocean -->
+            <div class="absolute bottom-0 w-full h-1/3 bg-blue-600 overflow-hidden">
+                <div class="absolute bottom-0 w-full h-20 bg-blue-500 wave-animation"></div>
+                <div class="absolute bottom-5 left-1/4 fish-animation">
+                    <i class="fas fa-fish text-blue-300 text-xl"></i>
+                </div>
+                <div class="absolute bottom-10 right-1/3 fish-animation" style="animation-delay: -2s;">
+                    <i class="fas fa-fish text-blue-200 text-xl transform scale-x-[-1]"></i>
+                </div>
+            </div>
+            
+            <!-- Beach -->
+            <div class="absolute bottom-1/3 w-full h-20 bg-amber-100"></div>
+            
+            <!-- Island -->
+            <div class="absolute bottom-1/3 left-1/4 w-1/2 h-1/2 bg-green-700 rounded-t-full">
+                <!-- Trees -->
+                <div class="absolute bottom-1/2 left-1/4">
+                    <i class="fas fa-tree text-green-900 text-4xl"></i>
+                </div>
+                <div class="absolute bottom-1/2 right-1/4">
+                    <i class="fas fa-tree text-green-800 text-5xl"></i>
+                </div>
+                <div class="absolute bottom-1/3 left-1/2 transform -translate-x-1/2">
+                    <i class="fas fa-tree text-green-900 text-3xl"></i>
+                </div>
+                
+                <!-- Rocks -->
+                <div class="absolute bottom-20 left-1/3">
+                    <i class="fas fa-mountain text-gray-500 text-3xl"></i>
+                </div>
+                
+                <!-- Player Shelter -->
+                <div id="shelter" class="absolute bottom-20 right-1/4 hidden">
+                    <i class="fas fa-campground text-amber-800 text-5xl"></i>
+                </div>
+                
+                <!-- Player Character -->
+                <div id="player" class="absolute bottom-20 left-1/2 transform -translate-x-1/2 transition-all duration-300">
+                    <i class="fas fa-person-hiking text-gray-900 text-4xl"></i>
+                </div>
+                
+                <!-- Collectible Items -->
+                <div id="wood-item" class="absolute bottom-32 left-1/3 cursor-pointer has-tooltip">
+                    <i class="fas fa-tree text-amber-800 text-2xl"></i>
+                    <div class="tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
+                        Wood (Click to collect)
+                    </div>
+                </div>
+                <div id="fruit-item" class="absolute bottom-28 right-1/3 cursor-pointer has-tooltip">
+                    <i class="fas fa-apple-alt text-red-500 text-xl"></i>
+                    <div class="tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
+                        Fruit (Click to collect)
+                    </div>
+                </div>
+                <div id="stone-item" class="absolute bottom-24 left-2/3 cursor-pointer has-tooltip">
+                    <i class="fas fa-gem text-gray-400 text-xl"></i>
+                    <div class="tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
+                        Stone (Click to collect)
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- UI Elements -->
+        <div class="absolute top-4 left-4 right-4 flex justify-between items-start">
+            <!-- Stats Panel -->
+            <div class="bg-gray-800 bg-opacity-70 text-white p-3 rounded-lg shadow-lg">
+                <div class="flex items-center mb-2">
+                    <i class="fas fa-heart text-red-500 mr-2"></i>
+                    <span>Health:</span>
+                    <div class="w-24 h-4 bg-gray-700 rounded-full ml-2 overflow-hidden">
+                        <div id="health-bar" class="h-full bg-red-500 progress-bar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="flex items-center mb-2">
+                    <i class="fas fa-tint text-blue-400 mr-2"></i>
+                    <span>Hydration:</span>
+                    <div class="w-24 h-4 bg-gray-700 rounded-full ml-2 overflow-hidden">
+                        <div id="hydration-bar" class="h-full bg-blue-400 progress-bar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <i class="fas fa-utensils text-amber-400 mr-2"></i>
+                    <span>Hunger:</span>
+                    <div class="w-24 h-4 bg-gray-700 rounded-full ml-2 overflow-hidden">
+                        <div id="hunger-bar" class="h-full bg-amber-400 progress-bar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="mt-3 text-xs">
+                    <div class="flex items-center">
+                        <i class="fas fa-cloud-sun mr-2"></i>
+                        <span id="weather-display">Weather: Sunny</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-clock mr-2"></i>
+                        <span id="time-display">Day 1, Morning</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Inventory -->
+            <div class="bg-gray-800 bg-opacity-70 text-white p-3 rounded-lg shadow-lg">
+                <h3 class="font-bold mb-2 flex items-center">
+                    <i class="fas fa-backpack mr-2"></i>
+                    Inventory
+                </h3>
+                <div class="flex space-x-2">
+                    <div id="wood-count" class="inventory-item bg-gray-700 p-2 rounded flex items-center">
+                        <i class="fas fa-tree text-amber-600 mr-1"></i>
+                        <span>0</span>
+                    </div>
+                    <div id="fruit-count" class="inventory-item bg-gray-700 p-2 rounded flex items-center">
+                        <i class="fas fa-apple-alt text-red-500 mr-1"></i>
+                        <span>0</span>
+                    </div>
+                    <div id="stone-count" class="inventory-item bg-gray-700 p-2 rounded flex items-center">
+                        <i class="fas fa-gem text-gray-400 mr-1"></i>
+                        <span>0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="bg-gray-800 bg-opacity-70 text-white p-3 rounded-lg shadow-lg">
+                <h3 class="font-bold mb-2 flex items-center">
+                    <i class="fas fa-tools mr-2"></i>
+                    Actions
+                </h3>
+                <div class="flex flex-wrap gap-2">
+                    <button id="build-shelter-btn" class="bg-amber-700 hover:bg-amber-600 px-3 py-1 rounded flex items-center disabled:opacity-50" disabled>
+                        <i class="fas fa-campground mr-1"></i>
+                        Build Shelter (5 wood)
+                    </button>
+                    <button id="drink-btn" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded flex items-center disabled:opacity-50" disabled>
+                        <i class="fas fa-tint mr-1"></i>
+                        Drink (1 fruit)
+                    </button>
+                    <button id="eat-btn" class="bg-red-600 hover:bg-red-500 px-3 py-1 rounded flex items-center disabled:opacity-50" disabled>
+                        <i class="fas fa-utensils mr-1"></i>
+                        Eat (1 fruit)
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Day/Night Cycle Indicator -->
+        <div class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 bg-opacity-70 text-white px-4 py-2 rounded-full shadow-lg flex items-center">
+            <i id="time-icon" class="fas fa-sun text-yellow-300 mr-2"></i>
+            <span id="day-night-display">Daytime</span>
+        </div>
+        
+        <!-- Game Messages -->
+        <div id="message-container" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 space-y-2"></div>
+        
+        <!-- Game Start Screen -->
+        <div id="start-screen" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white z-10">
+            <h1 class="text-5xl font-bold mb-6 text-amber-400">Island Survival Adventure</h1>
+            <p class="text-xl mb-8 max-w-lg text-center">Stranded on a deserted island, you must gather resources, build shelter, and survive against the elements.</p>
+            <button id="start-btn" class="bg-amber-600 hover:bg-amber-500 px-8 py-3 rounded-lg text-xl font-bold pulse">
+                Begin Survival
+            </button>
+            <div class="mt-8 text-sm text-gray-300">
+                <p>Controls:</p>
+                <p>- Click on resources to collect them</p>
+                <p>- Use action buttons to perform tasks</p>
+                <p>- Monitor your health, hunger, and hydration</p>
+            </div>
+        </div>
+        
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white z-10 hidden">
+            <h1 class="text-5xl font-bold mb-6 text-red-500">Game Over</h1>
+            <p id="game-over-message" class="text-xl mb-8 max-w-lg text-center">You survived for X days.</p>
+            <button id="restart-btn" class="bg-amber-600 hover:bg-amber-500 px-8 py-3 rounded-lg text-xl font-bold">
+                Try Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        const gameState = {
+            health: 100,
+            hydration: 100,
+            hunger: 100,
+            inventory: {
+                wood: 0,
+                fruit: 0,
+                stone: 0
+            },
+            hasShelter: false,
+            day: 1,
+            time: 'morning', // morning, afternoon, evening, night
+            weather: 'sunny', // sunny, rainy, storm
+            gameActive: false,
+            survivalDays: 0
+        };
+
+        // DOM Elements
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const gameContainer = document.getElementById('game-container');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const healthBar = document.getElementById('health-bar');
+        const hydrationBar = document.getElementById('hydration-bar');
+        const hungerBar = document.getElementById('hunger-bar');
+        const weatherDisplay = document.getElementById('weather-display');
+        const timeDisplay = document.getElementById('time-display');
+        const dayNightDisplay = document.getElementById('day-night-display');
+        const timeIcon = document.getElementById('time-icon');
+        const woodCount = document.getElementById('wood-count');
+        const fruitCount = document.getElementById('fruit-count');
+        const stoneCount = document.getElementById('stone-count');
+        const buildShelterBtn = document.getElementById('build-shelter-btn');
+        const drinkBtn = document.getElementById('drink-btn');
+        const eatBtn = document.getElementById('eat-btn');
+        const shelter = document.getElementById('shelter');
+        const player = document.getElementById('player');
+        const woodItem = document.getElementById('wood-item');
+        const fruitItem = document.getElementById('fruit-item');
+        const stoneItem = document.getElementById('stone-item');
+        const rainEffect = document.getElementById('rain-effect');
+        const lightningEffect = document.getElementById('lightning-effect');
+        const messageContainer = document.getElementById('message-container');
+        const gameOverMessage = document.getElementById('game-over-message');
+
+        // Audio Elements
+        const rainSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-rain-loop-1243.mp3');
+        const thunderSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-thunder-strike-1680.mp3');
+        const collectSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3');
+        const buildSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-wooden-object-hit-1941.mp3');
+        const eatSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-eating-crackers-2215.mp3');
+        const drinkSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-water-splash-1250.mp3');
+        const daySound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-birds-chirping-1480.mp3');
+        const nightSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-crickets-chirping-1330.mp3');
+        
+        // Set audio loops
+        rainSound.loop = true;
+        daySound.loop = true;
+        nightSound.loop = true;
+
+        // Event Listeners
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', restartGame);
+        woodItem.addEventListener('click', () => collectResource('wood'));
+        fruitItem.addEventListener('click', () => collectResource('fruit'));
+        stoneItem.addEventListener('click', () => collectResource('stone'));
+        buildShelterBtn.addEventListener('click', buildShelter);
+        drinkBtn.addEventListener('click', drink);
+        eatBtn.addEventListener('click', eat);
+
+        // Game Functions
+        function startGame() {
+            gameState.gameActive = true;
+            startScreen.classList.add('hidden');
+            resetGameState();
+            updateUI();
+            spawnResources();
+            startGameLoop();
+            playDaySound();
+            showMessage("You've washed ashore on a deserted island. Survive as long as you can!");
+        }
+
+        function restartGame() {
+            gameOverScreen.classList.add('hidden');
+            startGame();
+        }
+
+        function resetGameState() {
+            gameState.health = 100;
+            gameState.hydration = 100;
+            gameState.hunger = 100;
+            gameState.inventory = {
+                wood: 0,
+                fruit: 0,
+                stone: 0
+            };
+            gameState.hasShelter = false;
+            gameState.day = 1;
+            gameState.time = 'morning';
+            gameState.weather = 'sunny';
+            gameState.survivalDays = 0;
+            
+            shelter.classList.add('hidden');
+            updateWeatherEffects();
+        }
+
+        function spawnResources() {
+            // Randomly position resources
+            woodItem.style.left = `${20 + Math.random() * 60}%`;
+            woodItem.style.bottom = `${30 + Math.random() * 20}%`;
+            
+            fruitItem.style.left = `${20 + Math.random() * 60}%`;
+            fruitItem.style.bottom = `${30 + Math.random() * 20}%`;
+            
+            stoneItem.style.left = `${20 + Math.random() * 60}%`;
+            stoneItem.style.bottom = `${30 + Math.random() * 20}%`;
+            
+            woodItem.classList.remove('hidden');
+            fruitItem.classList.remove('hidden');
+            stoneItem.classList.remove('hidden');
+        }
+
+        function collectResource(type) {
+            if (!gameState.gameActive) return;
+            
+            // Animate player movement
+            const resource = document.getElementById(`${type}-item`);
+            const resourceRect = resource.getBoundingClientRect();
+            const playerRect = player.getBoundingClientRect();
+            
+            // Calculate direction to move
+            const diffX = resourceRect.left - playerRect.left;
+            const diffY = resourceRect.top - playerRect.top;
+            
+            player.style.transform = `translateX(${diffX / 2}px) translateY(${diffY / 2}px)`;
+            
+            // After animation completes
+            setTimeout(() => {
+                player.style.transform = 'translateX(-50%)';
+                
+                // Add to inventory
+                gameState.inventory[type]++;
+                updateInventoryUI();
+                
+                // Play sound
+                collectSound.play();
+                
+                // Hide the collected resource temporarily
+                resource.classList.add('hidden');
+                
+                // Show message
+                showMessage(`You collected ${type}!`);
+                
+                // Respawn resource after delay
+                setTimeout(() => {
+                    resource.style.left = `${20 + Math.random() * 60}%`;
+                    resource.style.bottom = `${30 + Math.random() * 20}%`;
+                    resource.classList.remove('hidden');
+                }, 5000);
+                
+            }, 500);
+        }
+
+        function buildShelter() {
+            if (gameState.inventory.wood >= 5) {
+                gameState.inventory.wood -= 5;
+                gameState.hasShelter = true;
+                shelter.classList.remove('hidden');
+                updateInventoryUI();
+                buildSound.play();
+                showMessage("You built a shelter! This will protect you from bad weather.");
+            }
+        }
+
+        function drink() {
+            if (gameState.inventory.fruit >= 1) {
+                gameState.inventory.fruit--;
+                gameState.hydration = Math.min(100, gameState.hydration + 30);
+                updateStatsUI();
+                updateInventoryUI();
+                drinkSound.play();
+                showMessage("You drank some juice from the fruit. Hydration increased!");
+            }
+        }
+
+        function eat() {
+            if (gameState.inventory.fruit >= 1) {
+                gameState.inventory.fruit--;
+                gameState.hunger = Math.min(100, gameState.hunger + 30);
+                updateStatsUI();
+                updateInventoryUI();
+                eatSound.play();
+                showMessage("You ate some fruit. Hunger decreased!");
+            }
+        }
+
+        function updateUI() {
+            updateStatsUI();
+            updateInventoryUI();
+            updateTimeUI();
+            updateWeatherUI();
+            updateActionButtons();
+        }
+
+        function updateStatsUI() {
+            healthBar.style.width = `${gameState.health}%`;
+            hydrationBar.style.width = `${gameState.hydration}%`;
+            hungerBar.style.width = `${gameState.hunger}%`;
+            
+            // Change color based on level
+            healthBar.className = `h-full progress-bar ${gameState.health > 50 ? 'bg-red-500' : gameState.health > 20 ? 'bg-orange-500' : 'bg-red-800'}`;
+            hydrationBar.className = `h-full progress-bar ${gameState.hydration > 50 ? 'bg-blue-400' : gameState.hydration > 20 ? 'bg-blue-600' : 'bg-blue-800'}`;
+            hungerBar.className = `h-full progress-bar ${gameState.hunger > 50 ? 'bg-amber-400' : gameState.hunger > 20 ? 'bg-amber-600' : 'bg-amber-800'}`;
+        }
+
+        function updateInventoryUI() {
+            woodCount.querySelector('span').textContent = gameState.inventory.wood;
+            fruitCount.querySelector('span').textContent = gameState.inventory.fruit;
+            stoneCount.querySelector('span').textContent = gameState.inventory.stone;
+        }
+
+        function updateTimeUI() {
+            let timeText = '';
+            let dayNightText = '';
+            let timeIconClass = '';
+            
+            switch(gameState.time) {
+                case 'morning':
+                    timeText = `Day ${gameState.day}, Morning`;
+                    dayNightText = 'Daytime';
+                    timeIconClass = 'fa-sun text-yellow-300';
+                    break;
+                case 'afternoon':
+                    timeText = `Day ${gameState.day}, Afternoon`;
+                    dayNightText = 'Daytime';
+                    timeIconClass = 'fa-sun text-yellow-500';
+                    break;
+                case 'evening':
+                    timeText = `Day ${gameState.day}, Evening`;
+                    dayNightText = 'Dusk';
+                    timeIconClass = 'fa-sun text-orange-500';
+                    break;
+                case 'night':
+                    timeText = `Day ${gameState.day}, Night`;
+                    dayNightText = 'Nighttime';
+                    timeIconClass = 'fa-moon text-gray-300';
+                    break;
+            }
+            
+            timeDisplay.textContent = timeText;
+            dayNightDisplay.textContent = dayNightText;
+            timeIcon.className = `fas ${timeIconClass} mr-2`;
+        }
+
+        function updateWeatherUI() {
+            weatherDisplay.textContent = `Weather: ${gameState.weather.charAt(0).toUpperCase() + gameState.weather.slice(1)}`;
+            updateWeatherEffects();
+        }
+
+        function updateWeatherEffects() {
+            // Remove all weather classes
+            gameContainer.classList.remove('weather-sunny', 'weather-rainy', 'weather-storm');
+            
+            // Add current weather class
+            gameContainer.classList.add(`weather-${gameState.weather}`);
+            
+            // Handle rain and lightning effects
+            if (gameState.weather === 'rainy') {
+                rainEffect.classList.remove('hidden');
+                createRain();
+                rainSound.play();
+                daySound.pause();
+                nightSound.pause();
+            } else if (gameState.weather === 'storm') {
+                rainEffect.classList.remove('hidden');
+                createRain();
+                rainSound.play();
+                daySound.pause();
+                nightSound.pause();
+                // Random lightning
+                if (Math.random() > 0.7) {
+                    triggerLightning();
+                }
+            } else {
+                rainEffect.classList.add('hidden');
+                rainSound.pause();
+                if (gameState.time === 'night') {
+                    playNightSound();
+                } else {
+                    playDaySound();
+                }
+            }
+        }
+
+        function createRain() {
+            rainEffect.innerHTML = '';
+            const rainCount = gameState.weather === 'storm' ? 100 : 50;
+            
+            for (let i = 0; i < rainCount; i++) {
+                const drop = document.createElement('div');
+                drop.className = 'drop';
+                drop.style.left = `${Math.random() * 100}%`;
+                drop.style.top = `${Math.random() * 100}%`;
+                drop.style.animation = `fall ${0.5 + Math.random() * 0.5}s linear infinite`;
+                drop.style.animationDelay = `${Math.random() * 2}s`;
+                rainEffect.appendChild(drop);
+                
+                // Add animation style
+                const style = document.createElement('style');
+                style.innerHTML = `
+                    @keyframes fall {
+                        to {
+                            transform: translateY(100vh);
+                        }
+                    }
+                `;
+                rainEffect.appendChild(style);
+            }
+        }
+
+        function triggerLightning() {
+            lightningEffect.style.opacity = '0.8';
+            thunderSound.play();
+            
+            setTimeout(() => {
+                lightningEffect.style.opacity = '0';
+            }, 100);
+            
+            setTimeout(() => {
+                if (Math.random() > 0.5) {
+                    lightningEffect.style.opacity = '0.6';
+                    
+                    setTimeout(() => {
+                        lightningEffect.style.opacity = '0';
+                    }, 50);
+                }
+            }, 200);
+        }
+
+        function playDaySound() {
+            daySound.play();
+            nightSound.pause();
+        }
+
+        function playNightSound() {
+            nightSound.play();
+            daySound.pause();
+        }
+
+        function updateActionButtons() {
+            buildShelterBtn.disabled = gameState.inventory.wood < 5 || gameState.hasShelter;
+            drinkBtn.disabled = gameState.inventory.fruit < 1;
+            eatBtn.disabled = gameState.inventory.fruit < 1;
+            
+            if (gameState.hasShelter) {
+                buildShelterBtn.innerHTML = '<i class="fas fa-campground mr-1"></i> Shelter Built';
+                buildShelterBtn.classList.remove('bg-amber-700', 'hover:bg-amber-600');
+                buildShelterBtn.classList.add('bg-green-700', 'hover:bg-green-600');
+            } else {
+                buildShelterBtn.innerHTML = '<i class="fas fa-campground mr-1"></i> Build Shelter (5 wood)';
+                buildShelterBtn.classList.remove('bg-green-700', 'hover:bg-green-600');
+                buildShelterBtn.classList.add('bg-amber-700', 'hover:bg-amber-600');
+            }
+        }
+
+        function showMessage(text) {
+            const message = document.createElement('div');
+            message.className = 'bg-gray-800 bg-opacity-80 text-white px-4 py-2 rounded-lg notification';
+            message.textContent = text;
+            messageContainer.appendChild(message);
+            
+            // Auto remove after animation
+            setTimeout(() => {
+                message.remove();
+            }, 3000);
+        }
+
+        function changeTime() {
+            const times = ['morning', 'afternoon', 'evening', 'night'];
+            const currentIndex = times.indexOf(gameState.time);
+            const nextIndex = (currentIndex + 1) % times.length;
+            gameState.time = times[nextIndex];
+            
+            // If it's a new day
+            if (gameState.time === 'morning') {
+                gameState.day++;
+                gameState.survivalDays++;
+                showMessage(`Day ${gameState.day} begins.`);
+                
+                // Change weather randomly (more likely to be sunny in morning)
+                const weatherOptions = ['sunny', 'sunny', 'sunny', 'rainy', 'storm'];
+                gameState.weather = weatherOptions[Math.floor(Math.random() * weatherOptions.length)];
+            }
+            
+            // Play appropriate ambient sound
+            if (gameState.time === 'night') {
+                playNightSound();
+            } else if (gameState.weather === 'sunny') {
+                playDaySound();
+            }
+            
+            updateUI();
+        }
+
+        function degradeStats() {
+            // Base degradation
+            gameState.hunger = Math.max(0, gameState.hunger - 5);
+            gameState.hydration = Math.max(0, gameState.hydration - 7);
+            
+            // Additional effects from weather and time
+            if (gameState.time === 'night' && !gameState.hasShelter) {
+                gameState.health = Math.max(0, gameState.health - 5);
+                showMessage("The cold night chills you without shelter!");
+            }
+            
+            if (gameState.weather === 'storm' && !gameState.hasShelter) {
+                gameState.health = Math.max(0, gameState.health - 10);
+                showMessage("The storm is damaging you without shelter!");
+            }
+            
+            // Health effects from hunger and hydration
+            if (gameState.hunger <= 0) {
+                gameState.health = Math.max(0, gameState.health - 10);
+                showMessage("You're starving! Find food quickly!");
+            }
+            
+            if (gameState.hydration <= 0) {
+                gameState.health = Math.max(0, gameState.health - 15);
+                showMessage("You're dehydrated! Find water quickly!");
+            }
+            
+            updateStatsUI();
+            
+            // Check for game over
+            if (gameState.health <= 0) {
+                endGame();
+            }
+        }
+
+        function startGameLoop() {
+            // Time changes every 20 seconds
+            const timeInterval = setInterval(() => {
+                if (!gameState.gameActive) {
+                    clearInterval(timeInterval);
+                    return;
+                }
+                changeTime();
+            }, 20000);
+            
+            // Stats degrade every 10 seconds
+            const statsInterval = setInterval(() => {
+                if (!gameState.gameActive) {
+                    clearInterval(statsInterval);
+                    return;
+                }
+                degradeStats();
+            }, 10000);
+        }
+
+        function endGame() {
+            gameState.gameActive = false;
+            gameOverMessage.textContent = `You survived for ${gameState.survivalDays} ${gameState.survivalDays === 1 ? 'day' : 'days'}.`;
+            gameOverScreen.classList.remove('hidden');
+            
+            // Stop all sounds
+            rainSound.pause();
+            daySound.pause();
+            nightSound.pause();
+            thunderSound.pause();
+        }
+
+        // Initialize
+        updateUI();
+    </script>
+</body>
+</html>

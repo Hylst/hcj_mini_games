@@ -1,0 +1,1209 @@
+<!-- Time Travel Puzzle: "a puzzle game based on time travel mechanics with shifting environments, interactive timelines, animated era transitions, and a richly layered soundscape using HTML, CSS, and JavaScript."!-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChronoShift: Time Travel Puzzle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.18.0/matter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Rubik', sans-serif;
+            background-color: #0f172a;
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #time-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: all 1s ease-in-out;
+        }
+        
+        .era-transition {
+            animation: eraShift 1.5s ease-in-out;
+        }
+        
+        @keyframes eraShift {
+            0% { filter: brightness(1) blur(0px); }
+            50% { filter: brightness(1.5) blur(10px); }
+            100% { filter: brightness(1) blur(0px); }
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 20;
+        }
+        
+        .timeline-marker:hover {
+            transform: translate(-50%, -50%) scale(1.5);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+        }
+        
+        .timeline-marker.active {
+            background: #f59e0b;
+            box-shadow: 0 0 20px #f59e0b;
+        }
+        
+        .timeline-connector {
+            position: absolute;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.3);
+            z-index: 10;
+        }
+        
+        .puzzle-object {
+            position: absolute;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: all 0.5s ease;
+            cursor: pointer;
+            z-index: 15;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .puzzle-object:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        .time-portal {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(124,58,237,0.8) 0%, rgba(124,58,237,0) 70%);
+            animation: portalPulse 3s infinite;
+            z-index: 25;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        @keyframes portalPulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        
+        .era-title {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.7);
+            opacity: 0;
+            animation: fadeInOut 2s ease-in-out;
+            z-index: 30;
+        }
+        
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            30% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            70% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+        
+        .controls-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .inventory-item {
+            transition: all 0.3s ease;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0.5rem;
+            background-color: rgba(30, 41, 59, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .inventory-item:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+        
+        .lane-option {
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+            cursor: pointer;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .lane-option:hover {
+            transform: scale(1.05) rotateY(10deg);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .lane-option.selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.7);
+            border: 3px solid white;
+        }
+        
+        .lane-icon-container {
+            width: 100%;
+            height: 10rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .lane-icon {
+            font-size: 5rem;
+        }
+        
+        .timeline-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+        }
+        
+        .timeline-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+        
+        .timeline-scroll::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        
+        .branch-line {
+            position: absolute;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.6);
+            transform-origin: left center;
+            z-index: 5;
+        }
+        
+        .branch-marker {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #3b82f6;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 20;
+        }
+        
+        .paradox-effect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(255,0,0,0.3) 0%, rgba(255,0,0,0) 70%);
+            border-radius: 50%;
+            animation: paradoxPulse 2s infinite;
+            z-index: 40;
+        }
+        
+        @keyframes paradoxPulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.5); opacity: 0.3; }
+            100% { transform: scale(1); opacity: 0.7; }
+        }
+        
+        .credits {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.8rem;
+            text-align: right;
+        }
+    </style>
+</head>
+<body class="text-gray-100">
+    <div id="game-container">
+        <!-- Main Game Canvas -->
+        <canvas id="time-canvas"></canvas>
+        
+        <!-- Timeline UI -->
+        <div class="absolute bottom-0 left-0 w-full h-32 pointer-events-none">
+            <div class="relative w-full h-full overflow-x-auto timeline-scroll pointer-events-auto">
+                <div id="timeline" class="absolute bottom-0 left-0 h-1 bg-white bg-opacity-30" style="width: 2000px;"></div>
+            </div>
+        </div>
+        
+        <!-- Game UI Overlay -->
+        <div class="absolute top-0 left-0 w-full h-full pointer-events-none">
+            <!-- Inventory Display -->
+            <div class="absolute top-4 left-4 flex gap-2">
+                <div id="inventory" class="flex gap-2 pointer-events-auto"></div>
+            </div>
+            
+            <!-- Era Display -->
+            <div id="era-display" class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 px-4 py-2 rounded-full text-sm font-medium pointer-events-auto">
+                Prehistoric Era
+            </div>
+            
+            <!-- Controls Panel -->
+            <div class="controls-panel absolute top-4 right-4 p-4 w-64 pointer-events-auto">
+                <h2 class="text-xl font-bold mb-3">Time Controls</h2>
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    <button id="rewind-btn" class="bg-purple-600 hover:bg-purple-700 p-2 rounded-lg flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+                        </svg>
+                    </button>
+                    <button id="pause-btn" class="bg-blue-600 hover:bg-blue-700 p-2 rounded-lg flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </button>
+                    <button id="fast-forward-btn" class="bg-green-600 hover:bg-green-700 p-2 rounded-lg flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-center">
+                    <button id="interact-btn" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg font-medium">
+                        Interact
+                    </button>
+                    <button id="time-jump-btn" class="bg-pink-600 hover:bg-pink-700 px-4 py-2 rounded-lg font-medium">
+                        Jump Era
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Puzzle Hint -->
+            <div id="puzzle-hint" class="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 px-4 py-2 rounded-lg text-sm max-w-md text-center hidden pointer-events-auto">
+                Find the ancient artifact in each era to unlock the time portal
+            </div>
+            
+            <!-- Lane Selection -->
+            <div id="lane-selection" class="absolute inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center">
+                <div class="text-center mb-8">
+                    <h1 class="text-5xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-red-500">
+                        ChronoShift
+                    </h1>
+                    <p class="text-xl text-gray-300 max-w-2xl mx-auto">
+                        Choose your timeline experience. Each lane offers unique puzzles and mechanics across different eras.
+                    </p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 px-4 w-full max-w-4xl">
+                    <div class="lane-option cursor-pointer rounded-xl bg-gradient-to-br from-amber-900 to-amber-700" data-lane="classic">
+                        <div class="lane-icon-container bg-amber-100">
+                            <div class="lane-icon text-amber-900">🕰️</div>
+                        </div>
+                        <div class="p-4">
+                            <h3 class="text-xl font-bold mb-2">Classic Timeline</h3>
+                            <p class="text-gray-200 text-center mb-4">
+                                Linear progression through historical eras with traditional puzzles
+                            </p>
+                            <div class="flex gap-2 justify-center">
+                                <span class="px-2 py-1 bg-amber-800 bg-opacity-50 rounded-full text-xs">Prehistoric</span>
+                                <span class="px-2 py-1 bg-amber-800 bg-opacity-50 rounded-full text-xs">Medieval</span>
+                                <span class="px-2 py-1 bg-amber-800 bg-opacity-50 rounded-full text-xs">Future</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="lane-option cursor-pointer rounded-xl bg-gradient-to-br from-blue-900 to-blue-700" data-lane="branching">
+                        <div class="lane-icon-container bg-blue-50">
+                            <div class="lane-icon text-blue-900">🌐</div>
+                        </div>
+                        <div class="p-4">
+                            <h3 class="text-xl font-bold mb-2">Branching Timelines</h3>
+                            <p class="text-gray-200 text-center mb-4">
+                                Non-linear paths with multiple endings based on your choices
+                            </p>
+                            <div class="flex gap-2 justify-center">
+                                <span class="px-2 py-1 bg-blue-800 bg-opacity-50 rounded-full text-xs">Parallel</span>
+                                <span class="px-2 py-1 bg-blue-800 bg-opacity-50 rounded-full text-xs">Divergent</span>
+                                <span class="px-2 py-1 bg-blue-800 bg-opacity-50 rounded-full text-xs">Convergent</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="lane-option cursor-pointer rounded-xl bg-gradient-to-br from-purple-900 to-purple-700" data-lane="paradox">
+                        <div class="lane-icon-container bg-purple-100">
+                            <div class="lane-icon text-purple-900">🌀</div>
+                        </div>
+                        <div class="p-4">
+                            <h3 class="text-xl font-bold mb-2">Paradox Mode</h3>
+                            <p class="text-gray-200 text-center mb-4">
+                                Mind-bending puzzles where your actions ripple across time
+                            </p>
+                            <div class="flex gap-2 justify-center">
+                                <span class="px-2 py-1 bg-purple-800 bg-opacity-50 rounded-full text-xs">Causal</span>
+                                <span class="px-2 py-1 bg-purple-800 bg-opacity-50 rounded-full text-xs">Loops</span>
+                                <span class="px-2 py-1 bg-purple-800 bg-opacity-50 rounded-full text-xs">Anomalies</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="confirm-lane" class="mt-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95 pointer-events-auto hidden">
+                    Begin Time Journey
+                </button>
+            </div>
+        </div>
+        
+        <div class="credits">
+            Created by Geoffroy Streit - Hylst<br>
+            Time Travel Puzzle Game
+        </div>
+    </div>
+
+    <script>
+        // Game Configuration
+        const config = {
+            eras: [
+                { name: "Prehistoric", color: "#92400e", year: -10000, objects: ["rock", "bone", "fire"] },
+                { name: "Ancient", color: "#b45309", year: -1000, objects: ["scroll", "vase", "coin"] },
+                { name: "Medieval", color: "#d97706", year: 1200, objects: ["sword", "book", "candle"] },
+                { name: "Industrial", color: "#f59e0b", year: 1850, objects: ["gear", "lamp", "blueprint"] },
+                { name: "Modern", color: "#10b981", year: 2000, objects: ["phone", "laptop", "card"] },
+                { name: "Future", color: "#3b82f6", year: 2200, objects: ["holo", "drone", "chip"] }
+            ],
+            laneTypes: {
+                classic: {
+                    description: "Linear timeline progression",
+                    mechanics: ["sequential", "time-forward-only"],
+                    puzzleTypes: ["item-matching", "environmental"],
+                    portalRequirements: 3,
+                    gravity: { x: 0, y: 0.5 }
+                },
+                branching: {
+                    description: "Multiple timeline branches",
+                    mechanics: ["parallel-realities", "choice-driven"],
+                    puzzleTypes: ["consequence", "divergence"],
+                    portalRequirements: 2,
+                    gravity: { x: 0, y: 0.3 },
+                    branchChance: 0.3
+                },
+                paradox: {
+                    description: "Time paradox challenges",
+                    mechanics: ["causal-loops", "butterfly-effect"],
+                    puzzleTypes: ["temporal", "self-referential"],
+                    portalRequirements: 4,
+                    gravity: { x: 0.1, y: 0.4 },
+                    paradoxChance: 0.5
+                }
+            },
+            timeSpeed: {
+                pause: 0,
+                slow: 1,
+                normal: 3,
+                fast: 10
+            },
+            objectIcons: {
+                rock: "🪨",
+                bone: "🦴",
+                fire: "🔥",
+                scroll: "📜",
+                vase: "🏺",
+                coin: "🪙",
+                sword: "⚔️",
+                book: "📖",
+                candle: "🕯️",
+                gear: "⚙️",
+                lamp: "💡",
+                blueprint: "📐",
+                phone: "📱",
+                laptop: "💻",
+                card: "💳",
+                holo: "👁️",
+                drone: "🚁",
+                chip: "🔌"
+            }
+        };
+        
+        // Game State
+        let engine, render, world;
+        let currentEra = 0;
+        let currentLane = null;
+        let timeSpeed = config.timeSpeed.normal;
+        let inventory = [];
+        let timelineMarkers = [];
+        let puzzleObjects = [];
+        let timePortals = [];
+        let branchMarkers = [];
+        let selectedObject = null;
+        let selectedLane = null;
+        let branches = [];
+        let paradoxEffects = [];
+        
+        // Sound Effects
+        const sounds = {
+            eraShift: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-sci-fi-time-slip-2528.mp3'] }),
+            timeTravel: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-fantasy-game-spell-276.mp3'] }),
+            objectPickup: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3'] }),
+            puzzleComplete: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3'] }),
+            branchCreate: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-magic-spell-shimmer-229.mp3'] }),
+            paradoxCreate: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-ominous-drone-227.mp3'] }),
+            background: new Howl({ 
+                src: ['https://assets.mixkit.co/music/preview/mixkit-ethereal-fairy-tale-background-1497.mp3'],
+                loop: true,
+                volume: 0.4
+            }),
+            laneSelect: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3'] }),
+            classicMusic: new Howl({
+                src: ['https://assets.mixkit.co/music/preview/mixkit-adventure-132.mp3'],
+                loop: true,
+                volume: 0
+            }),
+            branchingMusic: new Howl({
+                src: ['https://assets.mixkit.co/music/preview/mixkit-sci-fi-ambience-275.mp3'],
+                loop: true,
+                volume: 0
+            }),
+            paradoxMusic: new Howl({
+                src: ['https://assets.mixkit.co/music/preview/mixkit-dark-ambient-129.mp3'],
+                loop: true,
+                volume: 0
+            })
+        };
+        
+        // Initialize the game
+        function initGame() {
+            setupLaneSelection();
+            setupEventListeners();
+        }
+        
+        // Set up lane selection
+        function setupLaneSelection() {
+            const laneOptions = document.querySelectorAll('.lane-option');
+            const confirmBtn = document.getElementById('confirm-lane');
+            
+            laneOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    // Play selection sound
+                    sounds.laneSelect.play();
+                    
+                    // Update visual selection
+                    laneOptions.forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    
+                    // Set selected lane
+                    selectedLane = option.dataset.lane;
+                    confirmBtn.classList.remove('hidden');
+                    
+                    // Preview lane description
+                    showHint(config.laneTypes[selectedLane].description, 2000);
+                });
+            });
+            
+            confirmBtn.addEventListener('click', () => {
+                if (selectedLane) {
+                    currentLane = selectedLane;
+                    document.getElementById('lane-selection').classList.add('hidden');
+                    setupPhysics();
+                    setupTimeline();
+                    createEraObjects();
+                    updateEraDisplay();
+                    
+                    // Start appropriate background music
+                    sounds.background.stop();
+                    if (currentLane === 'classic') {
+                        sounds.classicMusic.volume(0.4);
+                        sounds.classicMusic.play();
+                    } else if (currentLane === 'branching') {
+                        sounds.branchingMusic.volume(0.4);
+                        sounds.branchingMusic.play();
+                    } else if (currentLane === 'paradox') {
+                        sounds.paradoxMusic.volume(0.4);
+                        sounds.paradoxMusic.play();
+                    }
+                    
+                    showHint(`Welcome to ${config.laneTypes[currentLane].description} mode!`);
+                    
+                    // Special setup for branching timeline
+                    if (currentLane === 'branching') {
+                        setTimeout(() => {
+                            createBranchingPath();
+                        }, 3000);
+                    }
+                }
+            });
+        }
+        
+        // Set up Matter.js physics engine
+        function setupPhysics() {
+            // Create engine with lane-specific gravity
+            const laneConfig = config.laneTypes[currentLane];
+            engine = Matter.Engine.create({
+                gravity: laneConfig.gravity,
+                enableSleeping: true
+            });
+            world = engine.world;
+            
+            // Create renderer
+            render = Matter.Render.create({
+                canvas: document.getElementById('time-canvas'),
+                engine: engine,
+                options: {
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    background: config.eras[currentEra].color,
+                    wireframes: false
+                }
+            });
+            
+            // Add mouse control
+            const mouse = Matter.Mouse.create(render.canvas);
+            const mouseConstraint = Matter.MouseConstraint.create(engine, {
+                mouse: mouse,
+                constraint: {
+                    stiffness: 0.2,
+                    render: {
+                        visible: false
+                    }
+                }
+            });
+            
+            Matter.World.add(world, mouseConstraint);
+            Matter.Render.run(render);
+            
+            // Start the engine
+            Matter.Runner.run(engine);
+        }
+        
+        // Set up the timeline with era markers
+        function setupTimeline() {
+            const timeline = document.getElementById('timeline');
+            timeline.innerHTML = '';
+            
+            // Clear existing branch markers
+            branchMarkers.forEach(marker => marker.remove());
+            branchMarkers = [];
+            
+            // Create markers for each era
+            config.eras.forEach((era, index) => {
+                const marker = document.createElement('div');
+                marker.className = 'timeline-marker';
+                marker.dataset.era = index;
+                marker.style.left = `${index * 200 + 100}px`;
+                marker.style.top = '50%';
+                marker.style.background = era.color;
+                
+                if (index === currentEra) {
+                    marker.classList.add('active');
+                }
+                
+                marker.addEventListener('click', () => {
+                    travelToEra(index);
+                });
+                
+                timeline.appendChild(marker);
+                timelineMarkers.push(marker);
+                
+                // Add era label
+                const label = document.createElement('div');
+                label.className = 'absolute text-xs text-center mt-2';
+                label.style.left = `${index * 200 + 100}px`;
+                label.style.top = '60%';
+                label.style.transform = 'translateX(-50%)';
+                label.style.color = 'white';
+                label.textContent = era.name;
+                timeline.appendChild(label);
+                
+                // Add connectors between markers (except last one)
+                if (index < config.eras.length - 1) {
+                    const connector = document.createElement('div');
+                    connector.className = 'timeline-connector';
+                    connector.style.left = `${index * 200 + 100}px`;
+                    connector.style.top = '50%';
+                    connector.style.width = '200px';
+                    timeline.appendChild(connector);
+                }
+            });
+            
+            // Set timeline width based on number of eras
+            timeline.style.width = `${(config.eras.length - 1) * 200 + 200}px`;
+        }
+        
+        // Create interactive objects for current era
+        function createEraObjects() {
+            // Clear existing objects
+            puzzleObjects.forEach(obj => {
+                if (obj.visual) obj.visual.remove();
+                Matter.World.remove(world, obj);
+            });
+            puzzleObjects = [];
+            
+            // Clear existing portals
+            timePortals.forEach(portal => {
+                if (portal.visual) portal.visual.remove();
+                Matter.World.remove(world, portal);
+            });
+            timePortals = [];
+            
+            const era = config.eras[currentEra];
+            const objectTypes = era.objects;
+            
+            // Create 3-5 objects per era
+            const objectCount = 3 + Math.floor(Math.random() * 3);
+            
+            for (let i = 0; i < objectCount; i++) {
+                const type = objectTypes[Math.floor(Math.random() * objectTypes.length)];
+                const size = 40 + Math.random() * 30;
+                
+                // Random position within bounds
+                const x = 100 + Math.random() * (window.innerWidth - 200);
+                const y = 100 + Math.random() * (window.innerHeight - 300);
+                
+                const object = Matter.Bodies.rectangle(x, y, size, size, {
+                    render: {
+                        fillStyle: getRandomColor(),
+                        strokeStyle: '#ffffff',
+                        lineWidth: 2
+                    },
+                    chamfer: { radius: 5 },
+                    label: `object-${type}`,
+                    objectType: type,
+                    isStatic: currentLane === 'paradox', // Objects are static in paradox mode
+                    friction: 0.1,
+                    restitution: 0.3
+                });
+                
+                // Add click interaction
+                object.onClick = () => {
+                    if (!object.collected) {
+                        collectObject(object);
+                    }
+                };
+                
+                Matter.World.add(world, object);
+                puzzleObjects.push(object);
+                
+                // Create visual representation
+                const visual = document.createElement('div');
+                visual.className = 'puzzle-object';
+                visual.style.width = `${size}px`;
+                visual.style.height = `${size}px`;
+                visual.style.left = `${x - size/2}px`;
+                visual.style.top = `${y - size/2}px`;
+                visual.style.background = getRandomColor();
+                visual.dataset.objectId = object.id;
+                
+                // Add icon based on type
+                visual.innerHTML = config.objectIcons[type] || '❓';
+                
+                document.body.appendChild(visual);
+                object.visual = visual;
+            }
+            
+            // Create time portal if conditions are met
+            if (shouldCreatePortal()) {
+                createTimePortal();
+            }
+        }
+        
+        // Get random color with era-appropriate tones
+        function getRandomColor() {
+            const era = config.eras[currentEra];
+            const baseColor = era.color;
+            
+            // Convert hex to RGB
+            const r = parseInt(baseColor.slice(1, 3), 16);
+            const g = parseInt(baseColor.slice(3, 5), 16);
+            const b = parseInt(baseColor.slice(5, 7), 16);
+            
+            // Generate variations
+            const variation = 30 + Math.random() * 40;
+            const newR = Math.min(255, Math.max(0, r + (Math.random() > 0.5 ? variation : -variation)));
+            const newG = Math.min(255, Math.max(0, g + (Math.random() > 0.5 ? variation : -variation)));
+            const newB = Math.min(255, Math.max(0, b + (Math.random() > 0.5 ? variation : -variation)));
+            
+            return `rgb(${newR}, ${newG}, ${newB})`;
+        }
+        
+        // Collect an object and add to inventory
+        function collectObject(object) {
+            sounds.objectPickup.play();
+            object.collected = true;
+            
+            // Add to inventory
+            inventory.push(object.objectType);
+            updateInventory();
+            
+            // Visual feedback
+            object.visual.style.transform = 'scale(1.2)';
+            object.visual.style.opacity = '0.7';
+            object.visual.style.transition = 'all 0.3s ease';
+            
+            setTimeout(() => {
+                object.visual.remove();
+                Matter.World.remove(world, object);
+            }, 300);
+            
+            // Check if portal should be created
+            if (shouldCreatePortal()) {
+                createTimePortal();
+            }
+            
+            // Special behavior for different lanes
+            if (currentLane === 'paradox') {
+                createParadoxEffect(object);
+            } else if (currentLane === 'branching' && Math.random() < config.laneTypes.branching.branchChance) {
+                createBranchingPath();
+            }
+        }
+        
+        // Update inventory display
+        function updateInventory() {
+            const inventoryEl = document.getElementById('inventory');
+            inventoryEl.innerHTML = '';
+            
+            inventory.forEach((item, index) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'inventory-item';
+                itemEl.innerHTML = config.objectIcons[item] || '❓';
+                itemEl.title = `${item} (${config.eras.find(e => e.objects.includes(item))?.name || 'Unknown'} Era)`;
+                itemEl.addEventListener('click', () => useInventoryItem(index));
+                inventoryEl.appendChild(itemEl);
+            });
+        }
+        
+        // Use item from inventory
+        function useInventoryItem(index) {
+            const item = inventory[index];
+            
+            // Remove from inventory
+            inventory.splice(index, 1);
+            updateInventory();
+            
+            // Special effects based on lane
+            if (currentLane === 'classic') {
+                showHint(`Used ${item} - collecting more items unlocks time portals`);
+                if (shouldCreatePortal()) {
+                    createTimePortal();
+                }
+            } else if (currentLane === 'branching') {
+                showHint(`Used ${item} - created a new timeline branch`);
+                createBranchingPath();
+            } else if (currentLane === 'paradox') {
+                showHint(`Used ${item} - created a temporal paradox`);
+                createParadoxEffect();
+            }
+        }
+        
+        // Check if conditions are met to create a time portal
+        function shouldCreatePortal() {
+            const laneConfig = config.laneTypes[currentLane];
+            const collectedCount = puzzleObjects.filter(o => o.collected).length;
+            
+            if (currentLane === 'classic') {
+                return collectedCount >= laneConfig.portalRequirements;
+            } else if (currentLane === 'branching') {
+                const collectedTypes = new Set(puzzleObjects.filter(o => o.collected).map(o => o.objectType));
+                return collectedTypes.size >= laneConfig.portalRequirements;
+            } else if (currentLane === 'paradox') {
+                return collectedCount >= laneConfig.portalRequirements;
+            }
+            return false;
+        }
+        
+        // Create a time portal to travel between eras
+        function createTimePortal() {
+            sounds.puzzleComplete.play();
+            
+            // Position portal near center
+            const x = window.innerWidth / 2 + (Math.random() * 200 - 100);
+            const y = window.innerHeight / 2 + (Math.random() * 200 - 100);
+            const size = 100 + Math.random() * 50;
+            
+            const portal = Matter.Bodies.circle(x, y, size / 2, {
+                isSensor: true,
+                isStatic: true,
+                label: 'portal',
+                render: {
+                    fillStyle: 'rgba(124, 58, 237, 0.3)',
+                    strokeStyle: 'rgba(255, 255, 255, 0.8)',
+                    lineWidth: 3
+                }
+            });
+            
+            portal.onClick = () => {
+                // Different behavior for different lanes
+                if (currentLane === 'classic') {
+                    travelToEra((currentEra + 1) % config.eras.length);
+                } else if (currentLane === 'branching') {
+                    // In branching mode, portal can take you to parallel timelines
+                    const randomEra = Math.floor(Math.random() * config.eras.length);
+                    travelToEra(randomEra);
+                } else if (currentLane === 'paradox') {
+                    // In paradox mode, portal creates a paradox effect
+                    createParadoxEffect();
+                    setTimeout(() => {
+                        travelToEra((currentEra + 1) % config.eras.length);
+                    }, 1000);
+                }
+            };
+            
+            Matter.World.add(world, portal);
+            timePortals.push(portal);
+            
+            // Create visual representation
+            const visual = document.createElement('div');
+            visual.className = 'time-portal';
+            visual.style.width = `${size}px`;
+            visual.style.height = `${size}px`;
+            visual.style.left = `${x - size/2}px`;
+            visual.style.top = `${y - size/2}px`;
+            visual.dataset.portalId = portal.id;
+            
+            // Add icon
+            visual.innerHTML = '🌀';
+            
+            document.body.appendChild(visual);
+            portal.visual = visual;
+            
+            showHint("Time portal activated! Interact with it to travel through time");
+        }
+        
+        // Create branching path (for branching timeline mode)
+        function createBranchingPath() {
+            sounds.branchCreate.play();
+            
+            // Create a new branch marker on the timeline
+            const timeline = document.getElementById('timeline');
+            const branchX = currentEra * 200 + 100 + (Math.random() * 100 - 50);
+            
+            const branchMarker = document.createElement('div');
+            branchMarker.className = 'branch-marker';
+            branchMarker.style.left = `${branchX}px`;
+            branchMarker.style.top = '30%';
+            branchMarker.title = 'Parallel Timeline Branch';
+            
+            branchMarker.addEventListener('click', () => {
+                // Travel to a parallel version of this era
+                travelToParallelEra();
+            });
+            
+            timeline.appendChild(branchMarker);
+            branchMarkers.push(branchMarker);
+            
+            // Create a connecting line to the main timeline
+            const branchLine = document.createElement('div');
+            branchLine.className = 'branch-line';
+            branchLine.style.left = `${branchX}px`;
+            branchLine.style.top = '30%';
+            branchLine.style.width = '2px';
+            branchLine.style.height = '20%';
+            branchLine.style.transform = 'rotate(30deg)';
+            timeline.appendChild(branchLine);
+            
+            showHint("New timeline branch created! You can explore parallel realities");
+        }
+        
+        // Travel to a parallel version of the current era
+        function travelToParallelEra() {
+            sounds.timeTravel.play();
+            
+            // Show parallel transition effect
+            const parallelTitle = document.createElement('div');
+            parallelTitle.className = 'era-title';
+            parallelTitle.textContent = `Parallel ${config.eras[currentEra].name}`;
+            document.body.appendChild(parallelTitle);
+            
+            setTimeout(() => {
+                parallelTitle.remove();
+            }, 2000);
+            
+            // Create slightly different objects for parallel era
+            createEraObjects();
+            
+            showHint(`Entered a parallel version of the ${config.eras[currentEra].name} era`);
+        }
+        
+        // Create paradox effect (for paradox mode)
+        function createParadoxEffect(object) {
+            sounds.paradoxCreate.play();
+            
+            const x = object ? object.position.x : window.innerWidth / 2;
+            const y = object ? object.position.y : window.innerHeight / 2;
+            
+            // Create visual effect
+            const effect = document.createElement('div');
+            effect.className = 'paradox-effect';
+            effect.style.left = `${x - 50}px`;
+            effect.style.top = `${y - 50}px`;
+            document.body.appendChild(effect);
+            
+            // Remove after animation
+            setTimeout(() => {
+                effect.remove();
+            }, 2000);
+            
+            // Apply forces to nearby objects
+            puzzleObjects.forEach(obj => {
+                if (obj.position && Matter.Vector.magnitude(Matter.Vector.sub(obj.position, {x, y})) < 200) {
+                    const force = Matter.Vector.normalise(Matter.Vector.sub(obj.position, {x, y}));
+                    Matter.Body.applyForce(obj, obj.position, {
+                        x: force.x * 0.1,
+                        y: force.y * 0.1
+                    });
+                    
+                    // In paradox mode, objects might change type
+                    if (Math.random() < 0.3) {
+                        const newType = config.eras[currentEra].objects[
+                            Math.floor(Math.random() * config.eras[currentEra].objects.length)
+                        ];
+                        obj.objectType = newType;
+                        if (obj.visual) {
+                            obj.visual.innerHTML = config.objectIcons[newType] || '❓';
+                        }
+                    }
+                }
+            });
+            
+            showHint("Temporal paradox created! Reality is unstable in this timeline");
+        }
+        
+        // Travel to a specific era
+        function travelToEra(eraIndex) {
+            if (eraIndex === currentEra) return;
+            
+            sounds.eraShift.play();
+            sounds.timeTravel.play();
+            
+            // Show era transition title
+            const eraTitle = document.createElement('div');
+            eraTitle.className = 'era-title';
+            eraTitle.textContent = config.eras[eraIndex].name;
+            document.body.appendChild(eraTitle);
+            
+            // Remove after animation
+            setTimeout(() => {
+                eraTitle.remove();
+            }, 2000);
+            
+            // Update current era
+            currentEra = eraIndex;
+            
+            // Update timeline marker
+            timelineMarkers.forEach((marker, index) => {
+                if (index === currentEra) {
+                    marker.classList.add('active');
+                } else {
+                    marker.classList.remove('active');
+                }
+            });
+            
+            // Change background with transition
+            document.getElementById('time-canvas').classList.add('era-transition');
+            render.options.background = config.eras[currentEra].color;
+            
+            // Remove transition class after animation
+            setTimeout(() => {
+                document.getElementById('time-canvas').classList.remove('era-transition');
+            }, 1500);
+            
+            // Clear existing objects and portals
+            puzzleObjects.forEach(obj => {
+                if (obj.visual) obj.visual.remove();
+                Matter.World.remove(world, obj);
+            });
+            puzzleObjects = [];
+            
+            timePortals.forEach(portal => {
+                if (portal.visual) portal.visual.remove();
+                Matter.World.remove(world, portal);
+            });
+            timePortals = [];
+            
+            // Create new era objects
+            createEraObjects();
+            updateEraDisplay();
+            
+            // Special behavior for branching mode
+            if (currentLane === 'branching' && Math.random() < 0.4) {
+                createBranchingPath();
+            }
+        }
+        
+        // Update era display
+        function updateEraDisplay() {
+            const era = config.eras[currentEra];
+            document.getElementById('era-display').textContent = 
+                `${era.name} Era (${era.year > 0 ? era.year + ' CE' : Math.abs(era.year) + ' BCE'})`;
+        }
+        
+        // Show hint message
+        function showHint(message, duration = 3000) {
+            const hint = document.getElementById('puzzle-hint');
+            hint.textContent = message;
+            hint.classList.remove('hidden');
+            
+            setTimeout(() => {
+                hint.classList.add('hidden');
+            }, duration);
+        }
+        
+        // Initialize event listeners
+        function setupEventListeners() {
+            // Time control buttons
+            document.getElementById('rewind-btn').addEventListener('click', () => {
+                timeSpeed = config.timeSpeed.slow;
+                travelToEra(Math.max(0, currentEra - 1));
+            });
+            
+            document.getElementById('pause-btn').addEventListener('click', () => {
+                timeSpeed = config.timeSpeed.pause;
+                showHint("Time paused - observe the timeline carefully");
+            });
+            
+            document.getElementById('fast-forward-btn').addEventListener('click', () => {
+                timeSpeed = config.timeSpeed.fast;
+                travelToEra(Math.min(config.eras.length - 1, currentEra + 1));
+            });
+            
+            // Interaction buttons
+            document.getElementById('interact-btn').addEventListener('click', () => {
+                if (currentLane === 'paradox') {
+                    createParadoxEffect();
+                } else if (currentLane === 'branching') {
+                    createBranchingPath();
+                } else {
+                    showHint("Interacting with timeline - collect more objects to unlock portals");
+                }
+            });
+            
+            document.getElementById('time-jump-btn').addEventListener('click', () => {
+                // Jump to random era
+                let newEra;
+                do {
+                    newEra = Math.floor(Math.random() * config.eras.length);
+                } while (newEra === currentEra);
+                
+                travelToEra(newEra);
+            });
+            
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                switch(e.code) {
+                    case 'ArrowLeft':
+                        travelToEra(Math.max(0, currentEra - 1));
+                        break;
+                    case 'ArrowRight':
+                        travelToEra(Math.min(config.eras.length - 1, currentEra + 1));
+                        break;
+                    case 'Space':
+                        if (currentLane === 'paradox') {
+                            createParadoxEffect();
+                        }
+                        break;
+                    case 'KeyR':
+                        // Reset game
+                        break;
+                }
+            });
+            
+            // Mouse interaction with objects
+            document.addEventListener('click', (e) => {
+                // Get mouse position
+                const mouse = {
+                    x: e.clientX,
+                    y: e.clientY
+                };
+                
+                // Check if clicked on an object
+                puzzleObjects.forEach(obj => {
+                    const objPos = {
+                        x: obj.position.x,
+                        y: obj.position.y
+                    };
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(mouse.x - objPos.x, 2) + 
+                        Math.pow(mouse.y - objPos.y, 2)
+                    );
+                    
+                    if (distance < obj.bounds.max.x - obj.bounds.min.x) {
+                        obj.onClick();
+                    }
+                });
+                
+                // Check if clicked on a portal
+                timePortals.forEach(portal => {
+                    const portalPos = {
+                        x: portal.position.x,
+                        y: portal.position.y
+                    };
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(mouse.x - portalPos.x, 2) + 
+                        Math.pow(mouse.y - portalPos.y, 2)
+                    );
+                    
+                    if (distance < portal.circleRadius) {
+                        portal.onClick();
+                    }
+                });
+                
+                // Check if clicked on a branch marker
+                branchMarkers.forEach(marker => {
+                    const markerRect = marker.getBoundingClientRect();
+                    const markerCenter = {
+                        x: markerRect.left + markerRect.width / 2,
+                        y: markerRect.top + markerRect.height / 2
+                    };
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(mouse.x - markerCenter.x, 2) + 
+                        Math.pow(mouse.y - markerCenter.y, 2)
+                    );
+                    
+                    if (distance < 20) {
+                        marker.click();
+                    }
+                });
+            });
+            
+            // Window resize handler
+            window.addEventListener('resize', () => {
+                render.options.width = window.innerWidth;
+                render.options.height = window.innerHeight;
+                Matter.Render.setPixelRatio(render, window.devicePixelRatio);
+            });
+        }
+        
+        // Initialize the game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>

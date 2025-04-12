@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puzzle Platformer Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes jump {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes run {
+            0% { background-position: 0 0; }
+            100% { background-position: -192px 0; }
+        }
+        
+        @keyframes leverPull {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(-30deg); }
+        }
+        
+        @keyframes spikeTrap {
+            0%, 70% { transform: translateY(0); }
+            80%, 100% { transform: translateY(-30px); }
+        }
+        
+        @keyframes doorOpen {
+            0% { height: 100px; }
+            100% { height: 0; }
+        }
+        
+        @keyframes collect {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        .character {
+            width: 48px;
+            height: 48px;
+            background-image: url('https://i.imgur.com/8KTJZQp.png');
+            background-size: 192px 48px;
+            animation: run 0.8s steps(4) infinite paused;
+            position: absolute;
+            z-index: 10;
+        }
+        
+        .character.jumping {
+            animation: jump 0.5s ease-out;
+        }
+        
+        .character.falling {
+            transform: rotate(5deg);
+        }
+        
+        .platform {
+            background-color: #8B4513;
+            position: absolute;
+            border-radius: 5px;
+            box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2);
+        }
+        
+        .lever {
+            width: 20px;
+            height: 60px;
+            background-color: #A0522D;
+            position: absolute;
+            top: -40px;
+            left: 10px;
+            transform-origin: bottom center;
+            cursor: pointer;
+            z-index: 5;
+            transition: all 0.3s ease;
+        }
+        
+        .lever:hover {
+            background-color: #8B4513;
+        }
+        
+        .lever.pulled {
+            animation: leverPull 0.3s forwards;
+        }
+        
+        .spike-trap {
+            width: 40px;
+            height: 30px;
+            background-color: #333;
+            position: absolute;
+            overflow: hidden;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .spike {
+            width: 100%;
+            height: 30px;
+            background-color: #666;
+            position: absolute;
+            bottom: -30px;
+            animation: spikeTrap 2s infinite;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        }
+        
+        .door {
+            width: 40px;
+            height: 100px;
+            background-color: #964B00;
+            position: absolute;
+            overflow: hidden;
+            transition: height 0.5s;
+            z-index: 3;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        .door.open {
+            height: 0;
+        }
+        
+        .key {
+            width: 20px;
+            height: 20px;
+            background-color: gold;
+            border-radius: 50%;
+            position: absolute;
+            z-index: 4;
+            box-shadow: 0 0 10px gold;
+            transition: all 0.3s ease;
+        }
+        
+        .key:hover {
+            transform: scale(1.2);
+        }
+        
+        .key.collected {
+            animation: collect 0.5s forwards;
+        }
+        
+        .light-source {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            position: absolute;
+            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            background-color: #222;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border-radius: 10px;
+            background-image: url('https://i.imgur.com/5X3WJqC.png');
+            background-size: cover;
+        }
+        
+        .dark-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 1;
+            transition: background-color 0.5s;
+        }
+        
+        .inventory {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 20;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .inventory-item {
+            width: 30px;
+            height: 30px;
+            margin: 5px;
+            border-radius: 5px;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
+            display: none;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .particle {
+            position: absolute;
+            background-color: gold;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .health-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 200px;
+            height: 20px;
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 20;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .health-fill {
+            height: 100%;
+            width: 100%;
+            background-color: #4CAF50;
+            transition: width 0.3s;
+        }
+        
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 20;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen">
+    <div class="text-center">
+        <h1 class="text-4xl font-bold text-white mb-6">Puzzle Platformer Adventure</h1>
+        <p class="text-gray-400 mb-8">Created by Geoffroy Streit - Hylst</p>
+        
+        <div class="game-container mx-auto">
+            <div class="dark-overlay"></div>
+            <div class="light-source" id="player-light"></div>
+            
+            <!-- Platforms -->
+            <div class="platform" style="width: 800px; height: 20px; bottom: 0;"></div>
+            <div class="platform" style="width: 200px; height: 20px; bottom: 100px; left: 100px;"></div>
+            <div class="platform" style="width: 150px; height: 20px; bottom: 200px; left: 400px;"></div>
+            <div class="platform" style="width: 100px; height: 20px; bottom: 300px; left: 200px;"></div>
+            <div class="platform" style="width: 100px; height: 20px; bottom: 150px; right: 100px;"></div>
+            
+            <!-- Levers -->
+            <div class="platform" style="width: 40px; height: 40px; bottom: 100px; left: 240px;">
+                <div class="lever" id="lever1"></div>
+            </div>
+            
+            <div class="platform" style="width: 40px; height: 40px; bottom: 200px; left: 490px;">
+                <div class="lever" id="lever2"></div>
+            </div>
+            
+            <!-- Traps -->
+            <div class="spike-trap" style="bottom: 20px; left: 300px;">
+                <div class="spike" style="animation-delay: 0.5s;"></div>
+            </div>
+            
+            <div class="spike-trap" style="bottom: 120px; right: 120px;">
+                <div class="spike" style="animation-delay: 1s;"></div>
+            </div>
+            
+            <!-- Doors -->
+            <div class="door" id="door1" style="bottom: 0; right: 200px;"></div>
+            
+            <!-- Keys -->
+            <div class="key" id="key1" style="bottom: 140px; left: 150px;"></div>
+            
+            <!-- Exit -->
+            <div class="platform" style="width: 60px; height: 80px; bottom: 0; right: 50px; background-color: #4CAF50;" id="exit">
+                <div style="position: absolute; top: -20px; left: 10px; color: white; font-size: 12px;">EXIT</div>
+            </div>
+            
+            <!-- Character -->
+            <div class="character" id="player"></div>
+            
+            <!-- Health Bar -->
+            <div class="health-bar">
+                <div class="health-fill" id="health"></div>
+            </div>
+            
+            <!-- Inventory -->
+            <div class="inventory">
+                <h3 class="text-white mb-2">Inventory</h3>
+                <div class="inventory-item bg-gray-400" id="inventory-key"></div>
+            </div>
+            
+            <!-- Instructions -->
+            <div class="instructions">
+                <div>WASD or Arrows to move</div>
+                <div>Space to jump</div>
+                <div>Click levers to interact</div>
+            </div>
+            
+            <!-- Level Complete -->
+            <div class="level-complete" id="level-complete">
+                <h2 class="text-2xl font-bold mb-4">Level Complete!</h2>
+                <p class="mb-4">Congratulations on solving all the puzzles!</p>
+                <button class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded" id="next-level">Next Level</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const player = document.getElementById('player');
+            const playerLight = document.getElementById('player-light');
+            const lever1 = document.getElementById('lever1');
+            const lever2 = document.getElementById('lever2');
+            const door1 = document.getElementById('door1');
+            const key1 = document.getElementById('key1');
+            const inventoryKey = document.getElementById('inventory-key');
+            const exit = document.getElementById('exit');
+            const levelComplete = document.getElementById('level-complete');
+            const nextLevelBtn = document.getElementById('next-level');
+            const darkOverlay = document.querySelector('.dark-overlay');
+            const healthBar = document.getElementById('health');
+            
+            let playerX = 50;
+            let playerY = 20; // Start at top (will fall to ground)
+            let velocityY = 0;
+            let isJumping = false;
+            let isOnGround = false;
+            let movingLeft = false;
+            let movingRight = false;
+            let hasKey = false;
+            let health = 100;
+            let gravity = 0.5;
+            let jumpForce = -12;
+            let moveSpeed = 5;
+            let facingRight = true;
+            let isRunning = false;
+            
+            // Initialize player position
+            player.style.left = playerX + 'px';
+            player.style.top = playerY + 'px';
+            
+            // Game loop
+            function gameLoop() {
+                // Apply gravity
+                velocityY += gravity;
+                playerY += velocityY;
+                
+                // Check ground collision
+                if (playerY >= 500 - 48) {
+                    playerY = 500 - 48;
+                    velocityY = 0;
+                    isJumping = false;
+                    isOnGround = true;
+                    player.classList.remove('falling');
+                } else if (velocityY > 0 && !isOnGround) {
+                    player.classList.add('falling');
+                }
+                
+                // Check platform collisions
+                checkPlatformCollisions();
+                
+                // Check trap collisions
+                checkTrapCollisions();
+                
+                // Movement
+                if (movingLeft) {
+                    playerX -= moveSpeed;
+                    if (facingRight) {
+                        player.style.transform = 'scaleX(-1)';
+                        facingRight = false;
+                    }
+                    if (isOnGround && !isRunning) {
+                        player.style.animationPlayState = 'running';
+                        isRunning = true;
+                    }
+                } else if (movingRight) {
+                    playerX += moveSpeed;
+                    if (!facingRight) {
+                        player.style.transform = 'scaleX(1)';
+                        facingRight = true;
+                    }
+                    if (isOnGround && !isRunning) {
+                        player.style.animationPlayState = 'running';
+                        isRunning = true;
+                    }
+                } else {
+                    if (isRunning) {
+                        player.style.animationPlayState = 'paused';
+                        isRunning = false;
+                    }
+                }
+                
+                // Boundary checks
+                if (playerX < 0) playerX = 0;
+                if (playerX > 800 - 48) playerX = 800 - 48;
+                if (playerY < 0) {
+                    playerY = 0;
+                    velocityY = 0;
+                }
+                
+                // Update player position
+                player.style.left = playerX + 'px';
+                player.style.top = playerY + 'px';
+                
+                // Update light position
+                playerLight.style.left = (playerX - 18) + 'px';
+                playerLight.style.top = (playerY - 18) + 'px';
+                
+                // Check key collection
+                checkKeyCollection();
+                
+                // Check exit collision
+                checkExitCollision();
+                
+                requestAnimationFrame(gameLoop);
+            }
+            
+            function checkPlatformCollisions() {
+                // Ground (bottom: 0)
+                if (playerY >= 500 - 48) {
+                    playerY = 500 - 48;
+                    velocityY = 0;
+                    isJumping = false;
+                    isOnGround = true;
+                    return;
+                }
+                
+                // Platform 1 (top: 500 - 100 - 20 = 380)
+                if (playerY + 48 >= 380 && playerY < 380 && 
+                    playerX + 48 > 100 && playerX < 100 + 200) {
+                    playerY = 380 - 48;
+                    velocityY = 0;
+                    isJumping = false;
+                    isOnGround = true;
+                    player.classList.remove('falling');
+                }
+                
+                // Platform 2 (top: 500 - 200 - 20 = 280)
+                if (playerY + 48 >= 280 && playerY < 280 && 
+                    playerX + 48 > 400 && playerX < 400 + 150) {
+                    playerY = 280 - 48;
+                    velocityY = 0;
+                    isJumping = false;
+                    isOnGround = true;
+                    player.classList.remove('falling');
+                }
+                
+                // Platform 3 (top: 500 - 300 - 20 = 180)
+                if (playerY + 48 >= 180 && playerY < 180 && 
+                    playerX + 48 > 200 && playerX < 200 + 100) {
+                    playerY = 180 - 48;
+                    velocityY = 0;
+                    isJumping = false;
+                    isOnGround = true;
+                    player.classList.remove('falling');
+                }
+                
+                // Platform 4 (top: 500 - 150 - 20 = 330)
+                if (playerY + 48 >= 330 && playerY < 330 && 
+                    playerX + 48 > 800 - 100 - 100 && playerX < 800 - 100) {
+                    playerY = 330 - 48;
+                    velocityY = 0;
+                    isJumping = false;
+                    isOnGround = true;
+                    player.classList.remove('falling');
+                }
+            }
+            
+            function checkTrapCollisions() {
+                document.querySelectorAll('.spike-trap').forEach(trap => {
+                    const trapRect = trap.getBoundingClientRect();
+                    const playerRect = player.getBoundingClientRect();
+                    
+                    // Check if player is above the trap and falling into it
+                    if (playerRect.bottom > trapRect.top && 
+                        playerRect.top < trapRect.bottom && 
+                        playerRect.right > trapRect.left && 
+                        playerRect.left < trapRect.right &&
+                        velocityY > 0) {
+                        
+                        takeDamage(10);
+                        // Bounce player up a bit
+                        velocityY = -8;
+                    }
+                });
+            }
+            
+            function takeDamage(amount) {
+                health -= amount;
+                if (health < 0) health = 0;
+                healthBar.style.width = health + '%';
+                
+                if (health <= 30) {
+                    healthBar.style.backgroundColor = '#f44336';
+                } else if (health <= 60) {
+                    healthBar.style.backgroundColor = '#ff9800';
+                }
+                
+                if (health <= 0) {
+                    // Game over
+                    alert('Game Over! Refresh to try again.');
+                    player.style.display = 'none';
+                }
+            }
+            
+            function checkKeyCollection() {
+                const keyRect = key1.getBoundingClientRect();
+                const playerRect = player.getBoundingClientRect();
+                
+                if (playerRect.right > keyRect.left && 
+                    playerRect.left < keyRect.right && 
+                    playerRect.bottom > keyRect.top && 
+                    playerRect.top < keyRect.bottom) {
+                    
+                    if (!key1.classList.contains('collected')) {
+                        key1.classList.add('collected');
+                        hasKey = true;
+                        inventoryKey.style.backgroundColor = 'gold';
+                        
+                        // Create particles
+                        createParticles(keyRect.left + 10, keyRect.top + 10, 10, 'gold');
+                        
+                        // Remove key after animation
+                        setTimeout(() => {
+                            key1.style.display = 'none';
+                        }, 500);
+                    }
+                }
+            }
+            
+            function createParticles(x, y, count, color) {
+                for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = x + 'px';
+                    particle.style.top = y + 'px';
+                    particle.style.backgroundColor = color;
+                    particle.style.width = Math.random() * 8 + 2 + 'px';
+                    particle.style.height = particle.style.width;
+                    
+                    document.querySelector('.game-container').appendChild(particle);
+                    
+                    // Animate particle
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 5 + 2;
+                    const lifetime = Math.random() * 1000 + 500;
+                    
+                    let posX = x;
+                    let posY = y;
+                    let opacity = 1;
+                    
+                    const animate = () => {
+                        posX += Math.cos(angle) * speed;
+                        posY += Math.sin(angle) * speed;
+                        opacity -= 0.02;
+                        
+                        particle.style.left = posX + 'px';
+                        particle.style.top = posY + 'px';
+                        particle.style.opacity = opacity;
+                        
+                        if (opacity > 0) {
+                            requestAnimationFrame(animate);
+                        } else {
+                            particle.remove();
+                        }
+                    };
+                    
+                    setTimeout(() => {
+                        animate();
+                    }, Math.random() * 200);
+                }
+            }
+            
+            function checkExitCollision() {
+                const exitRect = exit.getBoundingClientRect();
+                const playerRect = player.getBoundingClientRect();
+                
+                if (playerRect.right > exitRect.left && 
+                    playerRect.left < exitRect.right && 
+                    playerRect.bottom > exitRect.top && 
+                    playerRect.top < exitRect.bottom) {
+                    
+                    if (hasKey) {
+                        levelComplete.style.display = 'block';
+                    } else {
+                        // Show hint if player tries to exit without key
+                        const hint = document.createElement('div');
+                        hint.textContent = 'You need the key!';
+                        hint.style.position = 'absolute';
+                        hint.style.left = exitRect.left + 'px';
+                        hint.style.top = exitRect.top - 30 + 'px';
+                        hint.style.color = 'white';
+                        hint.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                        hint.style.padding = '5px';
+                        hint.style.borderRadius = '5px';
+                        hint.style.zIndex = '100';
+                        document.querySelector('.game-container').appendChild(hint);
+                        
+                        setTimeout(() => {
+                            hint.remove();
+                        }, 2000);
+                    }
+                }
+            }
+            
+            // Event listeners for levers
+            lever1.addEventListener('click', () => {
+                if (!lever1.classList.contains('pulled')) {
+                    lever1.classList.add('pulled');
+                    door1.classList.add('open');
+                    
+                    // Adjust dark overlay to show more light when door opens
+                    darkOverlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                    
+                    // Add a light source where the door was
+                    const doorLight = document.createElement('div');
+                    doorLight.className = 'light-source';
+                    doorLight.style.left = (door1.offsetLeft - 30) + 'px';
+                    doorLight.style.top = (500 - 100) + 'px';
+                    doorLight.style.width = '100px';
+                    doorLight.style.height = '100px';
+                    document.querySelector('.game-container').appendChild(doorLight);
+                    
+                    // Create particles for lever effect
+                    createParticles(lever1.getBoundingClientRect().left + 10, 
+                                  lever1.getBoundingClientRect().top + 30, 
+                                  5, '#A0522D');
+                }
+            });
+            
+            lever2.addEventListener('click', () => {
+                if (!lever2.classList.contains('pulled')) {
+                    lever2.classList.add('pulled');
+                    
+                    // Disable the spike traps when this lever is pulled
+                    document.querySelectorAll('.spike').forEach(spike => {
+                        spike.style.animation = 'none';
+                    });
+                    
+                    // Create particles for lever effect
+                    createParticles(lever2.getBoundingClientRect().left + 10, 
+                                  lever2.getBoundingClientRect().top + 30, 
+                                  5, '#A0522D');
+                }
+            });
+            
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                switch(e.key) {
+                    case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
+                        movingLeft = true;
+                        break;
+                    case 'ArrowRight':
+                    case 'd':
+                    case 'D':
+                        movingRight = true;
+                        break;
+                    case 'ArrowUp':
+                    case 'w':
+                    case 'W':
+                    case ' ':
+                        if (!isJumping && isOnGround) {
+                            velocityY = jumpForce;
+                            isJumping = true;
+                            isOnGround = false;
+                            player.classList.add('jumping');
+                            setTimeout(() => {
+                                player.classList.remove('jumping');
+                            }, 500);
+                        }
+                        break;
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                switch(e.key) {
+                    case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
+                        movingLeft = false;
+                        break;
+                    case 'ArrowRight':
+                    case 'd':
+                    case 'D':
+                        movingRight = false;
+                        break;
+                }
+            });
+            
+            // Next level button
+            nextLevelBtn.addEventListener('click', () => {
+                alert('This is just a demo. More levels coming soon!');
+                levelComplete.style.display = 'none';
+            });
+            
+            // Start the game
+            gameLoop();
+        });
+    </script>
+</body>
+</html>

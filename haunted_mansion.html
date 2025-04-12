@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haunted Mansion Escape</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Eater&family=IM+Fell+English+SC&display=swap');
+        
+        body {
+            font-family: 'IM Fell English SC', serif;
+            background-color: #000;
+            color: #e0d3b7;
+            overflow: hidden;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23e0d3b7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/></svg>'), auto;
+        }
+        
+        .haunted-text {
+            font-family: 'Eater', cursive;
+        }
+        
+        .flicker {
+            animation: flicker 5s infinite alternate;
+        }
+        
+        @keyframes flicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% {
+                opacity: 1;
+            }
+            20%, 24%, 55% {
+                opacity: 0.4;
+            }
+        }
+        
+        .ghost {
+            position: absolute;
+            opacity: 0;
+            transition: opacity 0.5s, transform 5s linear;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .ghost-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+        
+        .shadow-pulse {
+            animation: shadowPulse 3s infinite;
+        }
+        
+        @keyframes shadowPulse {
+            0%, 100% {
+                box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 30px 10px rgba(255, 0, 0, 0.6);
+            }
+        }
+        
+        .door-knob {
+            transition: transform 0.3s;
+        }
+        
+        .door-knob:hover {
+            transform: rotate(15deg);
+        }
+        
+        .inventory-item {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .inventory-item:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(220, 38, 38, 0.7);
+        }
+        
+        .hidden-compartment {
+            transition: all 0.5s ease;
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+        }
+        
+        .hidden-compartment.revealed {
+            opacity: 1;
+            height: auto;
+        }
+        
+        .blood-drip {
+            position: absolute;
+            width: 2px;
+            background: linear-gradient(to bottom, #8a0303, transparent);
+            animation: drip 5s linear infinite;
+        }
+        
+        @keyframes drip {
+            0% {
+                height: 0;
+                opacity: 1;
+            }
+            80% {
+                height: 50px;
+                opacity: 1;
+            }
+            100% {
+                height: 50px;
+                opacity: 0;
+            }
+        }
+        
+        .candle-flicker {
+            animation: candleFlicker 2s infinite alternate;
+        }
+        
+        @keyframes candleFlicker {
+            0%, 100% {
+                opacity: 0.8;
+                filter: drop-shadow(0 0 5px rgba(255, 166, 0, 0.7));
+            }
+            25%, 75% {
+                opacity: 1;
+                filter: drop-shadow(0 0 10px rgba(255, 166, 0, 0.9));
+            }
+            50% {
+                opacity: 0.7;
+                filter: drop-shadow(0 0 8px rgba(255, 166, 0, 0.6));
+            }
+        }
+        
+        .typewriter {
+            overflow: hidden;
+            border-right: 2px solid #e0d3b7;
+            white-space: nowrap;
+            animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+        
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+        
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #e0d3b7 }
+        }
+    </style>
+</head>
+<body class="relative h-screen w-full">
+    <!-- Audio Elements -->
+    <audio id="creakSound" src="https://assets.mixkit.co/sfx/preview/mixkit-creaky-door-2306.mp3" preload="auto"></audio>
+    <audio id="ghostSound" src="https://assets.mixkit.co/sfx/preview/mixkit-scary-ghost-ambience-2982.mp3" preload="auto"></audio>
+    <audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" preload="auto"></audio>
+    <audio id="ambientSound" src="https://assets.mixkit.co/sfx/preview/mixkit-horror-haunted-ambience-2879.mp3" loop preload="auto"></audio>
+    <audio id="pageSound" src="https://assets.mixkit.co/sfx/preview/mixkit-page-turn-single-1102.mp3" preload="auto"></audio>
+    <audio id="keySound" src="https://assets.mixkit.co/sfx/preview/mixkit-keyboard-single-press-1129.mp3" preload="auto"></audio>
+    <audio id="lockSound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-padlock-2850.mp3" preload="auto"></audio>
+    
+    <!-- Main Game Container -->
+    <div id="gameContainer" class="relative h-full w-full overflow-hidden">
+        <!-- Title Screen -->
+        <div id="titleScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 z-50 transition-opacity duration-1000">
+            <h1 class="haunted-text text-6xl md:text-8xl text-red-600 mb-8 flicker">HAUNTED MANSION</h1>
+            <h2 class="text-3xl md:text-4xl text-amber-200 mb-12">ESCAPE THE NIGHT</h2>
+            <button id="startButton" class="px-8 py-4 bg-red-900 hover:bg-red-800 text-amber-100 text-xl rounded-lg border-2 border-amber-200 hover:scale-105 transition-all duration-300 shadow-lg shadow-red-900/50">
+                ENTER IF YOU DARE
+            </button>
+            <div class="absolute bottom-4 text-amber-200 text-sm">
+                <p>Use your mouse to explore and interact with objects</p>
+            </div>
+        </div>
+        
+        <!-- Game UI -->
+        <div id="gameUI" class="absolute inset-0 hidden">
+            <!-- Room View -->
+            <div id="roomView" class="h-full w-full relative">
+                <!-- Blood drips (randomly generated) -->
+                <div id="bloodDrips" class="absolute inset-0 pointer-events-none"></div>
+                
+                <!-- Ghost elements (randomly appear) -->
+                <div id="ghostsContainer" class="absolute inset-0 pointer-events-none"></div>
+                
+                <!-- Current Room Display -->
+                <div id="currentRoom" class="h-full w-full flex flex-col">
+                    <!-- Room 1: Entrance Hall -->
+                    <div id="room1" class="room h-full w-full bg-cover bg-center hidden" style="background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1600566752355-35792bedcfea?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')">
+                        <div class="absolute top-4 left-4 bg-black bg-opacity-70 p-2 rounded-lg">
+                            <h3 class="text-xl text-amber-200">Grand Entrance Hall</h3>
+                            <p class="text-sm text-amber-100">The air is thick with dust and something else... something sinister.</p>
+                        </div>
+                        
+                        <!-- Interactive Objects -->
+                        <div class="absolute bottom-1/4 left-1/4 w-16 h-16 cursor-pointer" onclick="interact('portrait')">
+                            <div class="relative w-full h-full">
+                                <img src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" alt="Portrait" class="w-full h-full object-cover border-2 border-amber-900 rounded">
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute bottom-1/3 right-1/4 w-20 h-32 cursor-pointer" onclick="interact('desk')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute bottom-0 w-full h-3/4 bg-amber-900 rounded-t-lg border-t-2 border-amber-700"></div>
+                                <div class="absolute top-0 left-1/4 w-1/2 h-1/4 bg-amber-800 rounded-t-sm"></div>
+                                <div class="absolute top-1/4 left-1/3 w-1/3 h-1/2 bg-amber-800 rounded-sm flex items-center justify-center">
+                                    <div class="w-4 h-4 rounded-full bg-red-600 shadow-pulse"></div>
+                                </div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute bottom-1/3 left-1/2 transform -translate-x-1/2 w-32 h-48 cursor-pointer" onclick="interact('door')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute inset-0 bg-amber-800 rounded-lg border-2 border-amber-900"></div>
+                                <div class="absolute top-1/2 right-4 w-4 h-8 bg-amber-700 rounded-full door-knob"></div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute top-1/4 right-1/4 w-16 h-16 cursor-pointer" onclick="interact('candle')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-2 h-8 bg-amber-800"></div>
+                                <div class="absolute top-4 left-1/2 transform -translate-x-1/2 w-6 h-8 bg-amber-200 rounded-full candle-flicker"></div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Room 2: Library -->
+                    <div id="room2" class="room h-full w-full bg-cover bg-center hidden" style="background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1544947950-fa07a98d237f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')">
+                        <div class="absolute top-4 left-4 bg-black bg-opacity-70 p-2 rounded-lg">
+                            <h3 class="text-xl text-amber-200">Forgotten Library</h3>
+                            <p class="text-sm text-amber-100">The smell of old parchment mixes with something more... unsettling.</p>
+                        </div>
+                        
+                        <!-- Interactive Objects -->
+                        <div class="absolute bottom-1/4 left-1/4 w-16 h-16 cursor-pointer" onclick="interact('book')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute inset-0 bg-red-900 rounded-sm border-r-4 border-amber-800"></div>
+                                <div class="absolute inset-1 bg-amber-100 rounded-sm"></div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute bottom-1/3 right-1/4 w-24 h-32 cursor-pointer" onclick="interact('globe')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-4 h-8 bg-amber-800 rounded-b-full"></div>
+                                <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-20 h-20 bg-blue-900 rounded-full shadow-lg shadow-blue-900/50"></div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute bottom-1/3 left-1/2 transform -translate-x-1/2 w-32 h-48 cursor-pointer" onclick="interact('safe')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute inset-0 bg-gray-800 rounded-lg border-4 border-gray-700"></div>
+                                <div class="absolute top-4 left-1/2 transform -translate-x-1/2 w-16 h-8 bg-gray-700 rounded-sm flex items-center justify-center">
+                                    <div class="w-12 h-1 bg-gray-600 rounded-full"></div>
+                                </div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Room 3: Master Bedroom -->
+                    <div id="room3" class="room h-full w-full bg-cover bg-center hidden" style="background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1631679706909-1844bbd07221?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1992&q=80')">
+                        <div class="absolute top-4 left-4 bg-black bg-opacity-70 p-2 rounded-lg">
+                            <h3 class="text-xl text-amber-200">Master Bedroom</h3>
+                            <p class="text-sm text-amber-100">The bed looks like it hasn't been slept in for decades... or has it?</p>
+                        </div>
+                        
+                        <!-- Interactive Objects -->
+                        <div class="absolute bottom-1/4 left-1/4 w-16 h-16 cursor-pointer" onclick="interact('doll')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-12 bg-white rounded-t-full"></div>
+                                <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-white rounded-full">
+                                    <div class="absolute top-2 left-1 w-1 h-1 bg-black rounded-full"></div>
+                                    <div class="absolute top-2 right-1 w-1 h-1 bg-black rounded-full"></div>
+                                    <div class="absolute top-4 left-1/2 transform -translate-x-1/2 w-2 h-1 bg-red-500 rounded-full"></div>
+                                </div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute bottom-1/3 right-1/4 w-24 h-16 cursor-pointer" onclick="interact('chest')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute inset-0 bg-amber-800 rounded-sm border-t-2 border-amber-900"></div>
+                                <div class="absolute top-0 left-1/4 w-1/2 h-1 bg-amber-900 rounded-t-sm"></div>
+                                <div class="absolute top-2 left-1/2 transform -translate-x-1/2 w-4 h-1 bg-amber-700 rounded-sm"></div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute bottom-1/3 left-1/2 transform -translate-x-1/2 w-32 h-48 cursor-pointer" onclick="interact('mirror')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute inset-0 bg-gray-300 rounded-lg border-4 border-amber-800"></div>
+                                <div class="absolute inset-1 bg-gray-100 rounded-sm"></div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Room 4: Final Escape -->
+                    <div id="room4" class="room h-full w-full bg-cover bg-center hidden" style="background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1600585152220-90363fe7e115?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')">
+                        <div class="absolute top-4 left-4 bg-black bg-opacity-70 p-2 rounded-lg">
+                            <h3 class="text-xl text-amber-200">Front Door</h3>
+                            <p class="text-sm text-amber-100">The exit is near... but the mansion isn't ready to let you go yet.</p>
+                        </div>
+                        
+                        <!-- Interactive Objects -->
+                        <div class="absolute bottom-1/3 left-1/2 transform -translate-x-1/2 w-32 h-48 cursor-pointer" onclick="interact('finalDoor')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute inset-0 bg-amber-800 rounded-lg border-2 border-amber-900"></div>
+                                <div class="absolute top-1/2 right-4 w-4 h-8 bg-amber-700 rounded-full door-knob"></div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute bottom-1/4 left-1/4 w-16 h-16 cursor-pointer" onclick="interact('clock')">
+                            <div class="relative w-full h-full">
+                                <div class="absolute inset-0 bg-amber-900 rounded-full border-2 border-amber-800"></div>
+                                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-6 bg-black origin-bottom rotate-45"></div>
+                                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-4 bg-black origin-bottom -rotate-90"></div>
+                                <div class="absolute inset-0 bg-black bg-opacity-30 hover:bg-opacity-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Inventory -->
+            <div id="inventory" class="absolute bottom-4 left-4 bg-black bg-opacity-70 p-2 rounded-lg w-64">
+                <h3 class="text-lg text-amber-200 border-b border-amber-800 pb-1 mb-2">Inventory</h3>
+                <div id="inventoryItems" class="flex flex-wrap gap-2">
+                    <!-- Items will appear here as they're collected -->
+                </div>
+            </div>
+            
+            <!-- Interaction Modal -->
+            <div id="interactionModal" class="absolute inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center z-40">
+                <div class="bg-amber-900 bg-opacity-90 border-2 border-amber-700 rounded-lg p-6 max-w-md w-full mx-4 relative">
+                    <button id="closeModal" class="absolute top-2 right-2 text-amber-200 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <h3 id="modalTitle" class="text-xl text-amber-200 mb-4"></h3>
+                    <div id="modalContent" class="text-amber-100 mb-4"></div>
+                    <div id="modalActions" class="flex justify-end gap-2"></div>
+                </div>
+            </div>
+            
+            <!-- Puzzle Modal -->
+            <div id="puzzleModal" class="absolute inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center z-40">
+                <div class="bg-amber-900 bg-opacity-90 border-2 border-amber-700 rounded-lg p-6 max-w-md w-full mx-4 relative">
+                    <button id="closePuzzle" class="absolute top-2 right-2 text-amber-200 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <h3 id="puzzleTitle" class="text-xl text-amber-200 mb-4"></h3>
+                    <div id="puzzleContent" class="text-amber-100 mb-4"></div>
+                    <div id="puzzleInput" class="mb-4"></div>
+                    <div id="puzzleActions" class="flex justify-end gap-2"></div>
+                </div>
+            </div>
+            
+            <!-- Game Over Modal -->
+            <div id="gameOverModal" class="absolute inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center z-50">
+                <div class="bg-red-900 bg-opacity-90 border-2 border-red-700 rounded-lg p-6 max-w-md w-full mx-4 text-center">
+                    <h3 class="haunted-text text-4xl text-red-500 mb-4">GAME OVER</h3>
+                    <p id="gameOverMessage" class="text-amber-100 mb-6"></p>
+                    <button id="restartButton" class="px-6 py-3 bg-amber-800 hover:bg-amber-700 text-amber-100 rounded-lg border border-amber-600">
+                        TRY AGAIN
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Win Modal -->
+            <div id="winModal" class="absolute inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center z-50">
+                <div class="bg-green-900 bg-opacity-90 border-2 border-green-700 rounded-lg p-6 max-w-md w-full mx-4 text-center">
+                    <h3 class="haunted-text text-4xl text-green-400 mb-4">ESCAPE SUCCESSFUL!</h3>
+                    <p class="text-amber-100 mb-6">You've escaped the haunted mansion... for now.</p>
+                    <button id="playAgainButton" class="px-6 py-3 bg-amber-800 hover:bg-amber-700 text-amber-100 rounded-lg border border-amber-600">
+                        PLAY AGAIN
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        const gameState = {
+            currentRoom: 1,
+            inventory: [],
+            puzzlesSolved: {
+                portrait: false,
+                desk: false,
+                book: false,
+                globe: false,
+                safe: false,
+                doll: false,
+                chest: false,
+                mirror: false,
+                clock: false
+            },
+            gameActive: false,
+            ghostEncounters: 0,
+            maxGhostEncounters: 3
+        };
+        
+        // Audio Elements
+        const creakSound = document.getElementById('creakSound');
+        const ghostSound = document.getElementById('ghostSound');
+        const successSound = document.getElementById('successSound');
+        const ambientSound = document.getElementById('ambientSound');
+        const pageSound = document.getElementById('pageSound');
+        const keySound = document.getElementById('keySound');
+        const lockSound = document.getElementById('lockSound');
+        
+        // DOM Elements
+        const titleScreen = document.getElementById('titleScreen');
+        const gameUI = document.getElementById('gameUI');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const playAgainButton = document.getElementById('playAgainButton');
+        const interactionModal = document.getElementById('interactionModal');
+        const closeModal = document.getElementById('closeModal');
+        const puzzleModal = document.getElementById('puzzleModal');
+        const closePuzzle = document.getElementById('closePuzzle');
+        const gameOverModal = document.getElementById('gameOverModal');
+        const winModal = document.getElementById('winModal');
+        const inventoryItems = document.getElementById('inventoryItems');
+        const bloodDrips = document.getElementById('bloodDrips');
+        const ghostsContainer = document.getElementById('ghostsContainer');
+        
+        // Initialize the game
+        function initGame() {
+            // Set up event listeners
+            startButton.addEventListener('click', startGame);
+            restartButton.addEventListener('click', restartGame);
+            playAgainButton.addEventListener('click', restartGame);
+            closeModal.addEventListener('click', closeInteractionModal);
+            closePuzzle.addEventListener('click', closePuzzleModal);
+            
+            // Show title screen
+            titleScreen.classList.remove('hidden');
+            gameUI.classList.add('hidden');
+            
+            // Preload sounds
+            const sounds = [creakSound, ghostSound, successSound, ambientSound, pageSound, keySound, lockSound];
+            sounds.forEach(sound => {
+                sound.volume = 0.5;
+                sound.load();
+            });
+        }
+        
+        // Start the game
+        function startGame() {
+            gameState.gameActive = true;
+            gameState.currentRoom = 1;
+            gameState.inventory = [];
+            gameState.ghostEncounters = 0;
+            
+            // Reset puzzle states
+            for (const puzzle in gameState.puzzlesSolved) {
+                gameState.puzzlesSolved[puzzle] = false;
+            }
+            
+            // Update UI
+            titleScreen.classList.add('hidden');
+            gameUI.classList.remove('hidden');
+            updateInventory();
+            showRoom(gameState.currentRoom);
+            
+            // Start ambient sound
+            ambientSound.play();
+            
+            // Start random ghost appearances
+            startGhostEncounters();
+            
+            // Start blood drip effects
+            startBloodDrips();
+        }
+        
+        // Restart the game
+        function restartGame() {
+            gameOverModal.classList.add('hidden');
+            winModal.classList.add('hidden');
+            startGame();
+        }
+        
+        // Show a specific room
+        function showRoom(roomNumber) {
+            // Hide all rooms
+            document.querySelectorAll('.room').forEach(room => {
+                room.classList.add('hidden');
+            });
+            
+            // Show the current room
+            document.getElementById(`room${roomNumber}`).classList.remove('hidden');
+            
+            // Play door creak sound when changing rooms
+            if (gameState.gameActive) {
+                creakSound.currentTime = 0;
+                creakSound.play();
+            }
+        }
+        
+        // Handle object interactions
+        function interact(object) {
+            if (!gameState.gameActive) return;
+            
+            keySound.play();
+            
+            switch (object) {
+                case 'portrait':
+                    if (!gameState.puzzlesSolved.portrait) {
+                        showInteractionModal(
+                            "Creepy Portrait",
+                            "The eyes of the portrait seem to follow you. There's something written on the back...",
+                            [
+                                {text: "Examine", action: () => startPortraitPuzzle()},
+                                {text: "Leave", action: closeInteractionModal}
+                            ]
+                        );
+                    } else {
+                        showInteractionModal(
+                            "Portrait",
+                            "You've already found the key behind this portrait.",
+                            [
+                                {text: "Close", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+                    
+                case 'desk':
+                    if (!gameState.puzzlesSolved.desk) {
+                        showInteractionModal(
+                            "Dusty Desk",
+                            "The desk is covered in dust except for one clean spot where a small box sits.",
+                            [
+                                {text: "Open Box", action: () => startDeskPuzzle()},
+                                {text: "Leave", action: closeInteractionModal}
+                            ]
+                        );
+                    } else {
+                        showInteractionModal(
+                            "Desk",
+                            "The box is empty. You already took the candle.",
+                            [
+                                {text: "Close", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+                    
+                case 'door':
+                    if (gameState.currentRoom === 1) {
+                        if (gameState.inventory.includes('hall_key')) {
+                            showInteractionModal(
+                                "Locked Door",
+                                "You use the key from the portrait to unlock the door.",
+                                [
+                                    {text: "Enter Library", action: () => {
+                                        gameState.currentRoom = 2;
+                                        showRoom(2);
+                                        closeInteractionModal();
+                                    }},
+                                    {text: "Stay Here", action: closeInteractionModal}
+                                ]
+                            );
+                        } else {
+                            showInteractionModal(
+                                "Locked Door",
+                                "The door is locked. You need a key to open it.",
+                                [
+                                    {text: "Close", action: closeInteractionModal}
+                                ]
+                            );
+                        }
+                    } else if (gameState.currentRoom === 2) {
+                        showInteractionModal(
+                            "Door",
+                            "This leads back to the entrance hall.",
+                            [
+                                {text: "Go Back", action: () => {
+                                    gameState.currentRoom = 1;
+                                    showRoom(1);
+                                    closeInteractionModal();
+                                }},
+                                {text: "Stay", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+                    
+                case 'candle':
+                    showInteractionModal(
+                        "Flickering Candle",
+                        "The candle provides a small circle of light in the darkness.",
+                        [
+                            {text: "Take Candle", action: () => {
+                                if (!gameState.inventory.includes('candle')) {
+                                    gameState.inventory.push('candle');
+                                    updateInventory();
+                                    successSound.play();
+                                    showInteractionModal(
+                                        "Candle Taken",
+                                        "You now have a light source. It might be useful in darker areas.",
+                                        [
+                                            {text: "Close", action: closeInteractionModal}
+                                        ]
+                                    );
+                                } else {
+                                    showInteractionModal(
+                                        "Candle",
+                                        "You already have a candle.",
+                                        [
+                                            {text: "Close", action: closeInteractionModal}
+                                        ]
+                                    );
+                                }
+                            }},
+                            {text: "Leave", action: closeInteractionModal}
+                        ]
+                    );
+                    break;
+                    
+                case 'book':
+                    if (!gameState.puzzlesSolved.book) {
+                        showInteractionModal(
+                            "Ancient Book",
+                            "The book is titled 'Secrets of the Mansion'. It's locked with a small combination lock.",
+                            [
+                                {text: "Try Combination", action: () => startBookPuzzle()},
+                                {text: "Leave", action: closeInteractionModal}
+                            ]
+                        );
+                    } else {
+                        showInteractionModal(
+                            "Ancient Book",
+                            "The book is open to a page showing a map of the mansion with a room marked 'Safe'.",
+                            [
+                                {text: "Close", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+                    
+                case 'globe':
+                    if (!gameState.puzzlesSolved.globe) {
+                        showInteractionModal(
+                            "World Globe",
+                            "The globe seems stuck in place. There's a small button on the base.",
+                            [
+                                {text: "Press Button", action: () => startGlobePuzzle()},
+                                {text: "Leave", action: closeInteractionModal}
+                            ]
+                        );
+                    } else {
+                        showInteractionModal(
+                            "World Globe",
+                            "The globe's secret compartment is empty. You already took the key.",
+                            [
+                                {text: "Close", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+                    
+                case 'safe':
+                    if (!gameState.puzzlesSolved.safe) {
+                        if (gameState.inventory.includes('safe_key')) {
+                            showInteractionModal(
+                                "Wall Safe",
+                                "You use the key from the globe to open the safe.",
+                                [
+                                    {text: "Open Safe", action: () => {
+                                        gameState.puzzlesSolved.safe = true;
+                                        gameState.inventory.push('bedroom_key');
+                                        updateInventory();
+                                        successSound.play();
+                                        showInteractionModal(
+                                            "Safe Contents",
+                                            "Inside the safe you find a key labeled 'Master Bedroom'.",
+                                            [
+                                                {text: "Take Key", action: closeInteractionModal}
+                                            ]
+                                        );
+                                    }},
+                                    {text: "Leave", action: closeInteractionModal}
+                                ]
+                            );
+                        } else {
+                            showInteractionModal(
+                                "Wall Safe",
+                                "The safe is locked. You need a key to open it.",
+                                [
+                                    {text: "Close", action: closeInteractionModal}
+                                ]
+                            );
+                        }
+                    } else {
+                        showInteractionModal(
+                            "Wall Safe",
+                            "The safe is empty. You already took the bedroom key.",
+                            [
+                                {text: "Close", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+                    
+                case 'doll':
+                    if (!gameState.puzzlesSolved.doll) {
+                        showInteractionModal(
+                            "Creepy Doll",
+                            "The doll's eyes seem to follow you. Its mouth is slightly open.",
+                            [
+                                {text: "Examine", action: () => startDollPuzzle()},
+                                {text: "Leave", action: closeInteractionModal}
+                            ]
+                        );
+                    } else {
+                        showInteractionModal(
+                            "Doll",
+                            "The doll's mouth is open, revealing nothing inside.",
+                            [
+                                {text: "Close", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+                    
+                case 'chest':
+                    if (!gameState.puzzlesSolved.chest) {
+                        showInteractionModal(
+                            "Old Chest",
+                            "The chest is locked with a strange symbol puzzle.",
+                            [
+                                {text: "Solve Puzzle", action: () => startChestPuzzle()},
+                                {text: "Leave", action: closeInteractionModal}
+                            ]
+                        );
+                    } else {
+                        showInteractionModal(
+                            "Old Chest",
+                            "The chest is empty. You already took the mirror shard.",
+                            [
+                                {text: "Close", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+                    
+                case 'mirror':
+                    if (!gameState.puzzlesSolved.mirror) {
+                        if (gameState.inventory.includes('mirror_shard')) {
+                            showInteractionModal(
+                                "Broken Mirror",
+                                "The mirror is cracked. One piece is missing.",
+                                [
+                                    {text: "Insert Shard", action: () => startMirrorPuzzle()},
+                                    {text: "Leave", action: closeInteractionModal}
+                                ]
+                            );
+                        } else {
+                            showInteractionModal(
+                                "Broken Mirror",
+                                "The mirror is cracked and missing a piece. You can see something behind it...",
+                                [
+                                    {text: "Close", action: closeInteractionModal}
+                                ]
+                            );
+                        }
+                    } else {
+                        showInteractionModal(
+                            "Mirror",
+                            "The repaired mirror reveals a hidden door to the final exit.",
+                            [
+                                {text: "Proceed", action: () => {
+                                    gameState.currentRoom = 4;
+                                    showRoom(4);
+                                    closeInteractionModal();
+                                }},
+                                {text: "Stay", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+                    
+                case 'clock':
+                    if (!gameState.puzzlesSolved.clock) {
+                        showInteractionModal(
+                            "Grandfather Clock",
+                            "The clock is stopped at 3:15. The hands won't move.",
+                            [
+                                {text: "Set Time", action: () => startClockPuzzle()},
+                                {text: "Leave", action: closeInteractionModal}
+                            ]
+                        );
+                    } else {
+                        showInteractionModal(
+                            "Grandfather Clock",
+                            "The clock is now working and showing the correct time.",
+                            [
+                                {text: "Close", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+                    
+                case 'finalDoor':
+                    if (gameState.inventory.includes('clock_key')) {
+                        showInteractionModal(
+                            "Front Door",
+                            "You use the key from the clock to unlock the door and escape!",
+                            [
+                                {text: "Escape", action: () => {
+                                    winGame();
+                                    closeInteractionModal();
+                                }},
+                                {text: "Stay", action: closeInteractionModal}
+                            ]
+                        );
+                    } else {
+                        showInteractionModal(
+                            "Front Door",
+                            "The door is locked with a strange mechanism. Maybe the clock has the answer...",
+                            [
+                                {text: "Close", action: closeInteractionModal}
+                            ]
+                        );
+                    }
+                    break;
+            }
+        }
+        
+        // Show interaction modal
+        function showInteractionModal(title, content, actions) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalContent').textContent = content;
+            
+            const actionsContainer = document.getElementById('modalActions');
+            actionsContainer.innerHTML = '';
+            
+            actions.forEach(action => {
+                const button = document.createElement('button');
+                button.textContent = action.text;
+                button.className = 'px-4 py-2 bg-amber-800 hover:bg-amber-700 text-amber-100 rounded border border-amber-600';
+                button.addEventListener('click', action.action);
+                actionsContainer.appendChild(button);
+            });
+            
+            interactionModal.classList.remove('hidden');
+        }
+        
+        // Close interaction modal
+        function closeInteractionModal() {
+            interactionModal.classList.add('hidden');
+        }
+        
+        // Show puzzle modal
+        function showPuzzleModal(title, content, inputHtml, actions) {
+            document.getElementById('puzzleTitle').textContent = title;
+            document.getElementById('puzzleContent').textContent = content;
+            
+            const inputContainer = document.getElementById('puzzleInput');
+            inputContainer.innerHTML = inputHtml;
+            
+            const actionsContainer = document.getElementById('puzzleActions');
+            actionsContainer.innerHTML = '';
+            
+            actions.forEach(action => {
+                const button = document.createElement('button');
+                button.textContent = action.text;
+                button.className = 'px-4 py-2 bg-amber-800 hover:bg-amber-700 text-amber-100 rounded border border-amber-600';
+                button.addEventListener('click', action.action);
+                actionsContainer.appendChild(button);
+            });
+            
+            puzzleModal.classList.remove('hidden');
+        }
+        
+        // Close puzzle modal
+        function closePuzzleModal() {
+            puzzleModal.classList.add('hidden');
+        }
+        
+        // Update inventory display
+        function updateInventory() {
+            inventoryItems.innerHTML = '';
+            
+            gameState.inventory.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'inventory-item w-12 h-12 bg-amber-900 rounded border border-amber-700 flex items-center justify-center';
+                
+                let icon;
+                switch (item) {
+                    case 'hall_key':
+                        icon = '<i class="fas fa-key text-amber-200"></i>';
+                        break;
+                    case 'candle':
+                        icon = '<i class="fas fa-fire-flame-curved text-red-400 candle-flicker"></i>';
+                        break;
+                    case 'safe_key':
+                        icon = '<i class="fas fa-key text-blue-300"></i>';
+                        break;
+                    case 'bedroom_key':
+                        icon = '<i class="fas fa-key text-purple-300"></i>';
+                        break;
+                    case 'mirror_shard':
+                        icon = '<i class="fas fa-shard-glass text-gray-300"></i>';
+                        break;
+                    case 'clock_key':
+                        icon = '<i class="fas fa-key text-yellow-300"></i>';
+                        break;
+                    default:
+                        icon = '<i class="fas fa-question text-amber-200"></i>';
+                }
+                
+                itemDiv.innerHTML = icon;
+                itemDiv.title = item.replace('_', ' ').toUpperCase();
+                inventoryItems.appendChild(itemDiv);
+            });
+            
+            if (gameState.inventory.length === 0) {
+                const emptyText = document.createElement('p');
+                emptyText.className = 'text-amber-200 text-sm italic';
+                emptyText.textContent = 'Empty';
+                inventoryItems.appendChild(emptyText);
+            }
+        }
+        
+        // Portrait puzzle
+        function startPortraitPuzzle() {
+            closeInteractionModal();
+            
+            showPuzzleModal(
+                "Portrait Puzzle",
+                "The portrait has a small latch on the back. To open it, you need to arrange these symbols in the correct order:",
+                `
+                <div class="flex gap-2 mb-4">
+                    <div class="symbol bg-amber-800 w-10 h-10 flex items-center justify-center cursor-pointer" data-symbol="1">☠</div>
+                    <div class="symbol bg-amber-800 w-10 h-10 flex items-center justify-center cursor-pointer" data-symbol="2">⚰</div>
+                    <div class="symbol bg-amber-800 w-10 h-10 flex items-center justify-center cursor-pointer" data-symbol="3">👻</div>
+                </div>
+                <div class="bg-amber-950 p-2 rounded">
+                    <p class="text-sm mb-2">Selected Order:</p>
+                    <div id="selectedOrder" class="flex gap-2 min-h-10"></div>
+                </div>
+                `,
+                [
+                    {text: "Check", action: checkPortraitPuzzle},
+                    {text: "Reset", action: resetPortraitPuzzle},
+                    {text: "Cancel", action: closePuzzleModal}
+                ]
+            );
+            
+            let selectedSymbols = [];
+            
+            document.querySelectorAll('.symbol').forEach(symbol => {
+                symbol.addEventListener('click', () => {
+                    if (selectedSymbols.length < 3 && !selectedSymbols.includes(symbol.dataset.symbol)) {
+                        selectedSymbols.push(symbol.dataset.symbol);
+                        updateSelectedOrder();
+                        keySound.play();
+                    }
+                });
+            });
+            
+            function updateSelectedOrder() {
+                const orderContainer = document.getElementById('selectedOrder');
+                orderContainer.innerHTML = '';
+                
+                selectedSymbols.forEach(symbolId => {
+                    const symbol = document.querySelector(`.symbol[data-symbol="${symbolId}"]`);
+                    const clone = symbol.cloneNode(true);
+                    clone.classList.remove('cursor-pointer');
+                    orderContainer.appendChild(clone);
+                });
+            }
+            
+            function resetPortraitPuzzle() {
+                selectedSymbols = [];
+                updateSelectedOrder();
+                keySound.play();
+            }
+            
+            function checkPortraitPuzzle() {
+                keySound.play();
+                
+                // Correct order is 3, 1, 2 (ghost, skull, coffin)
+                if (selectedSymbols.length === 3 && 
+                    selectedSymbols[0] === '3' && 
+                    selectedSymbols[1] === '1' && 
+                    selectedSymbols[2] === '2') {
+                    
+                    gameState.puzzlesSolved.portrait = true;
+                    gameState.inventory.push('hall_key');
+                    updateInventory();
+                    successSound.play();
+                    
+                    showInteractionModal(
+                        "Portrait Solved",
+                        "The portrait opens to reveal a small key labeled 'Hall'!",
+                        [
+                            {text: "Take Key", action: closePuzzleModal}
+                        ]
+                    );
+                } else {
+                    showInteractionModal(
+                        "Wrong Order",
+                        "Nothing happens. Maybe try a different combination...",
+                        [
+                            {text: "Try Again", action: () => {}}
+                        ]
+                    );
+                    
+                    // Random ghost encounter chance on wrong answer
+                    if (Math.random() < 0.3) {
+                        triggerGhostEncounter();
+                    }
+                }
+            }
+        }
+        
+        // Desk puzzle
+        function startDeskPuzzle() {
+            closeInteractionModal();
+            
+            showPuzzleModal(
+                "Desk Puzzle",
+                "The box has a simple number lock with 3 digits. There's a note that says 'The year the mansion was abandoned'.",
+                `
+                <div class="flex gap-2 justify-center mb-4">
+                    <input type="number" min="0" max="9" class="w-12 h-12 text-center bg-amber-950 border border-amber-700 rounded text-amber-100 text-xl" maxlength="1">
+                    <input type="number" min="0" max="9" class="w-12 h-12 text-center bg-amber-950 border border-amber-700 rounded text-amber-100 text-xl" maxlength="1">
+                    <input type="number" min="0" max="9" class="w-12 h-12 text-center bg-amber-950 border border-amber-700 rounded text-amber-100 text-xl" maxlength="1">
+                </div>
+                <p class="text-sm text-amber-200 italic">Hint: 189_</p>
+                `,
+                [
+                    {text: "Try Combination", action: checkDeskPuzzle},
+                    {text: "Cancel", action: closePuzzleModal}
+                ]
+            );
+            
+            function checkDeskPuzzle() {
+                const inputs = document.querySelectorAll('#puzzleInput input');
+                const combination = Array.from(inputs).map(input => input.value).join('');
+                
+                keySound.play();
+                
+                // Correct answer is 1893
+                if (combination === '1893') {
+                    gameState.puzzlesSolved.desk = true;
+                    gameState.inventory.push('candle');
+                    updateInventory();
+                    successSound.play();
+                    
+                    showInteractionModal(
+                        "Box Opened",
+                        "Inside the box is a small candle that still seems to have some life in it.",
+                        [
+                            {text: "Take Candle", action: closePuzzleModal}
+                        ]
+                    );
+                } else {
+                    showInteractionModal(
+                        "Wrong Combination",
+                        "The box doesn't open. Maybe try a different year...",
+                        [
+                            {text: "Try Again", action: () => {}}
+                        ]
+                    );
+                }
+            }
+        }
+        
+        // Book puzzle
+        function startBookPuzzle() {
+            closeInteractionModal();
+            
+            showPuzzleModal(
+                "Book Puzzle",
+                "The combination lock has 3 wheels with letters. A faded note says 'The name of the first owner'.",
+                `
+                <div class="flex gap-2 justify-center mb-4">
+                    <select class="w-12 h-12 text-center bg-amber-950 border border-amber-700 rounded text-amber-100 text-xl">
+                        ${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => `<option value="${letter}">${letter}</option>`).join('')}
+                    </select>
+                    <select class="w-12 h-12 text-center bg-amber-950 border border-amber-700 rounded text-amber-100 text-xl">
+                        ${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => `<option value="${letter}">${letter}</option>`).join('')}
+                    </select>
+                    <select class="w-12 h-12 text-center bg-amber-950 border border-amber-700 rounded text-amber-100 text-xl">
+                        ${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => `<option value="${letter}">${letter}</option>`).join('')}
+                    </select>
+                </div>
+                <p class="text-sm text-amber-200 italic">Hint: First letter is 'B'</p>
+                `,
+                [
+                    {text: "Try Combination", action: checkBookPuzzle},
+                    {text: "Cancel", action: closePuzzleModal}
+                ]
+            );
+            
+            function checkBookPuzzle() {
+                const selects = document.querySelectorAll('#puzzleInput select');
+                const combination = Array.from(selects).map(select => select.value).join('');
+                
+                keySound.play();
+                
+                // Correct answer is "BEN"
+                if (combination === 'BEN') {
+                    gameState.puzzlesSolved.book = true;
+                    successSound.play();
+                    
+                    showInteractionModal(
+                        "Book Opened",
+                        "The book opens to reveal a map of the mansion with a room marked 'Safe'.",
+                        [
+                            {text: "Close", action: closePuzzleModal}
+                        ]
+                    );
+                } else {
+                    showInteractionModal(
+                        "Wrong Combination",
+                        "The lock doesn't open. Maybe try a different name...",
+                        [
+                            {text: "Try Again", action: () => {}}
+                        ]
+                    );
+                }
+            }
+        }
+        
+        // Globe puzzle
+        function startGlobePuzzle() {
+            closeInteractionModal();
+            
+            showPuzzleModal(
+                "Globe Puzzle",
+                "Pressing the button reveals a hidden compartment with a number puzzle. Solve the equation to open it:",
+                `
+                <div class="bg-amber-950 p-4 rounded-lg mb-4">
+                    <p class="text-center text-xl mb-2">3 + 5 × 2 = ?</p>
+                    <input type="number" class="w-full p-2 bg-amber-900 border border-amber-700 rounded text-amber-100 text-center" placeholder="Enter answer">
+                </div>
+                `,
+                [
+                    {text: "Solve", action: checkGlobePuzzle},
+                    {text: "Cancel", action: closePuzzleModal}
+                ]
+            );
+            
+            function checkGlobePuzzle() {
+                const input = document.querySelector('#puzzleInput input');
+                const answer = input.value.trim();
+                
+                keySound.play();
+                
+                // Correct answer is 13 (3 + (5 × 2))
+                if (answer === '13') {
+                    gameState.puzzlesSolved.globe = true;
+                    gameState.inventory.push('safe_key');
+                    updateInventory();
+                    successSound.play();
+                    
+                    showInteractionModal(
+                        "Compartment Opened",
+                        "Inside the compartment is a small key labeled 'Safe'.",
+                        [
+                            {text: "Take Key", action: closePuzzleModal}
+                        ]
+                    );
+                } else {
+                    showInteractionModal(
+                        "Wrong Answer",
+                        "The compartment remains locked. Remember your order of operations...",
+                        [
+                            {text: "Try Again", action: () => {}}
+                        ]
+                    );
+                }
+            }
+        }
+        
+        // Doll puzzle
+        function startDollPuzzle() {
+            closeInteractionModal();
+            
+            showPuzzleModal(
+                "Doll Puzzle",
+                "The doll's mouth seems to be a button. To open it, you need to press it a specific number of times.",
+                `
+                <div class="bg-amber-950 p-4 rounded-lg mb-4 text-center">
+                    <p class="mb-2">Press the button:</p>
+                    <button id="dollButton" class="px-6 py-3 bg-red-900 hover:bg-red-800 text-amber-100 rounded-lg border-2 border-amber-200">
+                        👄 Press Mouth
+                    </button>
+                    <p class="mt-2">Press count: <span id="pressCount">0</span></p>
+                </div>
+                `,
+                [
+                    {text: "Check", action: checkDollPuzzle},
+                    {text: "Cancel", action: closePuzzleModal}
+                ]
+            );
+            
+            let pressCount = 0;
+            const dollButton = document.getElementById('dollButton');
+            const pressCountDisplay = document.getElementById('pressCount');
+            
+            dollButton.addEventListener('click', () => {
+                pressCount++;
+                pressCountDisplay.textContent = pressCount;
+                keySound.play();
+                
+                // Random ghost encounter chance on each press
+                if (Math.random() < 0.1) {
+                    triggerGhostEncounter();
+                }
+            });
+            
+            function checkDollPuzzle() {
+                keySound.play();
+                
+                // Correct answer is 7 presses
+                if (pressCount === 7) {
+                    gameState.puzzlesSolved.doll = true;
+                    successSound.play();
+                    
+                    showInteractionModal(
+                        "Doll's Secret",
+                        "The doll's mouth opens to reveal a small note: 'The chest likes triangles'.",
+                        [
+                            {text: "Close", action: closePuzzleModal}
+                        ]
+                    );
+                } else {
+                    showInteractionModal(
+                        "Nothing Happens",
+                        "The doll's mouth remains shut. Maybe try a different number of presses...",
+                        [
+                            {text: "Try Again", action: () => {}}
+                        ]
+                    );
+                }
+            }
+        }
+        
+        // Chest puzzle
+        function startChestPuzzle() {
+            closeInteractionModal();
+            
+            showPuzzleModal(
+                "Chest Puzzle",
+                "The chest has a triangular symbol lock. Arrange the symbols to form a complete triangle:",
+                `
+                <div class="grid grid-cols-3 gap-2 mb-4" style="grid-template-rows: auto auto auto;">
+                    <div class="col-start-2 symbol bg-amber-800 w-10 h-10 flex items-center justify-center cursor-pointer" data-symbol="1" data-row="1">▲</div>
+                    <div class="col-start-1 symbol bg-amber-800 w-10 h-10 flex items-center justify-center cursor-pointer" data-symbol="2" data-row="2">◀</div>
+                    <div class="col-start-2 symbol bg-amber-800 w-10 h-10 flex items-center justify-center cursor-pointer" data-symbol="3" data-row="2">●</div>
+                    <div class="col-start-3 symbol bg-amber-800 w-10 h-10 flex items-center justify-center cursor-pointer" data-symbol="4" data-row="2">▶</div>
+                    <div class="col-start-1 symbol bg-amber-800 w-10 h-10 flex items-center justify-center cursor-pointer" data-symbol="5" data-row="3">▼</div>
+                    <div class="col-start-2 symbol bg-amber-800 w-10 h-10 flex items-center justify-center cursor-pointer" data-symbol="6" data-row="3">◆</div>
+                    <div class="col-start-3 symbol bg-amber-800 w-10 h-10 flex items-center justify-center cursor-pointer" data-symbol="7" data-row="3">◈</div>
+                </div>
+                <div class="bg-amber-950 p-2 rounded">
+                    <p class="text-sm mb-2">Hint: The doll said the chest likes triangles</p>
+                </div>
+                `,
+                [
+                    {text: "Check", action: checkChestPuzzle},
+                    {text: "Reset", action: resetChestPuzzle},
+                    {text: "Cancel", action: closePuzzleModal}
+                ]
+            );
+            
+            let selectedSymbols = [];
+            
+            document.querySelectorAll('.symbol').forEach(symbol => {
+                symbol.addEventListener('click', () => {
+                    if (!selectedSymbols.includes(symbol.dataset.symbol)) {
+                        selectedSymbols.push(symbol.dataset.symbol);
+                        symbol.classList.add('bg-red-900');
+                        keySound.play();
+                    }
+                });
+            });
+            
+            function resetChestPuzzle() {
+                selectedSymbols = [];
+                document.querySelectorAll('.symbol').forEach(symbol => {
+                    symbol.classList.remove('bg-red-900');
+                });
+                keySound.play();
+            }
+            
+            function checkChestPuzzle() {
+                keySound.play();
+                
+                // Correct answer is selecting the 3 triangle symbols (1, 2, 4)
+                if (selectedSymbols.length === 3 && 
+                    selectedSymbols.includes('1') && 
+                    selectedSymbols.includes('2') && 
+                    selectedSymbols.includes('4')) {
+                    
+                    gameState.puzzlesSolved.chest = true;
+                    gameState.inventory.push('mirror_shard');
+                    updateInventory();
+                    successSound.play();
+                    
+                    showInteractionModal(
+                        "Chest Opened",
+                        "The chest opens to reveal a shard of broken mirror!",
+                        [
+                            {text: "Take Shard", action: closePuzzleModal}
+                        ]
+                    );
+                } else {
+                    showInteractionModal(
+                        "Wrong Combination",
+                        "The chest remains locked. Maybe try selecting different symbols...",
+                        [
+                            {text: "Try Again", action: () => {}}
+                        ]
+                    );
+                    
+                    // Random ghost encounter chance on wrong answer
+                    if (Math.random() < 0.3) {
+                        triggerGhostEncounter();
+                    }
+                }
+            }
+        }
+        
+        // Mirror puzzle
+        function startMirrorPuzzle() {
+            closeInteractionModal();
+            
+            showPuzzleModal(
+                "Mirror Puzzle",
+                "Place the mirror shard in the correct position to repair the mirror:",
+                `
+                <div class="relative bg-gray-300 w-48 h-48 mx-auto mb-4 rounded border-4 border-amber-800">
+                    <div class="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-1 p-1">
+                        ${Array(9).fill().map((_, i) => {
+                            const row = Math.floor(i / 3) + 1;
+                            const col = (i % 3) + 1;
+                            const isCenter = row === 2 && col === 2;
+                            const isMissing = row === 3 && col === 1;
+                            
+                            if (isMissing) {
+                                return `<div class="bg-gray-100 flex items-center justify-center cursor-pointer" data-row="${row}" data-col="${col}" id="missingPiece">
+                                            <div class="w-full h-full border-2 border-dashed border-gray-500 flex items-center justify-center">
+                                                <span class="text-gray-500">Place Here</span>
+                                            </div>
+                                        </div>`;
+                            } else if (isCenter) {
+                                return `<div class="bg-gray-100 flex items-center justify-center">
+                                            <span class="text-2xl">👁</span>
+                                        </div>`;
+                            } else {
+                                return `<div class="bg-gray-100 flex items-center justify-center">
+                                            <span class="text-xl">${['◩', '◫', '◧', '◨', '⬖', '⬗'][Math.floor(Math.random() * 6)]}</span>
+                                        </div>`;
+                            }
+                        }).join('')}
+                    </div>
+                </div>
+                `,
+                [
+                    {text: "Place Shard", action: checkMirrorPuzzle},
+                    {text: "Cancel", action: closePuzzleModal}
+                ]
+            );
+            
+            function checkMirrorPuzzle() {
+                keySound.play();
+                
+                gameState.puzzlesSolved.mirror = true;
+                gameState.inventory = gameState.inventory.filter(item => item !== 'mirror_shard');
+                updateInventory();
+                successSound.play();
+                
+                showInteractionModal(
+                    "Mirror Repaired",
+                    "As you place the shard, the mirror briefly shows a reflection of a door that isn't there... then returns to normal.",
+                    [
+                        {text: "Continue", action: closePuzzleModal}
+                    ]
+                );
+            }
+        }
+        
+        // Clock puzzle
+        function startClockPuzzle() {
+            closeInteractionModal();
+            
+            showPuzzleModal(
+                "Clock Puzzle",
+                "Set the correct time on the clock. The note says 'The time of the tragedy'.",
+                `
+                <div class="flex flex-col items-center mb-4">
+                    <div class="relative w-32 h-32 bg-amber-900 rounded-full border-4 border-amber-700 mb-4">
+                        <div class="clock-hand hour-hand absolute top-1/2 left-1/2 w-1/4 h-1 bg-black origin-left"></div>
+                        <div class="clock-hand minute-hand absolute top-1/2 left-1/2 w-1/3 h-1 bg-black origin-left"></div>
+                        <div class="absolute top-1/2 left-1/2 w-2 h-2 bg-black rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div>
+                            <label class="block text-sm text-amber-200 mb-1">Hour</label>
+                            <input type="number" min="1" max="12" value="3" class="w-16 p-2 bg-amber-900 border border-amber-700 rounded text-amber-100 text-center hour-input">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-amber-200 mb-1">Minute</label>
+                            <input type="number" min="0" max="59" value="15" class="w-16 p-2 bg-amber-900 border border-amber-700 rounded text-amber-100 text-center minute-input">
+                        </div>
+                    </div>
+                </div>
+                <p class="text-sm text-amber-200 italic">Hint: The tragedy occurred at midnight</p>
+                `,
+                [
+                    {text: "Set Time", action: checkClockPuzzle},
+                    {text: "Cancel", action: closePuzzleModal}
+                ]
+            );
+            
+            // Update clock hands when inputs change
+            const hourInput = document.querySelector('.hour-input');
+            const minuteInput = document.querySelector('.minute-input');
+            const hourHand = document.querySelector('.hour-hand');
+            const minuteHand = document.querySelector('.minute-hand');
+            
+            function updateClockHands() {
+                const hours = parseInt(hourInput.value) % 12;
+                const minutes = parseInt(minuteInput.value) % 60;
+                
+                const hourDegrees = (hours * 30) + (minutes * 0.5);
+                const minuteDegrees = minutes * 6;
+                
+                hourHand.style.transform = `rotate(${hourDegrees}deg)`;
+                minuteHand.style.transform = `rotate(${minuteDegrees}deg)`;
+            }
+            
+            hourInput.addEventListener('input', updateClockHands);
+            minuteInput.addEventListener('input', updateClockHands);
+            
+            function checkClockPuzzle() {
+                const hours = parseInt(hourInput.value);
+                const minutes = parseInt(minuteInput.value);
+                
+                keySound.play();
+                
+                // Correct answer is 12:00 (midnight)
+                if (hours === 12 && minutes === 0) {
+                    gameState.puzzlesSolved.clock = true;
+                    gameState.inventory.push('clock_key');
+                    updateInventory();
+                    successSound.play();
+                    
+                    showInteractionModal(
+                        "Clock Solved",
+                        "The clock chimes midnight and a small key drops from its mechanism!",
+                        [
+                            {text: "Take Key", action: closePuzzleModal}
+                        ]
+                    );
+                } else {
+                    showInteractionModal(
+                        "Wrong Time",
+                        "Nothing happens. Maybe try a different time...",
+                        [
+                            {text: "Try Again", action: () => {}}
+                        ]
+                    );
+                }
+            }
+        }
+        
+        // Ghost encounters
+        function startGhostEncounters() {
+            // Random ghost appearances every 20-60 seconds
+            setInterval(() => {
+                if (gameState.gameActive && Math.random() < 0.3) {
+                    triggerGhostEncounter();
+                }
+            }, 20000 + Math.random() * 40000);
+        }
+        
+        function triggerGhostEncounter() {
+            if (gameState.ghostEncounters >= gameState.maxGhostEncounters) {
+                gameOver("The ghosts have overwhelmed you. You're now one of them...");
+                return;
+            }
+            
+            gameState.ghostEncounters++;
+            ghostSound.currentTime = 0;
+            ghostSound.play();
+            
+            const ghost = document.createElement('div');
+            ghost.className = 'ghost ghost-float text-6xl text-white opacity-0';
+            ghost.innerHTML = '👻';
+            ghost.style.left = `${10 + Math.random() * 80}%`;
+            ghost.style.top = `${10 + Math.random() * 80}%`;
+            
+            ghostsContainer.appendChild(ghost);
+            
+            // Fade in
+            setTimeout(() => {
+                ghost.style.opacity = '0.8';
+            }, 100);
+            
+            // Fade out after 3-5 seconds
+            setTimeout(() => {
+                ghost.style.opacity = '0';
+                setTimeout(() => {
+                    ghost.remove();
+                }, 500);
+            }, 3000 + Math.random() * 2000);
+            
+            // Show warning if near max encounters
+            if (gameState.ghostEncounters === gameState.maxGhostEncounters - 1) {
+                showInteractionModal(
+                    "Ghostly Presence",
+                    "The air grows colder... you feel the ghosts are getting stronger. Be careful!",
+                    [
+                        {text: "Continue", action: closeInteractionModal}
+                    ]
+                );
+            }
+        }
+        
+        // Blood drip effects
+        function startBloodDrips() {
+            setInterval(() => {
+                if (gameState.gameActive && Math.random() < 0.1) {
+                    createBloodDrip();
+                }
+            }, 5000);
+        }
+        
+        function createBloodDrip() {
+            const drip = document.createElement('div');
+            drip.className = 'blood-drip';
+            drip.style.left = `${Math.random() * 100}%`;
+            drip.style.animationDuration = `${3 + Math.random() * 4}s`;
+            drip.style.animationDelay = `${Math.random() * 2}s`;
+            
+            bloodDrips.appendChild(drip);
+            
+            // Remove after animation completes
+            setTimeout(() => {
+                drip.remove();
+            }, 7000);
+        }
+        
+        // Game over
+        function gameOver(message) {
+            gameState.gameActive = false;
+            document.getElementById('gameOverMessage').textContent = message;
+            gameOverModal.classList.remove('hidden');
+            ambientSound.pause();
+        }
+        
+        // Win game
+        function winGame() {
+            gameState.gameActive = false;
+            winModal.classList.remove('hidden');
+            ambientSound.pause();
+            successSound.play();
+        }
+        
+        // Initialize the game when the page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            initGame();
+            startGhostEncounters();
+            startBloodDrips();
+        });
+    </script>
+</body>
+</html>
